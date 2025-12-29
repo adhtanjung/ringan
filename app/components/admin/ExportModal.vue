@@ -85,6 +85,7 @@ import { ref, computed, watch } from "vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import * as XLSX from "xlsx";
 import {
 	Select,
 	SelectContent,
@@ -217,11 +218,41 @@ const handleExport = async () => {
 					document.body.removeChild(link);
 					window.URL.revokeObjectURL(url);
 				}
-			} else {
-				alert(
-					"Excel export not supported in frontend yet. Please use JSON or CSV."
-				);
-				return;
+			} else if (selectedFormat.value === "xlsx") {
+				// Excel export using xlsx library
+				if (data && data.length > 0) {
+					// Create a new workbook
+					const workbook = XLSX.utils.book_new();
+
+					// Convert data to worksheet
+					const worksheet = XLSX.utils.json_to_sheet(data);
+
+					// Add the worksheet to the workbook
+					XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+					// Generate Excel file
+					const excelBuffer = XLSX.write(workbook, {
+						bookType: "xlsx",
+						type: "array",
+					});
+
+					// Create a Blob from the buffer
+					const blob = new Blob([excelBuffer], {
+						type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					});
+
+					// Download the file
+					const url = window.URL.createObjectURL(blob);
+					const link = document.createElement("a");
+					link.href = url;
+					link.download = `${selectedDataType.value}_export_${
+						new Date().toISOString().split("T")[0]
+					}.xlsx`;
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					window.URL.revokeObjectURL(url);
+				}
 			}
 
 			emit("close");

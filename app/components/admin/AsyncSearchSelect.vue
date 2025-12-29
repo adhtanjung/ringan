@@ -58,7 +58,11 @@ import { useSupabase } from "@/composables/useSupabase";
 const props = defineProps({
 	modelValue: { type: String, default: "" },
 	placeholder: { type: String, default: "Type to search..." },
-	fetchUrl: { type: String, required: true },
+	fetchUrl: { type: String, default: "" },
+	tableName: { type: String, default: "" },
+	searchFields: { type: Array, default: () => [] },
+	valueField: { type: String, default: "" },
+	displayFields: { type: Array, default: () => [] },
 	labelExtractor: {
 		type: Function,
 		default: (item) => item.label ?? String(item),
@@ -70,6 +74,25 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue", "select"]);
+
+// Helper functions for label and value extraction
+const labelExtractor = (item) => {
+	if (props.displayFields && props.displayFields.length > 0) {
+		// Use displayFields to format label
+		return props.displayFields
+			.map((field) => item[field])
+			.filter(Boolean)
+			.join(" - ");
+	}
+	return props.labelExtractor(item);
+};
+
+const valueExtractor = (item) => {
+	if (props.valueField) {
+		return item[props.valueField];
+	}
+	return props.valueExtractor(item);
+};
 
 const searchTerm = ref("");
 const open = ref(false);
@@ -110,21 +133,24 @@ const fetchResults = async () => {
 	try {
 		loading.value = true;
 
-		// Migration Check
-		const migratedTable = USE_SUPABASE_FOR.find((t) =>
-			props.fetchUrl.includes(t)
-		);
-		if (migratedTable) {
+		// Determine which table to use (tableName prop takes priority)
+		const targetTable =
+			props.tableName ||
+			(props.fetchUrl
+				? USE_SUPABASE_FOR.find((t) => props.fetchUrl.includes(t))
+				: null);
+
+		if (targetTable) {
 			// Use Supabase
-			let query = supabase.from(migratedTable).select("*", { count: "exact" });
+			let query = supabase.from(targetTable).select("*", { count: "exact" });
 
 			const search = searchTerm.value.trim();
 			if (search) {
-				if (migratedTable === "problems") {
+				if (targetTable === "problems") {
 					query = query.or(
 						`problem_name.ilike.%${search}%,description.ilike.%${search}%,sub_category_id.ilike.%${search}%`
 					);
-				} else if (migratedTable === "problem_types") {
+				} else if (targetTable === "problem_types") {
 					query = query.or(
 						`type_name.ilike.%${search}%,description.ilike.%${search}%`
 					);
@@ -147,21 +173,23 @@ const fetchResults = async () => {
 			return;
 		}
 
-		// Legacy API
-		const config = useRuntimeConfig();
-		const adminApiUrl =
-			config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
-		const params = new URLSearchParams();
-		if (searchTerm.value) params.set("q", searchTerm.value);
-		params.set("limit", "20");
-		params.set("page", String(page.value));
-		const url = `${adminApiUrl}${props.fetchUrl}?${params.toString()}`;
-		const resp = await $fetch(url);
-		const items = resp?.data?.items ?? [];
-		const more = resp?.data?.has_more ?? false;
-		if (page.value === 1) results.value = items;
-		else results.value = [...results.value, ...items];
-		hasMore.value = more;
+		// Legacy API (only if fetchUrl is provided)
+		if (props.fetchUrl) {
+			const config = useRuntimeConfig();
+			const adminApiUrl =
+				config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
+			const params = new URLSearchParams();
+			if (searchTerm.value) params.set("q", searchTerm.value);
+			params.set("limit", "20");
+			params.set("page", String(page.value));
+			const url = `${adminApiUrl}${props.fetchUrl}?${params.toString()}`;
+			const resp = await $fetch(url);
+			const items = resp?.data?.items ?? [];
+			const more = resp?.data?.has_more ?? false;
+			if (page.value === 1) results.value = items;
+			else results.value = [...results.value, ...items];
+			hasMore.value = more;
+		}
 	} catch (e) {
 		// noop or toast in parent
 		console.error("AsyncSearchSelect error:", e);

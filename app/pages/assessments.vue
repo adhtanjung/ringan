@@ -50,12 +50,10 @@
 			@close="closeExportModal"
 		/>
 
-		<!-- Edit Modal -->
-		<DatasetEditModalShadcn
+		<!-- Assessment Modal -->
+		<AssessmentModal
 			:is-open="showEditModal"
-			:data-type="'assessments'"
 			:item="editingItem"
-			:loading="actionLoading"
 			@close="closeEditModal"
 			@save="handleSave"
 		/>
@@ -72,7 +70,7 @@ import { onMounted } from "vue";
 import DatasetTable from "@/components/admin/DatasetTable.vue";
 import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
-import DatasetEditModalShadcn from "@/components/admin/DatasetEditModalShadcn.vue";
+import AssessmentModal from "@/components/admin/AssessmentModal.vue";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";

@@ -241,7 +241,6 @@
 								:key="item.id || index"
 								class="group h-10 border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
 								:data-state="selectedItems.includes(item.id) ? 'selected' : ''"
-								@click="emit('view', item)"
 							>
 								<TableCell class="p-2 text-center" @click.stop>
 									<Checkbox
