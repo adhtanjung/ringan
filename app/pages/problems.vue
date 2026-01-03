@@ -30,7 +30,6 @@
 					@search-change="(value) => (searchQuery = value)"
 					@filter-change="setFilter"
 					@clear-filters="clearFilters"
-					@generate-sample="handleGenerateSample"
 				/>
 			</div>
 		</div>
@@ -428,54 +427,6 @@ const getSeverityClass = (level) => {
 		5: "bg-red-50 text-red-700 border-red-200",
 	};
 	return classes[level] || "bg-gray-50 text-gray-700 border-gray-200";
-};
-
-const handleGenerateSample = async () => {
-	// Requirements: "A button that hits a Supabase function to insert 5 'safe' dummy rows"
-	// Since we can't create backend functions, we'll do client-side insert.
-	try {
-		loading.value = true;
-		const dummyData = [
-			{
-				problem_name: "Example Problem 1: Anxiety",
-				category: "Anxiety",
-				description: "This is a sample description for an anxiety problem.",
-				severity_level: 2,
-				is_active: true,
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			},
-			{
-				problem_name: "Example Problem 2: Stress",
-				category: "Stress",
-				description: "High stress levels due to work environment.",
-				severity_level: 3,
-				is_active: true,
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			},
-			{
-				problem_name: "Example Problem 3: Sleep Issues",
-				category: "Sleep",
-				description: "Difficulty falling asleep at night.",
-				severity_level: 1,
-				is_active: false,
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			}
-		];
-
-		const { error: insertError } = await supabase.from('problems').insert(dummyData);
-		if (insertError) throw insertError;
-
-		await refreshData();
-	} catch (err) {
-		console.error("Failed to generate sample data:", err);
-		// Assuming we have access to toast here, or fallback to alert
-		// toast({ title: "Error", description: "Failed to generate sample data", variant: "destructive" });
-	} finally {
-		loading.value = false;
-	}
 };
 
 // Lifecycle

@@ -380,11 +380,42 @@
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+
+		<Dialog :open="showReportDialog" @update:open="showReportDialog = $event">
+			<DialogContent class="sm:max-w-[425px]">
+				<DialogHeader>
+					<DialogTitle>Report Data Issue</DialogTitle>
+					<DialogDescription>
+						Flag an issue with this record. The ID will be automatically captured.
+					</DialogDescription>
+				</DialogHeader>
+				<div class="grid gap-4 py-4" v-if="reportingItem">
+					<div class="grid grid-cols-4 items-center gap-4">
+						<Label class="text-right">Row ID</Label>
+						<Input :model-value="reportingItem.id" readonly class="col-span-3 bg-muted font-mono text-xs" />
+					</div>
+					<div class="grid grid-cols-4 items-center gap-4">
+						<Label class="text-right">Table</Label>
+						<Input :model-value="title" readonly class="col-span-3 bg-muted" />
+					</div>
+					<div class="grid gap-2">
+						<Label>Describe the issue</Label>
+						<Textarea v-model="reportComment" placeholder="This answer looks wrong..." />
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" @click="showReportDialog = false">Cancel</Button>
+					<Button @click="submitReport">Submit Report</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	</div>
 </template>
 
 <script setup>
 import { ref, computed, watch, h } from "vue";
+import { useSupabase } from "@/composables/useSupabase";
+import * as XLSX from "xlsx";
 import {
 	Search,
 	RotateCw,
@@ -463,6 +494,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 // --- Props & Emits ---
 const props = defineProps({
@@ -498,7 +530,8 @@ const emit = defineEmits([
 	"clear-filters",
 	"view",
 	"batch-action",
-	"generate-sample"
+	"generate-sample",
+	"report-issue"
 ]);
 
 // --- State ---
@@ -509,6 +542,9 @@ const localSearchQuery = ref(props.searchQuery || "");
 const showDeleteDialog = ref(false);
 const itemToDelete = ref(null);
 const isGeneratingSample = ref(false);
+const showReportDialog = ref(false);
+const reportingItem = ref(null);
+const reportComment = ref("");
 
 const handleSanityFilterChange = (value) => {
     // We implement the "Sanity Filters" using TanStack's column filtering
@@ -519,21 +555,12 @@ const handleSanityFilterChange = (value) => {
     } else if (value === 'missing') {
         table.resetColumnFilters();
         // Heuristic: Filter for rows where a likely 'answer' or 'text' column is empty
-        // We'll check 'completion', 'suggestion_text', 'question_text', 'problem_name'
-        // But since we can't easily do OR across columns with simple setColumnFilters in basic usage,
-        // we might set a global filter or specific column filter if we know the schema.
-        // For MVP "Missing Answers", we'll target the main text field for the current dataset type.
-        // Or actually, "Missing Answers" usually refers to Assessments/Training data.
-        // Let's look for nulls in specific columns based on title.
-
         const targetCol = props.columns.find(c => ['completion', 'correct_answer', 'response'].includes(c.key));
         if (targetCol) {
             table.getColumn(targetCol.key)?.setFilterValue('___MISSING___'); // Custom filter logic below
         } else {
-             // Fallback: Show everything if we can't identify an "Answer" column
-             // or maybe filter rows where *any* required field is null?
-             // Let's try to filter for empty description or problem_name as a proxy for "broken" data
-             table.setGlobalFilter(' '); // Just a placeholder, actually real logic needed in filterFn
+             // Fallback
+             table.setGlobalFilter(' ');
         }
     } else if (value === 'uncategorized') {
         table.resetColumnFilters();
@@ -695,7 +722,12 @@ const tableColumns = computed(() => {
 							h(DropdownMenuTrigger, { asChild: true }, () =>
 								h(
 									Button,
-									{ variant: "ghost", size: "icon", class: "h-6 w-6" },
+									{
+										variant: "ghost",
+										size: "icon",
+										class: "h-6 w-6",
+										onClick: (e) => e.stopPropagation()
+									},
 									() => h(MoreHorizontal, { class: "h-3.5 w-3.5" })
 								)
 							),
@@ -704,6 +736,14 @@ const tableColumns = computed(() => {
 									DropdownMenuItem,
 									{ onClick: () => editItem(row.original) },
 									() => "Edit"
+								),
+								h(DropdownMenuSeparator),
+								h(
+									DropdownMenuItem,
+									{
+										onClick: () => openReportDialog(row.original),
+									},
+									() => "Report Issue"
 								),
 								h(DropdownMenuSeparator),
 								h(
@@ -801,11 +841,30 @@ const handleDeleteConfirm = () => {
 	showDeleteDialog.value = false;
 };
 
+const openReportDialog = (item) => {
+	reportingItem.value = item;
+	reportComment.value = "";
+	showReportDialog.value = true;
+};
+
+const submitReport = () => {
+	const reportPayload = {
+		table: props.title,
+		rowId: reportingItem.value?.id,
+		comment: reportComment.value
+	};
+	console.log("Submitting Report:", reportPayload);
+
+	showReportDialog.value = false;
+	reportingItem.value = null;
+	reportComment.value = "";
+
+    emit('report-issue', reportPayload);
+};
+
 const getSelectedIds = () => {
-    return Object.keys(rowSelection.value)
-        .filter(key => rowSelection.value[key]) // Filter only true values
-        .map(key => props.data[parseInt(key)]?.id)
-        .filter(Boolean);
+    // Row selection keys are IDs because of getRowId: (row) => row.id
+    return Object.keys(rowSelection.value).filter(key => rowSelection.value[key]);
 };
 
 const confirmBulkDelete = () => {
@@ -829,14 +888,6 @@ const nextPage = () => {
 };
 
 // --- Empty State Actions ---
-import * as XLSX from "xlsx";
-import { useSupabase } from "@/composables/useSupabase"; // Assuming this composable is available globally or we import it
-// Note: In Nuxt auto-imports usually work, but explicit import is safer for refactoring.
-// However, useSupabase might be an auto-import. Let's try to use it if available or inject.
-// Actually, I need to make sure I have access to supabase client here or emit event.
-// Given strict instructions, I will emit an event for 'generate-sample' if strictly needed,
-// but the requirement said "hits a Supabase function to insert 5 'safe' dummy rows".
-// I will implement the logic here for speed as requested ("Data Maintenance features").
 
 const downloadTemplate = () => {
 	const ws = XLSX.utils.json_to_sheet([
@@ -848,32 +899,21 @@ const downloadTemplate = () => {
 };
 
 const exportToCsv = () => {
-    // Export all rows in the current filtered model
-    const rows = table.getFilteredRowModel().rows.map(row => {
-        const rowData = {};
-        props.columns.forEach(col => {
-            rowData[col.label] = row.original[col.key];
-        });
-        return rowData;
-    });
+    const dataToExport = props.data;
+    if (!dataToExport || dataToExport.length === 0) return;
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Export");
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
     XLSX.writeFile(wb, `${props.title.replace(/\s+/g, "_").toLowerCase()}_export.csv`);
 };
 
 const exportSelection = () => {
-     // Export only selected rows
-    const rows = table.getSelectedRowModel().rows.map(row => {
-        const rowData = {};
-        props.columns.forEach(col => {
-            rowData[col.label] = row.original[col.key];
-        });
-        return rowData;
-    });
+    const selectedIds = getSelectedIds();
+    const dataToExport = props.data.filter(row => selectedIds.includes(row.id));
+    if (dataToExport.length === 0) return;
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Selection");
     XLSX.writeFile(wb, `${props.title.replace(/\s+/g, "_").toLowerCase()}_selection.csv`);
@@ -883,13 +923,7 @@ const generateSampleData = async () => {
     isGeneratingSample.value = true;
     try {
         // We will emit an event so the parent (which has the useSupabase context and knows the table name)
-        // can handle the insertion. This is cleaner than importing supabase here if we don't know the table name
-        // (though we have 'title', we don't have the exact supabase table name prop passed down,
-        // usually it's in the parent's useDatasetManagement).
-        // Wait, looking at the code, useDatasetManagement manages the data.
-        // I will emit 'generate-sample' and let the parent handle it?
-        // No, the requirements said "The Feature: ... A button that hits a Supabase function".
-        // UseDatasetManagement is in the parent. I should emit.
+        // can handle the insertion.
         emit('generate-sample');
 
         // Mocking delay for UX if parent doesn't set loading immediately
