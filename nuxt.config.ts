@@ -11,6 +11,9 @@ export default defineNuxtConfig({
 					},
 				},
 				modules: ["shadcn-nuxt"],
+                build: {
+                    transpile: ["xlsx"],
+                },
 				css: ["~/assets/css/tailwind.css"],
 				runtimeConfig: {
 								public: {
