@@ -1,55 +1,54 @@
 <script setup lang="ts">
-import type { Component } from "vue"
+import type { Component } from "vue";
+
+import { IconDots, IconFolder, IconShare3, IconTrash } from "@tabler/icons-vue";
 
 import {
-  IconDots,
-  IconFolder,
-  IconShare3,
-  IconTrash,
-} from "@tabler/icons-vue"
-
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar'
+	SidebarGroup,
+	SidebarGroupLabel,
+	SidebarMenu,
+	SidebarMenuAction,
+	SidebarMenuButton,
+	SidebarMenuItem,
+	useSidebar,
+} from "@/components/ui/sidebar";
 
 interface Document {
-  name: string
-  url: string
-  icon?: Component
+	name: string;
+	url: string;
+	icon?: Component;
+	disabled?: boolean;
 }
 
 defineProps<{
-  items: Document[]
-}>()
+	items: Document[];
+}>();
 
-const { isMobile } = useSidebar()
+const { isMobile } = useSidebar();
 </script>
 
 <template>
-  <SidebarGroup class="group-data-[collapsible=icon]:hidden">
-    <SidebarGroupLabel>Dataset</SidebarGroupLabel>
-    <SidebarMenu>
-      <SidebarMenuItem v-for="item in items" :key="item.name">
-        <SidebarMenuButton as-child>
-          <NuxtLink :to="item.url">
-            <component :is="item.icon" />
-            <span>{{ item.name }}</span>
-          </NuxtLink>
-        </SidebarMenuButton>
-        <!-- <DropdownMenu>
+	<SidebarGroup class="group-data-[collapsible=icon]:hidden">
+		<SidebarGroupLabel>Dataset</SidebarGroupLabel>
+		<SidebarMenu>
+			<SidebarMenuItem v-for="item in items" :key="item.name">
+				<SidebarMenuButton as-child>
+					<NuxtLink
+						:to="item.url"
+						:class="{ 'opacity-50 pointer-events-none': item.disabled }"
+					>
+						<component :is="item.icon" />
+						<span>{{ item.name }}</span>
+					</NuxtLink>
+				</SidebarMenuButton>
+				<!-- <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <SidebarMenuAction
               show-on-hover
@@ -79,13 +78,13 @@ const { isMobile } = useSidebar()
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu> -->
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <!-- <SidebarMenuButton class="text-sidebar-foreground/70">
+			</SidebarMenuItem>
+			<SidebarMenuItem>
+				<!-- <SidebarMenuButton class="text-sidebar-foreground/70">
           <IconDots class="text-sidebar-foreground/70" />
           <span>More</span>
         </SidebarMenuButton> -->
-      </SidebarMenuItem>
-    </SidebarMenu>
-  </SidebarGroup>
+			</SidebarMenuItem>
+		</SidebarMenu>
+	</SidebarGroup>
 </template>

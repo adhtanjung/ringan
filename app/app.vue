@@ -8,6 +8,7 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import FeedbackWidget from "@/components/admin/FeedbackWidget.vue";
 
 const { supabase, session, isInitialized, init } = useSupabase();
 
@@ -83,6 +84,7 @@ onMounted(() => {
 					<main class="flex-1 overflow-auto">
 						<NuxtPage />
 					</main>
+					<FeedbackWidget />
 				</SidebarInset>
 			</SidebarProvider>
 		</template>

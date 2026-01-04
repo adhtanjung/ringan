@@ -104,6 +104,65 @@
 										</Select>
 									</div>
 								</template>
+
+								<div class="pt-4 border-t space-y-4">
+									<h4
+										class="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
+									>
+										<AlertTriangle class="h-3.5 w-3.5 text-amber-500" />
+										Data Quality
+									</h4>
+
+									<div class="space-y-3">
+										<div class="flex items-center justify-between">
+											<Label class="text-xs font-medium"
+												>Missing Required Fields</Label
+											>
+											<Switch
+												:checked="props.filters.quality === 'missing_fields'"
+												@update:checked="
+													(v) =>
+														handleFilterChange(
+															'quality',
+															v ? 'missing_fields' : null
+														)
+												"
+											/>
+										</div>
+
+										<div
+											v-if="dataType === 'assessments'"
+											class="flex items-center justify-between"
+										>
+											<Label class="text-xs font-medium"
+												>Incomplete Scale Labels</Label
+											>
+											<Switch
+												:checked="props.filters.quality === 'incomplete_scale'"
+												@update:checked="
+													(v) =>
+														handleFilterChange(
+															'quality',
+															v ? 'incomplete_scale' : null
+														)
+												"
+											/>
+										</div>
+
+										<div class="flex items-center justify-between">
+											<Label class="text-xs font-medium"
+												>Inactive Items Only</Label
+											>
+											<Switch
+												:checked="props.filters.is_active === 'false'"
+												@update:checked="
+													(v) =>
+														handleFilterChange('is_active', v ? 'false' : null)
+												"
+											/>
+										</div>
+									</div>
+								</div>
 							</div>
 						</div>
 						<SheetFooter>
@@ -222,16 +281,14 @@
 							</template>
 
 							<TableRow v-else-if="filteredData.length === 0">
-								<TableCell
-									:colspan="columns.length + 2"
-									class="h-24 text-center"
-								>
-									<div
-										class="flex flex-col items-center justify-center gap-2 text-muted-foreground"
-									>
-										<Inbox class="h-8 w-8 opacity-50" />
-										<p class="text-sm">No results found</p>
-									</div>
+								<TableCell :colspan="columns.length + 2" class="p-0 h-[400px]">
+									<EmptyState
+										:dataset-type="dataType"
+										:has-filters="hasActiveFilters || searchQuery !== ''"
+										@import="emit('import')"
+										@create="openCreateModal"
+										@clear-search="handleClearFilters"
+									/>
 								</TableCell>
 							</TableRow>
 
@@ -313,6 +370,7 @@
 
 								<TableCell
 									class="p-2 text-right sticky right-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+									@click.stop
 								>
 									<DropdownMenu>
 										<DropdownMenuTrigger as-child>
@@ -327,6 +385,9 @@
 										<DropdownMenuContent align="end">
 											<DropdownMenuItem @click="editItem(item)"
 												>Edit</DropdownMenuItem
+											>
+											<DropdownMenuItem @click="openHistory(item)"
+												>View History</DropdownMenuItem
 											>
 											<DropdownMenuSeparator />
 											<DropdownMenuItem
@@ -380,8 +441,8 @@
 						variant="outline"
 						size="icon"
 						class="h-7 w-7"
-						:disabled="props.currentPage === 1"
-						@click="previousPage"
+						:disabled="props.currentPage <= 1"
+						@click="goToPage(props.currentPage - 1)"
 					>
 						<ChevronLeft class="h-3.5 w-3.5" />
 					</Button>
@@ -389,8 +450,8 @@
 						variant="outline"
 						size="icon"
 						class="h-7 w-7"
-						:disabled="props.currentPage === totalPages"
-						@click="nextPage"
+						:disabled="props.currentPage >= totalPages"
+						@click="goToPage(props.currentPage + 1)"
 					>
 						<ChevronRight class="h-3.5 w-3.5" />
 					</Button>
@@ -398,31 +459,38 @@
 			</div>
 		</div>
 
-		<div
-			v-if="selectedItems.length > 0"
-			class="absolute bottom-12 left-1/2 -translate-x-1/2 z-50"
-		>
-			<div
-				class="bg-foreground text-background px-4 py-2 rounded-full shadow-lg flex items-center gap-4 animate-in slide-in-from-bottom-2"
-			>
-				<span class="text-sm font-medium"
-					>{{ selectedItems.length }} selected</span
-				>
-				<div class="h-4 w-px bg-background/20"></div>
-				<button
-					@click="confirmBulkDelete"
-					class="text-sm text-red-300 hover:text-red-100 font-medium transition-colors"
-				>
-					Delete
-				</button>
-				<button
-					@click="clearSelection"
-					class="text-sm opacity-70 hover:opacity-100 transition-opacity"
-				>
-					Dismiss
-				</button>
-			</div>
-		</div>
+		<BulkActionsBar
+			:selected-count="selectedItems.length"
+			:total-count="totalItems"
+			@clear="selectedItems = []"
+			@delete="showBulkDelete = true"
+			@edit="showBulkEdit = true"
+			@status-change="handleBulkStatusChange"
+		/>
+
+		<BulkDeleteDialog
+			:is-open="showBulkDelete"
+			:count="selectedItems.length"
+			:is-deleting="loading"
+			@close="showBulkDelete = false"
+			@confirm="confirmBulkDelete"
+		/>
+
+		<BulkEditDialog
+			:is-open="showBulkEdit"
+			:count="selectedItems.length"
+			:columns="columns"
+			:is-saving="loading"
+			@close="showBulkEdit = false"
+			@confirm="confirmBulkEdit"
+		/>
+
+		<HistoryDialog
+			:is-open="showHistory"
+			:record-id="historyRecordId"
+			:table-name="dataType"
+			@close="showHistory = false"
+		/>
 
 		<Dialog :open="showDeleteDialog" @update:open="showDeleteDialog = $event">
 			<DialogContent>
@@ -456,7 +524,15 @@ import {
 	ArrowUpDown,
 	MoreHorizontal,
 	Inbox,
+	AlertTriangle,
 } from "lucide-vue-next";
+
+// Admin Components
+import EmptyState from "@/components/admin/EmptyState.vue";
+import BulkActionsBar from "@/components/admin/BulkActionsBar.vue";
+import BulkDeleteDialog from "@/components/admin/BulkDeleteDialog.vue";
+import BulkEditDialog from "@/components/admin/BulkEditDialog.vue";
+import HistoryDialog from "@/components/admin/HistoryDialog.vue";
 
 // Shadcn Components (Assumed Imports based on your setup)
 import { Button } from "@/components/ui/button";
@@ -528,6 +604,7 @@ const props = defineProps({
 	totalPages: { type: Number, default: 1 },
 	searchQuery: { type: String, default: "" },
 	filters: { type: Object, default: () => ({}) },
+	dataType: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -644,8 +721,6 @@ const handleDeleteConfirm = () => {
 	emit("delete", itemToDelete.value);
 	showDeleteDialog.value = false;
 };
-const confirmBulkDelete = () => emit("bulk-delete", selectedItems.value); // Add dialog logic as needed
-const clearSelection = () => (selectedItems.value = []);
 const openCreateModal = () => emit("create");
 const previousPage = () => {
 	if (props.currentPage > 1) emit("prev-page");
@@ -665,6 +740,37 @@ watch(
 	() => props.searchQuery,
 	(v) => (localSearchQuery.value = v || "")
 );
+const showBulkEdit = ref(false);
+const showBulkDelete = ref(false);
+
+const handleBulkStatusChange = async (active) => {
+	emit("bulk-update", {
+		ids: selectedItems.value,
+		field: "is_active",
+		value: active,
+	});
+	selectedItems.value = [];
+};
+
+const confirmBulkDelete = () => {
+	emit("bulk-delete", selectedItems.value);
+	showBulkDelete.value = false;
+	selectedItems.value = [];
+};
+
+const confirmBulkEdit = (data) => {
+	emit("bulk-update", { ids: selectedItems.value, ...data });
+	showBulkEdit.value = false;
+	selectedItems.value = [];
+};
+
+const showHistory = ref(false);
+const historyRecordId = ref("");
+
+const openHistory = (item) => {
+	historyRecordId.value = item.id;
+	showHistory.value = true;
+};
 </script>
 
 <style scoped>

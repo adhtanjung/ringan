@@ -6,6 +6,7 @@
 			<div class="mt-6">
 				<DatasetTable
 					:title="dataTypeLabel"
+					:data-type="dataType"
 					:data="data"
 					:columns="columns"
 					:loading="loading"
@@ -68,80 +69,81 @@
 			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
 				<div class="p-4 pb-0">
 					<SheetHeader class="space-y-1">
-					<SheetTitle class="text-lg">Problem Type Details</SheetTitle>
-					<SheetDescription class="text-sm">
-						View detailed information about this problem type
-					</SheetDescription>
-				</SheetHeader>
-</div>
+						<SheetTitle class="text-lg">Problem Type Details</SheetTitle>
+						<SheetDescription class="text-sm">
+							View detailed information about this problem type
+						</SheetDescription>
+					</SheetHeader>
+				</div>
 
-<div class="flex-1 overflow-y-auto px-4">
+				<div class="flex-1 overflow-y-auto px-4">
+					<div v-if="viewingItem" class="mt-4 space-y-4">
+						<!-- Type Name -->
+						<div class="space-y-1">
+							<h4
+								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+							>
+								Type Name
+							</h4>
+							<p class="text-sm font-medium">{{ viewingItem.type_name }}</p>
+						</div>
 
-				<div v-if="viewingItem" class="mt-4 space-y-4">
-					<!-- Type Name -->
-					<div class="space-y-1">
-						<h4
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-						>
-							Type Name
-						</h4>
-						<p class="text-sm font-medium">{{ viewingItem.type_name }}</p>
-					</div>
-
-					<!-- Category ID -->
-					<div class="space-y-2">
-						<h4 class="text-sm font-medium text-muted-foreground">
-							Category ID
-						</h4>
-						<p
-							class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-						>
-							{{ viewingItem.category_id }}
-						</p>
-					</div>
-
-					<!-- Description -->
-					<div class="space-y-2">
-						<h4 class="text-sm font-medium text-muted-foreground">
-							Description
-						</h4>
-						<p class="text-sm leading-relaxed">{{ viewingItem.description }}</p>
-					</div>
-
-					<!-- Status -->
-					<div class="space-y-1">
-						<h4
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-						>
-							Status
-						</h4>
-						<Badge
-							variant="outline"
-							:class="
-								viewingItem.is_active
-									? 'bg-green-50 text-green-700 border-green-200'
-									: 'bg-red-50 text-red-700 border-red-200'
-							"
-						>
-							{{ viewingItem.is_active ? "Active" : "Inactive" }}
-						</Badge>
-					</div>
-
-					<!-- Metadata -->
-					<div class="space-y-1.5 pt-3 border-t">
-						<h4
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-						>
-							Metadata
-						</h4>
-						<div class="space-y-0.5 text-xs text-muted-foreground">
-							<p v-if="viewingItem.created_at">
-								Created: {{ formatDate(viewingItem.created_at) }}
+						<!-- Category ID -->
+						<div class="space-y-2">
+							<h4 class="text-sm font-medium text-muted-foreground">
+								Category ID
+							</h4>
+							<p
+								class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
+							>
+								{{ viewingItem.category_id }}
 							</p>
-							<p v-if="viewingItem.updated_at">
-								Updated: {{ formatDate(viewingItem.updated_at) }}
+						</div>
+
+						<!-- Description -->
+						<div class="space-y-2">
+							<h4 class="text-sm font-medium text-muted-foreground">
+								Description
+							</h4>
+							<p class="text-sm leading-relaxed">
+								{{ viewingItem.description }}
 							</p>
-</div>
+						</div>
+
+						<!-- Status -->
+						<div class="space-y-1">
+							<h4
+								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+							>
+								Status
+							</h4>
+							<Badge
+								variant="outline"
+								:class="
+									viewingItem.is_active
+										? 'bg-green-50 text-green-700 border-green-200'
+										: 'bg-red-50 text-red-700 border-red-200'
+								"
+							>
+								{{ viewingItem.is_active ? "Active" : "Inactive" }}
+							</Badge>
+						</div>
+
+						<!-- Metadata -->
+						<div class="space-y-1.5 pt-3 border-t">
+							<h4
+								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+							>
+								Metadata
+							</h4>
+							<div class="space-y-0.5 text-xs text-muted-foreground">
+								<p v-if="viewingItem.created_at">
+									Created: {{ formatDate(viewingItem.created_at) }}
+								</p>
+								<p v-if="viewingItem.updated_at">
+									Updated: {{ formatDate(viewingItem.updated_at) }}
+								</p>
+							</div>
 							<p v-if="viewingItem.id" class="font-mono">
 								ID: {{ viewingItem.id }}
 							</p>
@@ -151,16 +153,16 @@
 
 				<div class="p-4 pt-0">
 					<SheetFooter class="mt-4 pt-4 border-t flex-row gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						@click="closeDetailSheet"
-						class="flex-1"
-						>Close</Button
-					>
-					<Button size="sm" @click="openEditFromDetail" class="flex-1"
-						>Edit</Button
-					>
+						<Button
+							variant="outline"
+							size="sm"
+							@click="closeDetailSheet"
+							class="flex-1"
+							>Close</Button
+						>
+						<Button size="sm" @click="openEditFromDetail" class="flex-1"
+							>Edit</Button
+						>
 					</SheetFooter>
 				</div>
 			</SheetContent>
@@ -193,6 +195,7 @@ import { Badge } from "@/components/ui/badge";
 // Use the shared composable
 const {
 	loading,
+	dataType,
 	error,
 	data,
 	actionLoading,

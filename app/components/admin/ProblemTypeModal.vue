@@ -48,7 +48,8 @@
 											@click="checkDuplicateTypeName"
 											:disabled="
 												!formData.type_name ||
-												validationStatus.type_name.loading
+												validationStatus.type_name.loading ||
+												(isEditing && formData.type_name === originalTypeName)
 											"
 											class="whitespace-nowrap flex-shrink-0"
 										>
@@ -135,18 +136,6 @@
 										required
 										class="mt-1"
 									/>
-								</div>
-
-								<!-- Active Switch -->
-								<div>
-									<div class="flex items-center space-x-2">
-										<Switch id="is_active" v-model="formData.is_active" />
-										<FormFieldLabel
-											field-key="is_active"
-											label="Active"
-											description="Whether this problem type is currently active and available for use"
-										/>
-									</div>
 								</div>
 							</div>
 
@@ -288,12 +277,19 @@ const validationStatus = reactive<{
 const isSaving = ref(false);
 const validationErrors = ref<string[]>([]);
 const isGeneratingCategoryId = ref(false);
+const originalTypeName = ref("");
 
 // Computed properties
 const isEditing = computed(() => !!props.item);
 
 const isValidationComplete = computed(() => {
 	if (!formData.type_name || !formData.category_id) return false;
+
+	// If editing and type_name hasn't changed, skip validation
+	if (isEditing.value && formData.type_name === originalTypeName.value) {
+		return true;
+	}
+
 	if (!validationStatus.type_name.checked) return false;
 	if (validationStatus.type_name.exists) return false;
 	return true;
@@ -339,12 +335,14 @@ const initializeForm = async () => {
 		formData.category_id = props.item.category_id || "";
 		formData.description = props.item.description || "";
 		formData.is_active = props.item.is_active ?? true;
+		originalTypeName.value = props.item.type_name || "";
 	} else {
 		// Create mode - set defaults
 		formData.type_name = "";
 		formData.category_id = "";
 		formData.description = "";
 		formData.is_active = true;
+		originalTypeName.value = "";
 	}
 };
 
@@ -431,11 +429,15 @@ const validateForm = () => {
 		errors.push("Description is required");
 	}
 
-	// Check validation status
-	if (!validationStatus.type_name.checked) {
-		errors.push("Please check for duplicate Type Name before saving");
-	} else if (validationStatus.type_name.exists) {
-		errors.push("Type Name already exists. Please choose a different one.");
+	// Check validation status (only if type_name has changed from original)
+	const typeNameChanged =
+		!isEditing.value || formData.type_name !== originalTypeName.value;
+	if (typeNameChanged) {
+		if (!validationStatus.type_name.checked) {
+			errors.push("Please check for duplicate Type Name before saving");
+		} else if (validationStatus.type_name.exists) {
+			errors.push("Type Name already exists. Please choose a different one.");
+		}
 	}
 
 	validationErrors.value = errors;

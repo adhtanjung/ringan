@@ -46,13 +46,6 @@ export const columnConfigs = {
 			description:
 				"Numeric scale (1-5) indicating the typical severity level of this problem",
 		},
-		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description:
-				"Whether this problem category is currently active and available for use",
-		},
 	],
 	assessments: [
 		{
@@ -138,13 +131,6 @@ export const columnConfigs = {
 			description: "Groups questions that were added or updated together",
 		},
 		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description:
-				"Whether this question is currently included in active assessments",
-		},
-		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -221,13 +207,6 @@ export const columnConfigs = {
 				"Keywords and labels for categorizing and searching suggestions",
 		},
 		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description:
-				"Whether this suggestion is currently available for recommendation",
-		},
-		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -275,12 +254,6 @@ export const columnConfigs = {
 			type: "text",
 			description:
 				"Additional context or background information for this prompt",
-		},
-		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description: "Whether this feedback prompt is currently in use",
 		},
 		{
 			key: "created_at",
@@ -334,13 +307,6 @@ export const columnConfigs = {
 			type: "badge",
 			description:
 				"Conditions that must be met for this action to be triggered",
-		},
-		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description:
-				"Whether this action is currently available for recommendation",
 		},
 		{
 			key: "created_at",
@@ -414,12 +380,6 @@ export const columnConfigs = {
 			description: "Keywords and labels for categorizing this training example",
 		},
 		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description: "Whether this example is currently used in model training",
-		},
-		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -450,12 +410,6 @@ export const columnConfigs = {
 			label: "Description",
 			type: "text",
 			description: "Detailed description of this problem type",
-		},
-		{
-			key: "is_active",
-			label: "Active",
-			type: "boolean",
-			description: "Whether this type is currently active",
 		},
 		{
 			key: "created_at",
@@ -578,8 +532,35 @@ export function useDatasetManagement(dataType: string) {
 
 				// Filters logic
 				Object.keys(filters.value).forEach((key) => {
-					if (filters.value[key]) {
-						query = query.eq(key, filters.value[key]);
+					const value = filters.value[key];
+					if (value) {
+						if (key === "quality") {
+							if (value === "missing_fields") {
+								// Check for null or empty strings in key fields
+								if (dataType === "problems") {
+									query = query.or("description.is.null,description.eq.''");
+								} else if (dataType === "assessments") {
+									query = query.or(
+										"description.is.null,description.eq.'',question_text.is.null,question_text.eq.''"
+									);
+								} else if (dataType === "suggestions") {
+									query = query.or(
+										"suggestion_text.is.null,suggestion_text.eq.''"
+									);
+								}
+							} else if (
+								value === "incomplete_scale" &&
+								dataType === "assessments"
+							) {
+								query = query.or(
+									"scale_label_1.is.null,scale_label_2.is.null,scale_label_3.is.null,scale_label_4.is.null"
+								);
+							}
+						} else if (key === "is_active") {
+							query = query.eq(key, value === "true");
+						} else {
+							query = query.eq(key, value);
+						}
 					}
 				});
 
@@ -952,8 +933,42 @@ export function useDatasetManagement(dataType: string) {
 		Math.ceil(pagination.value.total / pagination.value.limit)
 	);
 
+	const bulkUpdateItems = async (ids: string[], field: string, value: any) => {
+		actionLoading.value = true;
+		try {
+			if (USE_SUPABASE_FOR.includes(dataType)) {
+				const { error: supabaseError } = await supabase
+					.from(dataType)
+					.update({ [field]: value, updated_at: new Date().toISOString() })
+					.in("id", ids);
+
+				if (supabaseError) throw supabaseError;
+			} else {
+				// API implementation if needed
+			}
+
+			toast({
+				title: "Success",
+				description: `Updated ${ids.length} items successfully`,
+			});
+
+			await refreshData();
+		} catch (err) {
+			console.error("Bulk update error:", err);
+			toast({
+				title: "Error",
+				description: "Failed to update items. Please try again.",
+				variant: "destructive",
+			});
+			throw err;
+		} finally {
+			actionLoading.value = false;
+		}
+	};
+
 	return {
 		// State
+		dataType,
 		loading,
 		error,
 		data,
@@ -980,6 +995,7 @@ export function useDatasetManagement(dataType: string) {
 		handleSave,
 		deleteItem,
 		bulkDeleteItems,
+		bulkUpdateItems,
 		openImportModal,
 		closeImportModal,
 		openExportModal,

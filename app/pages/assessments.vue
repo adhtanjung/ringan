@@ -8,6 +8,7 @@
 			<div class="mt-6">
 				<DatasetTable
 					:title="dataTypeLabel"
+					:data-type="dataType"
 					:data="data"
 					:columns="columns"
 					:loading="loading"
@@ -78,6 +79,7 @@ import { Toaster } from "@/components/ui/toast";
 // Use the shared composable
 const {
 	loading,
+	dataType,
 	error,
 	data,
 	actionLoading,

@@ -6,6 +6,7 @@
 			<div class="mt-6">
 				<DatasetTable
 					:title="dataTypeLabel"
+					:data-type="dataType"
 					:data="data"
 					:columns="columns"
 					:loading="loading"
@@ -309,6 +310,7 @@ const { supabase } = useSupabase();
 // Use the shared composable
 const {
 	loading,
+	dataType,
 	error,
 	data,
 	actionLoading,

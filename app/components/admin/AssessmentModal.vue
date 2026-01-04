@@ -27,7 +27,8 @@
 											field-key="question_text"
 											label="Question Text"
 											:required="true"
-											description="The actual text displayed to the user"
+											hint-title="User-Facing Content"
+											description="This is the exact question text users will see in the app. Keep it clear, concise, and trauma-informed."
 										/>
 										<Textarea
 											id="question_text"
@@ -54,6 +55,8 @@
 											field-key="response_type"
 											label="Response Type"
 											:required="true"
+											hint-title="Data Structure"
+											description="Scale: Users choose from 1-4. Free Text: Users type their own response. Choose based on how you plan to analyze the data."
 										/>
 										<select
 											id="response_type"
@@ -99,7 +102,8 @@
 														</div>
 														<Input
 															:id="`scale_label_${i}`"
-															v-model="formData[`scale_label_${i}` as keyof Assessment]"
+															:model-value="(formData[`scale_label_${i}` as keyof Assessment] as string) ?? undefined"
+															@update:model-value="(v) => ((formData as any)[`scale_label_${i}`] = v)"
 															:placeholder="getPlaceholder(i)"
 															class="pl-10"
 														/>
@@ -161,6 +165,8 @@
 											field-key="sub_category_id"
 											label="Subcategory"
 											:required="true"
+											hint-title="Classification"
+											description="Link this question to a specific mental health category for scoring and reporting."
 										/>
 										<AsyncSearchSelect
 											id="sub_category_id"
@@ -178,29 +184,11 @@
 										<FormFieldLabel field-key="batch_id" label="Batch Group" />
 										<Input
 											id="batch_id"
-											v-model="formData.batch_id"
+											:model-value="formData.batch_id ?? undefined"
+											@update:model-value="(v) => (formData.batch_id = v as string)"
 											placeholder="e.g. BATCH_A"
 											class="mt-1"
 										/>
-									</div>
-
-									<div
-										class="pt-4 mt-2 border-t flex items-center justify-between"
-									>
-										<label class="text-sm font-medium">Status</label>
-										<div class="flex items-center space-x-2">
-											<span
-												class="text-xs"
-												:class="
-													formData.is_active
-														? 'text-green-600 font-medium'
-														: 'text-muted-foreground'
-												"
-											>
-												{{ formData.is_active ? "Active" : "Inactive" }}
-											</span>
-											<Switch id="is_active" v-model="formData.is_active" />
-										</div>
 									</div>
 								</div>
 							</div>

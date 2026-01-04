@@ -31,7 +31,8 @@
 										field-key="problem_name"
 										label="Problem Name"
 										:required="true"
-										description="Name of the problem"
+										hint-title="Core Entity"
+										description="The common name for this issue (e.g. 'Difficulty Falling Asleep'). Avoid clinical jargon if possible."
 									/>
 									<Input
 										id="problem_name"
@@ -48,7 +49,8 @@
 										field-key="category"
 										label="Category"
 										:required="true"
-										description="Problem type category"
+										hint-title="Higher Level Grouping"
+										description="Select the main group this problem belongs to. This helps in high-level reporting."
 									/>
 									<select
 										id="category"
@@ -128,7 +130,8 @@
 										field-key="description"
 										label="Description"
 										:required="true"
-										description="Detailed description of this problem"
+										hint-title="Internal Context"
+										description="Describe the symptoms or context and how it affects the user. This is mainly for internal data science use."
 									/>
 									<Textarea
 										id="description"
@@ -145,7 +148,8 @@
 									<FormFieldLabel
 										field-key="severity_level"
 										label="Severity Level"
-										description="Severity rating from 1 (low) to 5 (high)"
+										hint-title="Clinical Weighting"
+										description="1: Mild/Sub-clinical, 5: Severe/Critical. This affects prioritization logic."
 									/>
 									<Input
 										id="severity_level"
@@ -161,18 +165,6 @@
 										placeholder="1-5"
 										class="mt-1"
 									/>
-								</div>
-
-								<!-- Active Switch -->
-								<div>
-									<div class="flex items-center space-x-2">
-										<Switch id="is_active" v-model="formData.is_active" />
-										<FormFieldLabel
-											field-key="is_active"
-											label="Active"
-											description="Whether this problem is currently active and available for use"
-										/>
-									</div>
 								</div>
 							</div>
 
