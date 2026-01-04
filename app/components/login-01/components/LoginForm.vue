@@ -55,12 +55,6 @@ const emit = defineEmits<{
 						<Field>
 							<div class="flex items-center">
 								<FieldLabel for="password"> Password </FieldLabel>
-								<a
-									href="#"
-									class="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-								>
-									Forgot your password?
-								</a>
 							</div>
 							<Input
 								id="password"
@@ -73,13 +67,6 @@ const emit = defineEmits<{
 							<Button type="submit" :disabled="loading">
 								{{ loading ? "Signing in..." : "Login" }}
 							</Button>
-							<Button variant="outline" type="button">
-								Login with Google
-							</Button>
-							<FieldDescription class="text-center">
-								Don't have an account?
-								<a href="#"> Sign up </a>
-							</FieldDescription>
 						</Field>
 					</FieldGroup>
 				</form>
