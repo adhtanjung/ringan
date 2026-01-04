@@ -2,7 +2,7 @@
 	<Sheet :open="isOpen" @update:open="$emit('close')">
 		<SheetContent
 			side="right"
-			class="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl h-full overflow-y-auto"
+			class="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl h-full overflow-y-auto p-4"
 		>
 			<SheetHeader class="pb-4">
 				<SheetTitle class="text-lg sm:text-xl">Import Data</SheetTitle>
@@ -491,6 +491,7 @@ import { parseCSV } from "@/utils/csvParser";
 import { generateCategoryId } from "@/utils/categoryIdGenerator";
 import { generateSubCategoryId } from "@/utils/subCategoryIdGenerator";
 import { generateQuestionId } from "@/utils/questionIdGenerator";
+import * as XLSX from "xlsx";
 
 // Props
 const props = defineProps({
@@ -893,7 +894,6 @@ const startImport = async () => {
 	}
 };
 
-// Watchers
 // Download methods
 const downloadTemplate = async (format) => {
 	if (!selectedDataType.value) {
@@ -902,19 +902,140 @@ const downloadTemplate = async (format) => {
 	}
 
 	try {
-		const config = useRuntimeConfig();
-		const adminApiUrl =
-			config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
+		// Check if this data type uses Supabase
+		if (USE_SUPABASE_FOR.includes(selectedDataType.value)) {
+			// Define template structures for Supabase data types
+			const templates = {
+				problem_types: {
+					type_name: "",
+					category_id: "",
+					description: "",
+					is_active: true,
+				},
+				problems: {
+					problem_name: "",
+					sub_category_id: "",
+					category: "",
+					description: "",
+					severity: "",
+					is_active: true,
+				},
+				assessments: {
+					question_text: "",
+					question_id: "",
+					sub_category_id: "",
+					response_type: "scale",
+					scale_min: 1,
+					scale_max: 4,
+					scale_label_1: "",
+					scale_label_2: "",
+					scale_label_3: "",
+					scale_label_4: "",
+					batch_id: "",
+					is_active: true,
+				},
+				suggestions: {
+					suggestion_id: "",
+					sub_category_id: "",
+					suggestion_text: "",
+					category: "",
+					evidence_base: "",
+					difficulty_level: "",
+					estimated_duration: "",
+					tags: "",
+					is_active: true,
+				},
+				feedback_prompts: {
+					prompt_id: "",
+					stage: "",
+					prompt_text: "",
+					next_action_id: "",
+					context: "",
+					is_active: true,
+				},
+				next_actions: {
+					action_id: "",
+					action_type: "",
+					action_name: "",
+					description: "",
+					parameters: "",
+					conditions: "",
+					is_active: true,
+				},
+				training_examples: {
+					example_id: "",
+					problem: "",
+					conversation_id: "",
+					user_intent: "",
+					prompt: "",
+					completion: "",
+					context: "",
+					quality_score: "",
+					tags: "",
+					is_active: true,
+				},
+			};
 
-		const downloadUrl = `${adminApiUrl}/import-export/template/${selectedDataType.value}?format=${format}`;
+			const template = templates[selectedDataType.value];
+			if (!template) {
+				throw new Error("Template not found for this data type");
+			}
 
-		// Create download link
-		const link = document.createElement("a");
-		link.href = downloadUrl;
-		link.download = `${selectedDataType.value}_template.${format}`;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+			// Generate CSV
+			if (format === "csv") {
+				const headers = Object.keys(template);
+				const values = Object.values(template).map((v) =>
+					v === true ? "true" : v === false ? "false" : ""
+				);
+				const csvContent = [headers.join(","), values.join(",")].join("\n");
+
+				const blob = new Blob([csvContent], { type: "text/csv" });
+				const url = window.URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = `${selectedDataType.value}_template.csv`;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+			} else if (format === "json") {
+				// Generate JSON with one example object
+				const jsonContent = JSON.stringify([template], null, 2);
+
+				const blob = new Blob([jsonContent], { type: "application/json" });
+				const url = window.URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = `${selectedDataType.value}_template.json`;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				window.URL.revokeObjectURL(url);
+			} else if (format === "excel") {
+				// Generate Excel file
+				const worksheet = XLSX.utils.json_to_sheet([template]);
+				const workbook = XLSX.utils.book_new();
+				XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
+
+				// Generate Excel file and download
+				XLSX.writeFile(workbook, `${selectedDataType.value}_template.xlsx`);
+			}
+		} else {
+			// Use legacy API for non-migrated data types
+			const config = useRuntimeConfig();
+			const adminApiUrl =
+				config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
+
+			const downloadUrl = `${adminApiUrl}/import-export/template/${selectedDataType.value}?format=${format}`;
+
+			// Create download link
+			const link = document.createElement("a");
+			link.href = downloadUrl;
+			link.download = `${selectedDataType.value}_template.${format}`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		}
 	} catch (error) {
 		console.error("Template download failed:", error);
 		errorMessage.value = "Failed to download template. Please try again.";
@@ -928,52 +1049,79 @@ const downloadExample = async () => {
 	}
 
 	try {
-		const config = useRuntimeConfig();
-		const adminApiUrl =
-			config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
+		let sampleData = [];
 
-		// Get sample data from test-data endpoint
-		const response = await $fetch(
-			`${adminApiUrl}/import-export/test-data/${selectedDataType.value}`
-		);
+		// Check if this data type uses Supabase
+		if (USE_SUPABASE_FOR.includes(selectedDataType.value)) {
+			// Fetch sample data from Supabase (limit to 5 records)
+			const { data, error } = await supabase
+				.from(selectedDataType.value)
+				.select("*")
+				.limit(5);
 
-		if (response.sample_data && response.sample_data.length > 0) {
-			// Convert to CSV format
-			const headers = Object.keys(response.sample_data[0]);
-			const csvContent = [
-				headers.join(","),
-				...response.sample_data.map((row) =>
-					headers
-						.map((header) => {
-							const value = row[header];
-							// Escape CSV values
-							if (
-								typeof value === "string" &&
-								(value.includes(",") ||
-									value.includes('"') ||
-									value.includes("\n"))
-							) {
-								return `"${value.replace(/"/g, '""')}"`;
-							}
-							return value;
-						})
-						.join(",")
-				),
-			].join("\n");
+			if (error) throw error;
 
-			// Create and download file
-			const blob = new Blob([csvContent], { type: "text/csv" });
-			const url = window.URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `${selectedDataType.value}_example.csv`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			window.URL.revokeObjectURL(url);
+			if (!data || data.length === 0) {
+				errorMessage.value = "No example data available for this data type";
+				return;
+			}
+
+			// Remove system fields that shouldn't be in the template
+			sampleData = data.map((item) => {
+				const { id, created_at, updated_at, ...rest } = item;
+				return rest;
+			});
 		} else {
-			errorMessage.value = "No example data available for this data type";
+			// Use legacy API for non-migrated data types
+			const config = useRuntimeConfig();
+			const adminApiUrl =
+				config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
+
+			const response = await $fetch(
+				`${adminApiUrl}/import-export/test-data/${selectedDataType.value}`
+			);
+
+			if (response.sample_data && response.sample_data.length > 0) {
+				sampleData = response.sample_data;
+			} else {
+				errorMessage.value = "No example data available for this data type";
+				return;
+			}
 		}
+
+		// Convert to CSV format
+		const headers = Object.keys(sampleData[0]);
+		const csvContent = [
+			headers.join(","),
+			...sampleData.map((row) =>
+				headers
+					.map((header) => {
+						const value = row[header];
+						// Escape CSV values
+						if (
+							typeof value === "string" &&
+							(value.includes(",") ||
+								value.includes('"') ||
+								value.includes("\n"))
+						) {
+							return `"${value.replace(/"/g, '""')}"`;
+						}
+						return value ?? "";
+					})
+					.join(",")
+			),
+		].join("\n");
+
+		// Create and download file
+		const blob = new Blob([csvContent], { type: "text/csv" });
+		const url = window.URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `${selectedDataType.value}_example.csv`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		window.URL.revokeObjectURL(url);
 	} catch (error) {
 		console.error("Example download failed:", error);
 		errorMessage.value = "Failed to download example data. Please try again.";
