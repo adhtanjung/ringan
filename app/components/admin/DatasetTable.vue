@@ -152,8 +152,8 @@
 							<DropdownMenuItem @click="emit('import')"
 								>Import CSV</DropdownMenuItem
 							>
-							<DropdownMenuItem @click="exportToCsv"
-								>Export CSV (Current View)</DropdownMenuItem
+							<DropdownMenuItem @click="emit('export')"
+								>Export CSV</DropdownMenuItem
 							>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -170,98 +170,173 @@
 			</div>
 		</header>
 
-		<!-- Sanity Filters -->
-		<div class="px-4 pb-2 border-b border-border bg-muted/10">
-			<Tabs default-value="all" class="w-full" @update:model-value="handleSanityFilterChange">
-				<TabsList class="grid w-full max-w-[400px] grid-cols-3 h-8">
-					<TabsTrigger value="all" class="text-xs h-6">All Records</TabsTrigger>
-					<TabsTrigger value="missing" class="text-xs h-6">Missing Answers</TabsTrigger>
-					<TabsTrigger value="uncategorized" class="text-xs h-6">Uncategorized</TabsTrigger>
-				</TabsList>
-			</Tabs>
-		</div>
-
 		<div class="flex-1 overflow-hidden relative">
 			<ScrollArea class="h-full w-full">
 				<div class="min-w-[800px]">
 					<Table>
 						<TableHeader class="sticky top-0 z-10 bg-background shadow-sm">
-							<!-- TanStack Table Header rendering will go here -->
-							<TableRow
-								v-for="headerGroup in table.getHeaderGroups()"
-								:key="headerGroup.id"
-								class="hover:bg-transparent border-b border-border"
-							>
-								<TableHead
-									v-for="header in headerGroup.headers"
-									:key="header.id"
-									class="h-9 px-3 text-xs font-medium text-muted-foreground select-none"
-								>
-									<FlexRender
-										v-if="!header.isPlaceholder"
-										:render="header.column.columnDef.header"
-										:props="header.getContext()"
+							<TableRow class="hover:bg-transparent border-b border-border">
+								<TableHead class="w-[40px] px-2 text-center">
+									<Checkbox
+										:checked="isAllSelected"
+										:indeterminate="isIndeterminate"
+										@update:checked="toggleSelectAll"
 									/>
 								</TableHead>
+
+								<TableHead
+									v-for="column in columns"
+									:key="column.key"
+									class="h-9 px-3 text-xs font-medium text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors"
+									@click="sortBy(column.key)"
+								>
+									<div class="flex items-center gap-1">
+										{{ column.label }}
+										<ArrowUpDown
+											v-if="sortColumn === column.key"
+											class="h-3 w-3"
+										/>
+									</div>
+								</TableHead>
+
+								<TableHead
+									class="w-[50px] px-2 sticky right-0 z-20 bg-background shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+								></TableHead>
 							</TableRow>
 						</TableHeader>
 
 						<TableBody>
 							<template v-if="loading">
 								<TableRow v-for="i in 10" :key="i">
-									<TableCell :colspan="columns.length + 2" class="p-2">
-										<Skeleton class="h-4 w-full" />
+									<TableCell class="p-2"
+										><Skeleton class="h-4 w-4"
+									/></TableCell>
+									<TableCell v-for="c in columns" :key="c.key" class="p-2">
+										<Skeleton class="h-4 w-[80%]" />
 									</TableCell>
+									<TableCell
+										class="p-2 sticky right-0 z-10 bg-background shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+										><Skeleton class="h-4 w-4"
+									/></TableCell>
 								</TableRow>
 							</template>
 
-							<TableRow v-else-if="table.getRowModel().rows.length === 0">
+							<TableRow v-else-if="filteredData.length === 0">
 								<TableCell
 									:colspan="columns.length + 2"
-									class="h-64 text-center"
+									class="h-24 text-center"
 								>
 									<div
-										class="flex flex-col items-center justify-center gap-3 text-muted-foreground max-w-md mx-auto"
+										class="flex flex-col items-center justify-center gap-2 text-muted-foreground"
 									>
-										<div class="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-2">
-											<Inbox class="h-8 w-8 opacity-50" />
-										</div>
-										<h3 class="text-lg font-semibold text-foreground">No data available</h3>
-										<p class="text-sm text-center mb-4">
-											Get started by importing a dataset or generating sample data to see how it works.
-										</p>
-										<div class="flex items-center gap-2">
-											<Button variant="outline" @click="downloadTemplate">
-												<Download class="mr-2 h-4 w-4" />
-												Download Template
-											</Button>
-											<Button @click="generateSampleData" :disabled="isGeneratingSample">
-												<RotateCw v-if="isGeneratingSample" class="mr-2 h-4 w-4 animate-spin" />
-												<Plus v-else class="mr-2 h-4 w-4" />
-												Generate Sample Data
-											</Button>
-										</div>
+										<Inbox class="h-8 w-8 opacity-50" />
+										<p class="text-sm">No results found</p>
 									</div>
 								</TableCell>
 							</TableRow>
 
 							<TableRow
 								v-else
-								v-for="row in table.getRowModel().rows"
-								:key="row.id"
+								v-for="(item, index) in paginatedData"
+								:key="item.id || index"
 								class="group h-10 border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
-								:data-state="row.getIsSelected() ? 'selected' : ''"
-								@click="emit('view', row.original)"
+								:data-state="selectedItems.includes(item.id) ? 'selected' : ''"
+								@click="emit('view', item)"
 							>
+								<TableCell class="p-2 text-center" @click.stop>
+									<Checkbox
+										:checked="selectedItems.includes(item.id)"
+										@update:checked="
+											(checked) => handleRowSelect(item.id, checked)
+										"
+									/>
+								</TableCell>
+
 								<TableCell
-									v-for="cell in row.getVisibleCells()"
-									:key="cell.id"
+									v-for="column in columns"
+									:key="column.key"
 									class="px-3 py-2 text-xs"
 								>
-									<FlexRender
-										:render="cell.column.columnDef.cell"
-										:props="cell.getContext()"
-									/>
+									<div v-if="column.type === 'text'" class="max-w-[300px]">
+										<span
+											v-if="column.key !== 'question_text'"
+											class="truncate block"
+											:title="getNestedValue(item, column.key)"
+										>
+											{{ getNestedValue(item, column.key) || "-" }}
+										</span>
+										<div v-else>
+											<p
+												:class="expandedRows.has(item.id) ? '' : 'line-clamp-1'"
+												class="text-xs text-foreground/90"
+											>
+												{{ getNestedValue(item, column.key) || "-" }}
+											</p>
+										</div>
+									</div>
+
+									<div
+										v-else-if="column.type === 'badge'"
+										class="flex flex-wrap gap-1"
+									>
+										<Badge
+											v-for="tag in normalizeArray(
+												getNestedValue(item, column.key)
+											)"
+											:key="tag"
+											variant="secondary"
+											class="px-1.5 py-0 h-5 text-[10px] font-normal border-0"
+											:class="getBadgeColorClass(tag, column.key)"
+										>
+											{{ tag }}
+										</Badge>
+									</div>
+
+									<div v-else-if="column.type === 'boolean'">
+										<Badge
+											variant="outline"
+											class="h-5 px-1.5 text-[10px]"
+											:class="
+												getNestedValue(item, column.key)
+													? 'bg-green-50 text-green-700 border-green-200'
+													: 'bg-red-50 text-red-700 border-red-200'
+											"
+										>
+											{{ getNestedValue(item, column.key) ? "Yes" : "No" }}
+										</Badge>
+									</div>
+
+									<span v-else>{{
+										getNestedValue(item, column.key) || "-"
+									}}</span>
+								</TableCell>
+
+								<TableCell
+									class="p-2 text-right sticky right-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+								>
+									<DropdownMenu>
+										<DropdownMenuTrigger as-child>
+											<Button
+												variant="ghost"
+												size="icon"
+												class="h-6 w-6 opacity-100 transition-opacity"
+											>
+												<MoreHorizontal class="h-3.5 w-3.5" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem @click="editItem(item)"
+												>Edit</DropdownMenuItem
+											>
+											<DropdownMenuSeparator />
+											<DropdownMenuItem
+												@click="confirmDelete(item)"
+												class="text-red-600 focus:text-red-600"
+											>
+												Delete
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								</TableCell>
 							</TableRow>
 						</TableBody>
@@ -270,12 +345,11 @@
 			</ScrollArea>
 		</div>
 
-		<!-- Pagination Controls (Keeping existing) -->
 		<div
 			class="flex items-center justify-between border-t border-border p-2 px-4 bg-muted/20"
 		>
 			<div class="text-xs text-muted-foreground hidden sm:block">
-				{{ Object.keys(rowSelection).length }} selected
+				{{ selectedItems.length }} selected
 			</div>
 
 			<div class="flex items-center gap-4 ml-auto">
@@ -324,43 +398,29 @@
 			</div>
 		</div>
 
-		<!-- Batch Action Bar -->
 		<div
-			v-if="Object.keys(rowSelection).length > 0"
-			class="absolute bottom-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4"
+			v-if="selectedItems.length > 0"
+			class="absolute bottom-12 left-1/2 -translate-x-1/2 z-50"
 		>
 			<div
-				class="bg-foreground text-background px-4 py-3 rounded-xl shadow-xl flex items-center justify-between gap-4 animate-in slide-in-from-bottom-2"
+				class="bg-foreground text-background px-4 py-2 rounded-full shadow-lg flex items-center gap-4 animate-in slide-in-from-bottom-2"
 			>
-				<div class="flex items-center gap-4">
-					<div class="bg-primary-foreground/20 rounded-full px-3 py-1 text-xs font-semibold">
-						{{ Object.keys(rowSelection).length }} selected
-					</div>
-
-					<div class="h-6 w-px bg-background/20"></div>
-
-					<div class="flex items-center gap-2">
-						<Button size="sm" variant="ghost" class="text-xs h-7 hover:bg-white/10 hover:text-white" @click="emitBatchAction('activate')">
-							Set Active
-						</Button>
-						<Button size="sm" variant="ghost" class="text-xs h-7 hover:bg-white/10 hover:text-white" @click="emitBatchAction('deactivate')">
-							Set Inactive
-						</Button>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-2">
-                    <Button size="sm" variant="secondary" class="text-xs h-7" @click="exportSelection">
-                        Export
-                    </Button>
-					<Button size="sm" variant="destructive" class="h-7 text-xs" @click="confirmBulkDelete">
-						Delete
-					</Button>
-					<Button size="sm" variant="ghost" class="h-7 w-7 p-0 rounded-full hover:bg-white/20" @click="clearSelection">
-						<span class="sr-only">Dismiss</span>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-					</Button>
-				</div>
+				<span class="text-sm font-medium"
+					>{{ selectedItems.length }} selected</span
+				>
+				<div class="h-4 w-px bg-background/20"></div>
+				<button
+					@click="confirmBulkDelete"
+					class="text-sm text-red-300 hover:text-red-100 font-medium transition-colors"
+				>
+					Delete
+				</button>
+				<button
+					@click="clearSelection"
+					class="text-sm opacity-70 hover:opacity-100 transition-opacity"
+				>
+					Dismiss
+				</button>
 			</div>
 		</div>
 
@@ -384,7 +444,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, h } from "vue";
+import { ref, computed, watch } from "vue";
 import {
 	Search,
 	RotateCw,
@@ -396,19 +456,9 @@ import {
 	ArrowUpDown,
 	MoreHorizontal,
 	Inbox,
-	Info,
 } from "lucide-vue-next";
-import {
-	useVueTable,
-	getCoreRowModel,
-	getSortedRowModel,
-	getPaginationRowModel,
-	getFilteredRowModel,
-	FlexRender,
-} from "@tanstack/vue-table";
 
-// Shadcn Components
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Shadcn Components (Assumed Imports based on your setup)
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -454,7 +504,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import {
 	Dialog,
 	DialogContent,
@@ -464,11 +513,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 
-// --- Props & Emits ---
+// --- Props & Emits (Kept mostly same as original to ensure logic compatibility) ---
 const props = defineProps({
 	title: { type: String, required: true },
 	data: { type: Array, default: () => [] },
-	columns: { type: Array, required: true }, // { key, label, type, description? }
+	columns: { type: Array, required: true },
 	loading: { type: Boolean, default: false },
 	pageSize: { type: Number, default: 20 },
 	pagination: {
@@ -497,57 +546,21 @@ const emit = defineEmits([
 	"filter-change",
 	"clear-filters",
 	"view",
-	"batch-action",
-	"generate-sample"
 ]);
 
 // --- State ---
-const rowSelection = ref({});
-const sorting = ref([]);
-const columnFilters = ref([]);
-const localSearchQuery = ref(props.searchQuery || "");
+const selectedItems = ref([]);
+const sortColumn = ref("");
+const sortDirection = ref("asc");
+const expandedRows = ref(new Set());
 const showDeleteDialog = ref(false);
 const itemToDelete = ref(null);
-const isGeneratingSample = ref(false);
+const localSearchQuery = ref(props.searchQuery || "");
 
-const handleSanityFilterChange = (value) => {
-    // We implement the "Sanity Filters" using TanStack's column filtering
-    // This is client-side filtering on the current page's data or full loaded data if provided
-
-    if (value === 'all') {
-        table.resetColumnFilters();
-    } else if (value === 'missing') {
-        table.resetColumnFilters();
-        // Heuristic: Filter for rows where a likely 'answer' or 'text' column is empty
-        // We'll check 'completion', 'suggestion_text', 'question_text', 'problem_name'
-        // But since we can't easily do OR across columns with simple setColumnFilters in basic usage,
-        // we might set a global filter or specific column filter if we know the schema.
-        // For MVP "Missing Answers", we'll target the main text field for the current dataset type.
-        // Or actually, "Missing Answers" usually refers to Assessments/Training data.
-        // Let's look for nulls in specific columns based on title.
-
-        const targetCol = props.columns.find(c => ['completion', 'correct_answer', 'response'].includes(c.key));
-        if (targetCol) {
-            table.getColumn(targetCol.key)?.setFilterValue('___MISSING___'); // Custom filter logic below
-        } else {
-             // Fallback: Show everything if we can't identify an "Answer" column
-             // or maybe filter rows where *any* required field is null?
-             // Let's try to filter for empty description or problem_name as a proxy for "broken" data
-             table.setGlobalFilter(' '); // Just a placeholder, actually real logic needed in filterFn
-        }
-    } else if (value === 'uncategorized') {
-        table.resetColumnFilters();
-        // Filter where category_id or category is null
-        const catCol = props.columns.find(c => ['category', 'category_id'].includes(c.key));
-        if (catCol) {
-            table.getColumn(catCol.key)?.setFilterValue('___MISSING___');
-        }
-    }
-};
-
-// --- Computed Helpers (Existing) ---
+// --- Computed Helpers ---
+const filteredData = computed(() => props.data); // Assuming filtered server-side
 const totalItems = computed(
-	() => props.pagination.total || props.data.length
+	() => props.pagination.total || filteredData.value.length
 );
 const activeFilterCount = computed(
 	() =>
@@ -555,9 +568,28 @@ const activeFilterCount = computed(
 			.length
 );
 const hasActiveFilters = computed(() => activeFilterCount.value > 0);
-const uniqueDomains = computed(() => []); // Placeholder, functionality to be restored if needed
-const uniqueCategories = computed(() => []); // Placeholder
+const isAllSelected = computed(
+	() =>
+		filteredData.value.length > 0 &&
+		selectedItems.value.length === filteredData.value.length
+);
+const isIndeterminate = computed(
+	() =>
+		selectedItems.value.length > 0 &&
+		selectedItems.value.length < filteredData.value.length
+);
+const paginatedData = computed(() => {
+	// Sorting logic for current page view
+	if (!sortColumn.value) return filteredData.value;
+	return [...filteredData.value].sort((a, b) => {
+		const valA = getNestedValue(a, sortColumn.value);
+		const valB = getNestedValue(b, sortColumn.value);
+		const comp = valA < valB ? -1 : valA > valB ? 1 : 0;
+		return sortDirection.value === "asc" ? comp : -comp;
+	});
+});
 
+// Logic to show filters based on title (Copied from logic)
 const showFilters = computed(() =>
 	[
 		"Problem Categories",
@@ -569,227 +601,39 @@ const showFilters = computed(() =>
 	].includes(props.title)
 );
 
-// --- TanStack Table Column Definitions ---
-// We need to map the 'simple' column config from props to TanStack ColumnDef
-const tableColumns = computed(() => {
-	// 1. Selection Column
-	const cols = [
-		{
-			id: "select",
-			header: ({ table }) =>
-				h(Checkbox, {
-					checked: table.getIsAllPageRowsSelected(),
-					"onUpdate:checked": (value) =>
-						table.toggleAllPageRowsSelected(!!value),
-					ariaLabel: "Select all",
-				}),
-			cell: ({ row }) =>
-				h(Checkbox, {
-					checked: row.getIsSelected(),
-					"onUpdate:checked": (value) => row.toggleSelected(!!value),
-					ariaLabel: "Select row",
-					onClick: (e) => e.stopPropagation(),
-				}),
-			enableSorting: false,
-			enableHiding: false,
-			size: 40,
-		},
-	];
+// Unique value extractors (Simplified for brevity)
+const extractUnique = (key) =>
+	[
+		...new Set(props.data.map((i) => getNestedValue(i, key)).filter(Boolean)),
+	].sort();
+const uniqueDomains = computed(() => extractUnique("domain"));
+const uniqueCategories = computed(() => extractUnique("category"));
 
-	// 2. Data Columns
-	props.columns.forEach((col) => {
-		cols.push({
-			accessorKey: col.key,
-			header: ({ column }) => {
-				return h(
-					'div',
-					{
-						class: 'flex items-center gap-1 cursor-pointer select-none',
-						onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-					},
-					[
-						col.label,
-						col.description && h(HoverCard, { openDelay: 200 }, {
-							default: () => [
-								h(HoverCardTrigger, { asChild: true }, () =>
-									h('span', { class: 'text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-1' },
-										h(Info, { class: 'h-3 w-3 inline' })
-									)
-								),
-								h(HoverCardContent, { class: 'w-80 p-3' }, () => [
-									h('div', { class: 'space-y-1' }, [
-										h('h4', { class: 'text-sm font-semibold' }, col.label),
-										h('p', { class: 'text-xs text-muted-foreground' }, col.description)
-									])
-								])
-							]
-						}),
-						column.getIsSorted() && h(ArrowUpDown, { class: 'h-3 w-3 ml-1' })
-					]
-				)
-			},
-			cell: ({ getValue }) => {
-				const val = getValue();
-				// Basic rendering for now, mimicking previous table
-				if (col.type === "badge") {
-					// Handle array or string
-					const tags = Array.isArray(val) ? val : val ? [val] : [];
-					return h(
-						"div",
-						{ class: "flex flex-wrap gap-1" },
-						tags.map((tag) =>
-							h(
-								Badge,
-								{
-									variant: "secondary",
-									class:
-										"px-1.5 py-0 h-5 text-[10px] font-normal border-0 bg-secondary text-secondary-foreground",
-								},
-								() => tag
-							)
-						)
-					);
-				} else if (col.type === "boolean") {
-					return h(
-						Badge,
-						{
-							variant: "outline",
-							class: [
-								"h-5 px-1.5 text-[10px]",
-								val
-									? "bg-green-50 text-green-700 border-green-200"
-									: "bg-red-50 text-red-700 border-red-200",
-							],
-						},
-						() => (val ? "Yes" : "No")
-					);
-				} else {
-					// Handle text truncation logic
-					if (col.key === 'question_text' || col.key === 'description' || col.key === 'suggestion_text' || col.key === 'prompt_text') {
-						return h("div", { class: "max-w-[300px]" }, [
-							h("p", {
-								class: "line-clamp-1 hover:line-clamp-none transition-all duration-200 cursor-help",
-								title: val
-							}, val || "-")
-						]);
-					}
-					return h("span", { class: "truncate block", title: val }, val || "-");
-				}
-			},
-		});
-	});
+// --- Actions ---
+const getNestedValue = (obj, path) =>
+	path.split(".").reduce((curr, key) => curr?.[key], obj);
+const normalizeArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
 
-	// 3. Actions Column
-	cols.push({
-		id: "actions",
-		enableHiding: false,
-		cell: ({ row }) => {
-			return h(
-				"div",
-				{ class: "text-right" },
-				h(
-					DropdownMenu,
-					{},
-					{
-						default: () => [
-							h(DropdownMenuTrigger, { asChild: true }, () =>
-								h(
-									Button,
-									{ variant: "ghost", size: "icon", class: "h-6 w-6" },
-									() => h(MoreHorizontal, { class: "h-3.5 w-3.5" })
-								)
-							),
-							h(DropdownMenuContent, { align: "end" }, () => [
-								h(
-									DropdownMenuItem,
-									{ onClick: () => editItem(row.original) },
-									() => "Edit"
-								),
-								h(DropdownMenuSeparator),
-								h(
-									DropdownMenuItem,
-									{
-										class: "text-red-600",
-										onClick: () => confirmDelete(row.original),
-									},
-									() => "Delete"
-								),
-							]),
-						],
-					}
-				)
-			);
-		},
-		size: 50,
-	});
-
-	return cols;
-});
-
-// --- TanStack Table Instance ---
-const table = useVueTable({
-	get data() {
-		return props.data;
-	},
-	get columns() {
-		return tableColumns.value;
-	},
-    getRowId: (row) => row.id,
-	getCoreRowModel: getCoreRowModel(),
-	getSortedRowModel: getSortedRowModel(),
-	getPaginationRowModel: getPaginationRowModel(),
-	getFilteredRowModel: getFilteredRowModel(),
-    filterFns: {
-        // Custom filter function for our sanity checks
-        default: (row, columnId, filterValue) => {
-            const val = row.getValue(columnId);
-            if (filterValue === '___MISSING___') {
-                return val === null || val === undefined || val === '';
-            }
-            // Default string inclusion
-            return String(val).toLowerCase().includes(String(filterValue).toLowerCase());
-        }
-    },
-	state: {
-		get sorting() {
-			return sorting.value;
-		},
-		get rowSelection() {
-			return rowSelection.value;
-		},
-		get columnFilters() {
-			return columnFilters.value;
-		},
-	},
-	onSortingChange: (updaterOrValue) => {
-		sorting.value =
-			typeof updaterOrValue === "function"
-				? updaterOrValue(sorting.value)
-				: updaterOrValue;
-	},
-	onRowSelectionChange: (updaterOrValue) => {
-		rowSelection.value =
-			typeof updaterOrValue === "function"
-				? updaterOrValue(rowSelection.value)
-				: updaterOrValue;
-	},
-	onColumnFiltersChange: (updaterOrValue) => {
-		columnFilters.value =
-			typeof updaterOrValue === "function"
-				? updaterOrValue(columnFilters.value)
-				: updaterOrValue;
-	},
-	// Manual pagination since it's handled by parent/server
-	manualPagination: true,
-	get pageCount() {
-		return props.totalPages;
-	},
-});
-
-// --- Actions (Existing) ---
 const handleSearchInput = () => emit("search-change", localSearchQuery.value);
 const handleFilterChange = (k, v) => emit("filter-change", k, v);
 const handleClearFilters = () => emit("clear-filters");
+
+const toggleSelectAll = (checked) => {
+	selectedItems.value = checked ? filteredData.value.map((i) => i.id) : [];
+};
+const handleRowSelect = (id, checked) => {
+	if (checked) selectedItems.value.push(id);
+	else selectedItems.value = selectedItems.value.filter((i) => i !== id);
+};
+
+const sortBy = (key) => {
+	if (sortColumn.value === key)
+		sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
+	else {
+		sortColumn.value = key;
+		sortDirection.value = "asc";
+	}
+};
 
 const editItem = (item) => emit("edit", item);
 const confirmDelete = (item) => {
@@ -800,26 +644,8 @@ const handleDeleteConfirm = () => {
 	emit("delete", itemToDelete.value);
 	showDeleteDialog.value = false;
 };
-
-const getSelectedIds = () => {
-    return Object.keys(rowSelection.value)
-        .filter(key => rowSelection.value[key]) // Filter only true values
-        .map(key => props.data[parseInt(key)]?.id)
-        .filter(Boolean);
-};
-
-const confirmBulkDelete = () => {
-    emit("bulk-delete", getSelectedIds());
-};
-
-const emitBatchAction = (action) => {
-    // Action can be 'activate', 'deactivate'
-    // We emit a generic 'batch-action' event with { action: 'activate', ids: [...] }
-    emit('batch-action', { action, ids: getSelectedIds() });
-    clearSelection();
-};
-
-const clearSelection = () => (rowSelection.value = {});
+const confirmBulkDelete = () => emit("bulk-delete", selectedItems.value); // Add dialog logic as needed
+const clearSelection = () => (selectedItems.value = []);
 const openCreateModal = () => emit("create");
 const previousPage = () => {
 	if (props.currentPage > 1) emit("prev-page");
@@ -828,76 +654,12 @@ const nextPage = () => {
 	if (props.currentPage < props.totalPages) emit("next-page");
 };
 
-// --- Empty State Actions ---
-import * as XLSX from "xlsx";
-import { useSupabase } from "@/composables/useSupabase"; // Assuming this composable is available globally or we import it
-// Note: In Nuxt auto-imports usually work, but explicit import is safer for refactoring.
-// However, useSupabase might be an auto-import. Let's try to use it if available or inject.
-// Actually, I need to make sure I have access to supabase client here or emit event.
-// Given strict instructions, I will emit an event for 'generate-sample' if strictly needed,
-// but the requirement said "hits a Supabase function to insert 5 'safe' dummy rows".
-// I will implement the logic here for speed as requested ("Data Maintenance features").
-
-const downloadTemplate = () => {
-	const ws = XLSX.utils.json_to_sheet([
-		props.columns.reduce((acc, col) => ({ ...acc, [col.key]: `Example ${col.label}` }), {})
-	]);
-	const wb = XLSX.utils.book_new();
-	XLSX.utils.book_append_sheet(wb, ws, "Template");
-	XLSX.writeFile(wb, `${props.title.replace(/\s+/g, "_").toLowerCase()}_template.xlsx`);
+// Style helper for Badges
+const getBadgeColorClass = (val, key) => {
+	// You can map specific classes here if needed, or stick to default Shadcn variants
+	// For 'dense' UI, subtle backgrounds are better than bright ones
+	return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
 };
-
-const exportToCsv = () => {
-    // Export all rows in the current filtered model
-    const rows = table.getFilteredRowModel().rows.map(row => {
-        const rowData = {};
-        props.columns.forEach(col => {
-            rowData[col.label] = row.original[col.key];
-        });
-        return rowData;
-    });
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Export");
-    XLSX.writeFile(wb, `${props.title.replace(/\s+/g, "_").toLowerCase()}_export.csv`);
-};
-
-const exportSelection = () => {
-     // Export only selected rows
-    const rows = table.getSelectedRowModel().rows.map(row => {
-        const rowData = {};
-        props.columns.forEach(col => {
-            rowData[col.label] = row.original[col.key];
-        });
-        return rowData;
-    });
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Selection");
-    XLSX.writeFile(wb, `${props.title.replace(/\s+/g, "_").toLowerCase()}_selection.csv`);
-};
-
-const generateSampleData = async () => {
-    isGeneratingSample.value = true;
-    try {
-        // We will emit an event so the parent (which has the useSupabase context and knows the table name)
-        // can handle the insertion. This is cleaner than importing supabase here if we don't know the table name
-        // (though we have 'title', we don't have the exact supabase table name prop passed down,
-        // usually it's in the parent's useDatasetManagement).
-        // Wait, looking at the code, useDatasetManagement manages the data.
-        // I will emit 'generate-sample' and let the parent handle it?
-        // No, the requirements said "The Feature: ... A button that hits a Supabase function".
-        // UseDatasetManagement is in the parent. I should emit.
-        emit('generate-sample');
-
-        // Mocking delay for UX if parent doesn't set loading immediately
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    } finally {
-        isGeneratingSample.value = false;
-    }
-}
 
 watch(
 	() => props.searchQuery,
@@ -906,6 +668,7 @@ watch(
 </script>
 
 <style scoped>
+/* Tailwind 4 usually handles this via plugin, but if you need custom scrollbars: */
 .overflow-hidden {
 	scrollbar-width: thin;
 }
