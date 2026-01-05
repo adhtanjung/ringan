@@ -1,11 +1,13 @@
 <template>
-	<div class="h-full flex flex-col bg-background text-foreground">
+	<div
+		class="h-screen flex flex-col bg-background text-foreground overflow-hidden"
+	>
 		<!-- Header -->
 		<header
 			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-3">
-				<Button variant="ghost" size="sm" class="gap-2" @click="emit('exit')">
+				<Button variant="ghost" size="sm" class="gap-2" @click="handleExit">
 					<ArrowLeft class="h-4 w-4" />
 					Exit
 				</Button>
@@ -13,12 +15,9 @@
 				<div>
 					<h3 class="text-base font-semibold tracking-tight">Bulk Edit Mode</h3>
 					<p class="text-xs text-muted-foreground">
-						{{ localData.length }} rows
-						<span
-							v-if="dirtyRowIds.size > 0"
-							class="text-amber-600 font-medium"
-						>
-							· {{ dirtyRowIds.size }} unsaved
+						{{ rowData.length }} rows
+						<span v-if="hasChanges" class="text-amber-600 font-medium">
+							· Unsaved changes
 						</span>
 					</p>
 				</div>
@@ -29,7 +28,7 @@
 					variant="outline"
 					size="sm"
 					class="gap-2"
-					:disabled="dirtyRowIds.size === 0"
+					:disabled="!hasChanges"
 					@click="discardChanges"
 				>
 					<RotateCcw class="h-3.5 w-3.5" />
@@ -38,7 +37,7 @@
 				<Button
 					size="sm"
 					class="gap-2"
-					:disabled="dirtyRowIds.size === 0 || saving"
+					:disabled="!hasChanges || saving"
 					@click="saveAllChanges"
 				>
 					<Loader2 v-if="saving" class="h-3.5 w-3.5 animate-spin" />
@@ -48,228 +47,71 @@
 			</div>
 		</header>
 
-		<!-- Spreadsheet Grid -->
-		<div class="flex-1 overflow-hidden relative">
-			<ScrollArea class="h-full w-full">
-				<div class="min-w-[1200px]">
-					<table class="w-full border-collapse text-xs">
-						<!-- Header Row -->
-						<thead class="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
-							<tr>
-								<th
-									class="w-10 border-b border-r border-border p-2 text-center"
-								>
-									#
-								</th>
-								<th
-									v-for="col in displayColumns"
-									:key="col.key"
-									class="border-b border-r border-border p-2 text-left font-medium text-muted-foreground min-w-[120px]"
-									:class="{
-										'min-w-[300px]': col.key === 'question_text',
-										'bg-muted/30': col.type === 'readonly',
-									}"
-								>
-									{{ col.label }}
-									<span v-if="col.required" class="text-red-500">*</span>
-								</th>
-								<th class="w-10 border-b border-border p-2"></th>
-							</tr>
-						</thead>
-
-						<!-- Data Rows -->
-						<tbody>
-							<tr
-								v-for="(row, rowIndex) in localData"
-								:key="row._tempId || row.id"
-								class="group"
-								:class="{
-									'bg-amber-50/50': dirtyRowIds.has(row._tempId || row.id),
-									'bg-green-50/30': row._isNew,
-								}"
-							>
-								<td
-									class="border-b border-r border-border p-2 text-center text-muted-foreground font-mono text-[10px]"
-								>
-									{{ rowIndex + 1 }}
-								</td>
-
-								<td
-									v-for="col in displayColumns"
-									:key="col.key"
-									class="border-b border-r border-border p-0 relative"
-									:class="{
-										'ring-2 ring-primary ring-inset':
-											activeCell?.row === rowIndex &&
-											activeCell?.col === col.key &&
-											col.type !== 'readonly',
-										'bg-amber-100/50': dirtyCells.has(
-											`${row._tempId || row.id}:${col.key}`
-										),
-										'bg-muted/30 cursor-not-allowed': col.type === 'readonly',
-									}"
-									@click="
-										col.type !== 'readonly' && activateCell(rowIndex, col.key)
-									"
-								>
-									<!-- Readonly field -->
-									<template v-if="col.type === 'readonly'">
-										<div
-											class="px-2 py-1.5 h-8 flex items-center text-muted-foreground font-mono text-[10px] truncate"
-										>
-											{{
-												row[col.key] || (row._isNew ? "Auto-generated" : "-")
-											}}
-										</div>
-									</template>
-
-									<!-- Dropdown for select type -->
-									<template v-else-if="col.type === 'select'">
-										<Select
-											v-if="
-												activeCell?.row === rowIndex &&
-												activeCell?.col === col.key
-											"
-											:model-value="row[col.key] || ''"
-											@update:model-value="(v) => updateCell(row, col.key, v)"
-										>
-											<SelectTrigger
-												class="h-8 rounded-none border-0 text-xs focus:ring-0"
-											>
-												<SelectValue
-													:placeholder="col.placeholder || 'Select...'"
-												/>
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem
-													v-for="opt in col.options"
-													:key="opt.value"
-													:value="opt.value"
-												>
-													{{ opt.label }}
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										<div
-											v-else
-											class="px-2 py-1.5 h-8 flex items-center cursor-pointer hover:bg-muted/50"
-										>
-											{{ row[col.key] || "-" }}
-										</div>
-									</template>
-
-									<!-- Textarea for multiline -->
-									<template v-else-if="col.multiline">
-										<textarea
-											v-if="
-												activeCell?.row === rowIndex &&
-												activeCell?.col === col.key
-											"
-											:ref="(el) => setCellRef(rowIndex, col.key, el)"
-											:value="row[col.key] || ''"
-											class="w-full min-h-[60px] p-2 text-xs border-0 focus:outline-none focus:ring-0 resize-none bg-transparent"
-											@input="(e) => updateCell(row, col.key, (e.target as HTMLTextAreaElement).value)"
-											@keydown="(e) => handleKeydown(e, rowIndex, col.key)"
-											@blur="handleBlur"
-										/>
-										<div
-											v-else
-											class="px-2 py-1.5 min-h-[32px] cursor-pointer hover:bg-muted/50 line-clamp-2"
-										>
-											{{ row[col.key] || "-" }}
-										</div>
-									</template>
-
-									<!-- Text input -->
-									<template v-else>
-										<input
-											v-if="
-												activeCell?.row === rowIndex &&
-												activeCell?.col === col.key
-											"
-											:ref="(el) => setCellRef(rowIndex, col.key, el)"
-											type="text"
-											:value="row[col.key] || ''"
-											class="w-full h-8 px-2 text-xs border-0 focus:outline-none focus:ring-0 bg-transparent"
-											@input="(e) => updateCell(row, col.key, (e.target as HTMLInputElement).value)"
-											@keydown="(e) => handleKeydown(e, rowIndex, col.key)"
-											@blur="handleBlur"
-										/>
-										<div
-											v-else
-											class="px-2 py-1.5 h-8 flex items-center cursor-pointer hover:bg-muted/50 truncate"
-										>
-											{{ row[col.key] || "-" }}
-										</div>
-									</template>
-								</td>
-
-								<!-- Delete row button -->
-								<td class="border-b border-border p-1 text-center">
-									<Button
-										variant="ghost"
-										size="icon"
-										class="h-6 w-6 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 hover:bg-red-50"
-										@click="deleteRow(rowIndex)"
-									>
-										<Trash2 class="h-3.5 w-3.5" />
-									</Button>
-								</td>
-							</tr>
-
-							<!-- Add Row Button -->
-							<tr>
-								<td
-									:colspan="displayColumns.length + 2"
-									class="border-b border-border p-0"
-								>
-									<button
-										class="w-full py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground flex items-center justify-center gap-2 transition-colors"
-										@click="addNewRow"
-									>
-										<Plus class="h-3.5 w-3.5" />
-										Add new row
-									</button>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</ScrollArea>
+		<!-- AG Grid Container - explicit height calculation -->
+		<div
+			class="ag-theme-alpine"
+			style="height: calc(100vh - 160px); width: 100%"
+		>
+			<AgGridVue
+				class="h-full w-full"
+				:rowData="rowData"
+				:columnDefs="columnDefs"
+				:defaultColDef="defaultColDef"
+				:getRowId="getRowId"
+				:animateRows="true"
+				:enableCellTextSelection="true"
+				:undoRedoCellEditing="true"
+				:undoRedoCellEditingLimit="20"
+				:stopEditingWhenCellsLoseFocus="true"
+				@cellValueChanged="onCellValueChanged"
+				@cellFocused="onCellFocused"
+				@gridReady="onGridReady"
+			/>
 		</div>
 
-		<!-- Footer Status -->
+		<!-- Footer with Add Row -->
 		<div
-			v-if="validationErrors.length > 0"
-			class="flex items-center gap-2 p-3 bg-red-50 border-t border-red-200 text-red-700 text-xs"
+			class="flex items-center justify-between p-3 border-t border-border bg-muted/20"
 		>
-			<AlertCircle class="h-4 w-4 shrink-0" />
-			<span>{{ validationErrors[0] }}</span>
+			<Button variant="outline" size="sm" class="gap-2" @click="addNewRow">
+				<Plus class="h-3.5 w-3.5" />
+				Add New Row
+			</Button>
+
+			<div class="text-xs text-muted-foreground">
+				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+C</kbd> Copy
+				· <kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+X</kbd> Cut
+				·
+				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+V</kbd> Paste
+				·
+				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+Z</kbd> Undo
+				·
+				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">Ctrl+Y</kbd> Redo
+			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { AgGridVue } from "ag-grid-vue3";
 import {
-	ArrowLeft,
-	Save,
-	RotateCcw,
-	Plus,
-	Trash2,
-	Loader2,
-	AlertCircle,
-} from "lucide-vue-next";
+	ModuleRegistry,
+	AllCommunityModule,
+	type ColDef,
+	type GridApi,
+	type GridReadyEvent,
+	type CellValueChangedEvent,
+} from "ag-grid-community";
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-alpine.css";
+
+// Register AG Grid modules (required for v35+)
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+import { ArrowLeft, Save, RotateCcw, Plus, Loader2 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast/use-toast";
 
 interface Column {
@@ -292,162 +134,248 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	(e: "exit"): void;
-	(e: "save", items: any[]): Promise<void>;
+	(e: "save", payload: { items: any[]; deletedIds: string[] }): Promise<void>;
 }>();
 
 const { toast } = useToast();
 
-// Local copy of data for editing
-const localData = ref<any[]>([]);
+// Grid state
+const gridApi = ref<GridApi | null>(null);
+const rowData = ref<any[]>([]);
 const originalData = ref<any[]>([]);
+const modifiedRows = ref(new Set<string>());
+const deletedRowIds = ref(new Set<string>());
 const saving = ref(false);
-const validationErrors = ref<string[]>([]);
 
-// Track dirty state
-const dirtyCells = ref(new Set<string>());
-const dirtyRowIds = computed(() => {
-	const ids = new Set<string>();
-	dirtyCells.value.forEach((key) => {
-		const [rowId] = key.split(":");
-		ids.add(rowId);
-	});
-	// Also include new rows
-	localData.value.forEach((row) => {
-		if (row._isNew) {
-			ids.add(row._tempId);
-		}
-	});
-	return ids;
-});
-
-// Active cell tracking
-const activeCell = ref<{ row: number; col: string } | null>(null);
-const cellRefs = ref<Record<string, HTMLInputElement | HTMLTextAreaElement>>(
-	{}
+// Computed
+const hasChanges = computed(
+	() => modifiedRows.value.size > 0 || deletedRowIds.value.size > 0
 );
 
-// All columns for display (including readonly)
-const displayColumns = computed<Column[]>(() => props.columns);
+// Convert our column format to AG Grid column defs
+const columnDefs = computed<ColDef[]>(() => {
+	const cols: ColDef[] = props.columns.map((col) => {
+		const colDef: ColDef = {
+			field: col.key,
+			headerName: col.label,
+			editable: col.type !== "readonly",
+			sortable: true,
+			filter: true,
+			resizable: true,
+			minWidth: 100,
+		};
 
-// Filter to only editable columns (for validation and keyboard nav)
-const editableColumns = computed<Column[]>(() => {
-	return props.columns.filter((col) => col.type !== "readonly");
+		// Readonly columns styling
+		if (col.type === "readonly") {
+			colDef.cellStyle = { backgroundColor: "#f5f5f5", color: "#888" };
+		}
+
+		// Select type - use dropdown editor
+		if (col.type === "select" && col.options) {
+			colDef.cellEditor = "agSelectCellEditor";
+			colDef.cellEditorParams = {
+				values: col.options.map((opt) => opt.value),
+			};
+		}
+
+		// Multiline - use larger text editor
+		if (col.multiline) {
+			colDef.cellEditor = "agLargeTextCellEditor";
+			colDef.cellEditorPopup = true;
+			colDef.minWidth = 300;
+		}
+
+		// Question text - wider column
+		if (col.key === "question_text") {
+			colDef.flex = 2;
+			colDef.wrapText = true;
+			colDef.autoHeight = true;
+		}
+
+		return colDef;
+	});
+
+	// Add delete action column
+	cols.push({
+		headerName: "",
+		field: "_actions",
+		width: 60,
+		editable: false,
+		sortable: false,
+		filter: false,
+		cellRenderer: (params: any) => {
+			if (!params.data) return "";
+			const button = document.createElement("button");
+			button.innerHTML = "🗑️";
+			button.className = "opacity-50 hover:opacity-100 cursor-pointer";
+			button.onclick = () => deleteRow(params.data);
+			return button;
+		},
+	});
+
+	return cols;
 });
 
-// Initialize local data
+const defaultColDef = computed<ColDef>(() => ({
+	editable: true,
+	sortable: true,
+	filter: true,
+	resizable: true,
+	minWidth: 100,
+}));
+
+// Row ID getter
+const getRowId = (params: any) => {
+	return params.data._tempId || params.data.id || `row_${Math.random()}`;
+};
+
+// Initialize data
 const initializeData = () => {
-	localData.value = props.data.map((item) => ({
+	rowData.value = props.data.map((item) => ({
 		...item,
 		_tempId:
 			item.id || `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 	}));
 	originalData.value = JSON.parse(JSON.stringify(props.data));
-	dirtyCells.value.clear();
+	modifiedRows.value.clear();
+	deletedRowIds.value.clear();
 };
 
 watch(() => props.data, initializeData, { immediate: true });
 
-// Cell management
-const setCellRef = (row: number, col: string, el: any) => {
-	if (el) {
-		cellRefs.value[`${row}:${col}`] = el;
+// Grid events
+const onGridReady = (params: GridReadyEvent) => {
+	gridApi.value = params.api;
+	params.api.sizeColumnsToFit();
+};
+
+const onCellValueChanged = (event: CellValueChangedEvent) => {
+	if (!event.data) return;
+
+	const rowId = event.data._tempId || event.data.id;
+	const original = originalData.value.find((o) => o.id === event.data.id);
+
+	// Check if the row is actually modified
+	let isModified = false;
+	if (event.data._isNew) {
+		isModified = true;
+	} else if (original) {
+		isModified = event.oldValue !== event.newValue;
+	}
+
+	if (isModified) {
+		modifiedRows.value.add(rowId);
 	}
 };
 
-const activateCell = (row: number, col: string) => {
-	activeCell.value = { row, col };
-	nextTick(() => {
-		const ref = cellRefs.value[`${row}:${col}`];
-		if (ref) {
-			ref.focus();
-			if ("select" in ref) {
-				ref.select();
-			}
+// Cell focus tracking for clipboard
+const focusedCell = ref<{ rowIndex: number; colKey: string } | null>(null);
+const clipboardValue = ref<string>("");
+
+const onCellFocused = (event: any) => {
+	if (event.rowIndex !== null && event.column) {
+		focusedCell.value = {
+			rowIndex: event.rowIndex,
+			colKey: event.column.getColId(),
+		};
+	}
+};
+
+// Clipboard operations
+const copyCell = async () => {
+	if (!focusedCell.value || !gridApi.value) return;
+
+	const rowNode = gridApi.value.getDisplayedRowAtIndex(
+		focusedCell.value.rowIndex
+	);
+	if (!rowNode?.data) return;
+
+	const value = rowNode.data[focusedCell.value.colKey];
+	clipboardValue.value = value || "";
+
+	try {
+		await navigator.clipboard.writeText(clipboardValue.value);
+	} catch (e) {
+		console.warn("Clipboard write failed, using internal clipboard");
+	}
+};
+
+const cutCell = async () => {
+	if (!focusedCell.value || !gridApi.value) return;
+
+	await copyCell();
+
+	// Clear the cell value
+	const rowNode = gridApi.value.getDisplayedRowAtIndex(
+		focusedCell.value.rowIndex
+	);
+	if (rowNode?.data) {
+		const colKey = focusedCell.value.colKey;
+		const colDef = columnDefs.value.find((c: ColDef) => c.field === colKey);
+		if (colDef?.editable !== false) {
+			rowNode.setDataValue(colKey, "");
 		}
-	});
-};
-
-const handleBlur = () => {
-	// Delay to allow click events on other cells
-	setTimeout(() => {
-		// Keep cell active for now - only deactivate on escape or save
-	}, 100);
-};
-
-const updateCell = (row: any, key: string, value: any) => {
-	const rowId = row._tempId || row.id;
-	row[key] = value;
-
-	// Mark as dirty if different from original
-	const original = originalData.value.find((o) => o.id === row.id);
-	if (!row._isNew && original && original[key] !== value) {
-		dirtyCells.value.add(`${rowId}:${key}`);
-	} else if (!row._isNew && original && original[key] === value) {
-		dirtyCells.value.delete(`${rowId}:${key}`);
 	}
 };
 
-// Keyboard navigation
-const handleKeydown = (e: KeyboardEvent, rowIndex: number, colKey: string) => {
-	const colIndex = editableColumns.value.findIndex((c) => c.key === colKey);
+const pasteCell = async () => {
+	if (!focusedCell.value || !gridApi.value) return;
 
-	switch (e.key) {
-		case "Tab":
-			e.preventDefault();
-			if (e.shiftKey) {
-				// Previous cell
-				if (colIndex > 0) {
-					activateCell(rowIndex, editableColumns.value[colIndex - 1].key);
-				} else if (rowIndex > 0) {
-					activateCell(
-						rowIndex - 1,
-						editableColumns.value[editableColumns.value.length - 1].key
-					);
-				}
-			} else {
-				// Next cell
-				if (colIndex < editableColumns.value.length - 1) {
-					activateCell(rowIndex, editableColumns.value[colIndex + 1].key);
-				} else if (rowIndex < localData.value.length - 1) {
-					activateCell(rowIndex + 1, editableColumns.value[0].key);
-				}
-			}
-			break;
+	let valueToUse = clipboardValue.value;
 
-		case "Enter":
-			if (!e.shiftKey) {
-				e.preventDefault();
-				// Move down
-				if (rowIndex < localData.value.length - 1) {
-					activateCell(rowIndex + 1, colKey);
-				}
-			}
-			break;
+	// Try to read from system clipboard
+	try {
+		valueToUse = await navigator.clipboard.readText();
+	} catch (e) {
+		console.warn("Clipboard read failed, using internal clipboard");
+	}
 
-		case "Escape":
-			e.preventDefault();
-			activeCell.value = null;
-			break;
-
-		case "ArrowUp":
-			if (!editableColumns.value.find((c) => c.key === colKey)?.multiline) {
-				e.preventDefault();
-				if (rowIndex > 0) {
-					activateCell(rowIndex - 1, colKey);
-				}
-			}
-			break;
-
-		case "ArrowDown":
-			if (!editableColumns.value.find((c) => c.key === colKey)?.multiline) {
-				e.preventDefault();
-				if (rowIndex < localData.value.length - 1) {
-					activateCell(rowIndex + 1, colKey);
-				}
-			}
-			break;
+	const rowNode = gridApi.value.getDisplayedRowAtIndex(
+		focusedCell.value.rowIndex
+	);
+	if (rowNode?.data) {
+		const colKey = focusedCell.value.colKey;
+		const colDef = columnDefs.value.find((c: ColDef) => c.field === colKey);
+		if (colDef?.editable !== false) {
+			rowNode.setDataValue(colKey, valueToUse);
+		}
 	}
 };
+
+// Keyboard handler
+const handleKeydown = (event: KeyboardEvent) => {
+	// Only handle when not editing
+	if (
+		document.activeElement?.tagName === "INPUT" ||
+		document.activeElement?.tagName === "TEXTAREA"
+	) {
+		return;
+	}
+
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
+
+	if (ctrlKey && event.key === "c") {
+		event.preventDefault();
+		copyCell();
+	} else if (ctrlKey && event.key === "x") {
+		event.preventDefault();
+		cutCell();
+	} else if (ctrlKey && event.key === "v") {
+		event.preventDefault();
+		pasteCell();
+	}
+};
+
+// Setup keyboard listeners
+
+onMounted(() => {
+	document.addEventListener("keydown", handleKeydown);
+});
+
+onUnmounted(() => {
+	document.removeEventListener("keydown", handleKeydown);
+});
 
 // Row operations
 const addNewRow = () => {
@@ -456,94 +384,102 @@ const addNewRow = () => {
 		_isNew: true,
 	};
 
-	// Initialize with empty values for each column
-	editableColumns.value.forEach((col) => {
-		newRow[col.key] = "";
+	// Initialize with empty values
+	props.columns.forEach((col) => {
+		if (col.type !== "readonly") {
+			newRow[col.key] = "";
+		}
 	});
 
-	localData.value.push(newRow);
+	rowData.value = [...rowData.value, newRow];
+	modifiedRows.value.add(newRow._tempId);
 
-	// Activate first cell of new row
-	nextTick(() => {
-		activateCell(localData.value.length - 1, editableColumns.value[0].key);
-	});
+	// Scroll to bottom and start editing
+	setTimeout(() => {
+		if (gridApi.value) {
+			const lastRowIndex = rowData.value.length - 1;
+			gridApi.value.ensureIndexVisible(lastRowIndex);
+			const firstEditableCol = props.columns.find((c) => c.type !== "readonly");
+			if (firstEditableCol) {
+				gridApi.value.startEditingCell({
+					rowIndex: lastRowIndex,
+					colKey: firstEditableCol.key,
+				});
+			}
+		}
+	}, 100);
 };
 
-const deleteRow = (index: number) => {
-	const row = localData.value[index];
-	if (row._isNew) {
-		// Just remove from local data
-		localData.value.splice(index, 1);
+const deleteRow = (rowToDelete: any) => {
+	if (rowToDelete._isNew) {
+		// Just remove from data
+		rowData.value = rowData.value.filter(
+			(r) => r._tempId !== rowToDelete._tempId
+		);
+		modifiedRows.value.delete(rowToDelete._tempId);
 	} else {
-		// Mark for deletion or handle via emit
-		localData.value.splice(index, 1);
-		// Track that we need to delete this on save
-		dirtyCells.value.add(`${row._tempId || row.id}:__deleted__`);
+		// Track for deletion and remove from view
+		deletedRowIds.value.add(rowToDelete.id);
+		rowData.value = rowData.value.filter((r) => r.id !== rowToDelete.id);
 	}
+
+	toast({
+		title: "Row marked for deletion",
+		description: "Click 'Save All' to confirm deletion.",
+	});
 };
 
 // Save and discard
 const discardChanges = () => {
 	initializeData();
-	activeCell.value = null;
 	toast({
 		title: "Changes discarded",
 		description: "All unsaved changes have been reverted.",
 	});
 };
 
-const validate = (): boolean => {
-	validationErrors.value = [];
-
-	for (const row of localData.value) {
-		for (const col of editableColumns.value) {
-			if (col.required && !row[col.key]?.toString().trim()) {
-				validationErrors.value.push(
-					`Row ${localData.value.indexOf(row) + 1}: ${col.label} is required`
-				);
-				return false;
-			}
+const handleExit = () => {
+	if (hasChanges.value) {
+		if (!confirm("You have unsaved changes. Are you sure you want to exit?")) {
+			return;
 		}
 	}
-
-	return true;
+	emit("exit");
 };
 
 const saveAllChanges = async () => {
-	if (!validate()) return;
-
 	saving.value = true;
-	validationErrors.value = [];
 
 	try {
-		// Get items that have changes
-		const changedItems = localData.value.filter((row) => {
-			const rowId = row._tempId || row.id;
-			if (row._isNew) return true;
-			return Array.from(dirtyCells.value).some((key) =>
-				key.startsWith(`${rowId}:`)
-			);
-		});
+		// Get modified rows
+		const itemsToSave = rowData.value
+			.filter((row) => {
+				const rowId = row._tempId || row.id;
+				return modifiedRows.value.has(rowId);
+			})
+			.map((row) => {
+				const { _tempId, _isNew, _actions, ...rest } = row;
+				return rest;
+			});
 
-		// Clean up temp properties before saving
-		const itemsToSave = changedItems.map((item) => {
-			const { _tempId, _isNew, ...rest } = item;
-			return rest;
-		});
+		// Get deleted IDs
+		const deletedIds = Array.from(deletedRowIds.value);
 
-		await emit("save", itemsToSave);
+		await emit("save", { items: itemsToSave, deletedIds });
 
+		const totalChanges = itemsToSave.length + deletedIds.length;
 		toast({
 			title: "Changes saved",
-			description: `Successfully saved ${itemsToSave.length} item(s).`,
+			description: `Successfully processed ${totalChanges} change(s).`,
 		});
 
-		// Reset dirty state
-		dirtyCells.value.clear();
-		localData.value.forEach((row) => {
+		// Reset state
+		modifiedRows.value.clear();
+		deletedRowIds.value.clear();
+		rowData.value.forEach((row) => {
 			delete row._isNew;
 		});
-		originalData.value = JSON.parse(JSON.stringify(localData.value));
+		originalData.value = JSON.parse(JSON.stringify(rowData.value));
 	} catch (error) {
 		console.error("Save error:", error);
 		toast({
@@ -557,13 +493,38 @@ const saveAllChanges = async () => {
 };
 </script>
 
-<style scoped>
-table {
-	border-spacing: 0;
+<style>
+/* Override AG Grid theme to match app design */
+.ag-theme-alpine {
+	--ag-background-color: transparent;
+	--ag-header-background-color: hsl(var(--muted));
+	--ag-odd-row-background-color: transparent;
+	--ag-row-hover-color: hsl(var(--muted) / 0.5);
+	--ag-selected-row-background-color: hsl(var(--primary) / 0.1);
+	--ag-range-selection-border-color: hsl(var(--primary));
+	--ag-font-family: inherit;
+	--ag-font-size: 12px;
+	--ag-grid-size: 4px;
+	--ag-row-height: 36px;
+	--ag-header-height: 40px;
 }
 
-input:focus,
-textarea:focus {
+.ag-theme-alpine .ag-header-cell-label {
+	font-weight: 500;
+	color: hsl(var(--muted-foreground));
+}
+
+.ag-theme-alpine .ag-cell {
+	display: flex;
+	align-items: center;
+}
+
+.ag-theme-alpine .ag-cell-edit-wrapper {
+	height: 100%;
+}
+
+.ag-theme-alpine input[class^="ag-"]:focus {
 	outline: none;
+	border-color: hsl(var(--primary));
 }
 </style>

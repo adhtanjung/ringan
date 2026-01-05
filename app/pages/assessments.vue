@@ -555,10 +555,27 @@ const exitSpreadsheetMode = () => {
 	refreshData();
 };
 
-const handleBatchSave = async (items) => {
-	if (!items || items.length === 0) return;
+const handleBatchSave = async (payload) => {
+	const { items, deletedIds } = payload;
+
+	if (
+		(!items || items.length === 0) &&
+		(!deletedIds || deletedIds.length === 0)
+	) {
+		return;
+	}
 
 	try {
+		// Delete removed rows first
+		if (deletedIds && deletedIds.length > 0) {
+			const { error: deleteError } = await supabaseClient
+				.from("assessments")
+				.delete()
+				.in("id", deletedIds);
+
+			if (deleteError) throw deleteError;
+		}
+
 		// Separate new items (no id) from existing items
 		const newItems = items.filter((item) => !item.id);
 		const existingItems = items.filter((item) => item.id);
@@ -594,9 +611,10 @@ const handleBatchSave = async (items) => {
 		// Refresh the data
 		await fetchAllAssessments();
 
+		const totalChanges = items.length + (deletedIds?.length || 0);
 		toast({
 			title: "Success",
-			description: `Saved ${items.length} assessment(s) successfully.`,
+			description: `Processed ${totalChanges} change(s) successfully.`,
 		});
 	} catch (err) {
 		console.error("Batch save error:", err);
