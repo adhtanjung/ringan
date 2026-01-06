@@ -268,24 +268,24 @@ const featureCards = computed(() => [
 		key: "problems",
 		label: "Problems",
 		icon: FileText,
-		color: "text-blue-600",
-		bgColor: "bg-blue-50",
+		color: "text-chart-1",
+		bgColor: "bg-chart-1/10",
 		route: "/problems",
 	},
 	{
 		key: "problem_types",
 		label: "Types",
 		icon: LayoutGrid,
-		color: "text-purple-600",
-		bgColor: "bg-purple-50",
+		color: "text-chart-2",
+		bgColor: "bg-chart-2/10",
 		route: "/problem-types",
 	},
 	{
 		key: "assessments",
 		label: "Assessments",
 		icon: Zap,
-		color: "text-amber-600",
-		bgColor: "bg-amber-50",
+		color: "text-chart-3",
+		bgColor: "bg-chart-3/10",
 		route: "/assessments",
 	},
 ]);
@@ -348,9 +348,9 @@ onMounted(() => {
 						<CardContent class="p-0 px-4">
 							<div class="flex items-center gap-3">
 								<div
-									class="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center"
+									class="h-8 w-8 rounded-lg bg-chart-1/10 flex items-center justify-center"
 								>
-									<FileText class="h-4 w-4 text-blue-600" />
+									<FileText class="h-4 w-4 text-chart-1" />
 								</div>
 								<div>
 									<p class="text-2xl font-bold leading-none">
@@ -370,9 +370,9 @@ onMounted(() => {
 						<CardContent class="p-0 px-4">
 							<div class="flex items-center gap-3">
 								<div
-									class="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center"
+									class="h-8 w-8 rounded-lg bg-chart-2/10 flex items-center justify-center"
 								>
-									<LayoutGrid class="h-4 w-4 text-purple-600" />
+									<LayoutGrid class="h-4 w-4 text-chart-2" />
 								</div>
 								<div>
 									<p class="text-2xl font-bold leading-none">
@@ -392,9 +392,9 @@ onMounted(() => {
 						<CardContent class="p-0 px-4">
 							<div class="flex items-center gap-3">
 								<div
-									class="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center"
+									class="h-8 w-8 rounded-lg bg-chart-3/10 flex items-center justify-center"
 								>
-									<Zap class="h-4 w-4 text-amber-600" />
+									<Zap class="h-4 w-4 text-chart-3" />
 								</div>
 								<div>
 									<p class="text-2xl font-bold leading-none">
@@ -429,13 +429,13 @@ onMounted(() => {
 							>
 								<div class="flex justify-between text-xs">
 									<span class="font-medium">{{ item.type }}</span>
-									<span class="font-semibold text-emerald-600">{{
+									<span class="font-semibold text-chart-1">{{
 										item.active
 									}}</span>
 								</div>
-								<div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+								<div class="h-3 bg-muted rounded-full overflow-hidden">
 									<div
-										class="bg-emerald-500 h-full rounded-full transition-all duration-500"
+										class="bg-chart-1 h-full rounded-full transition-all duration-500"
 										:style="{
 											width: `${Math.min((item.active / 500) * 100, 100)}%`,
 										}"
@@ -463,6 +463,7 @@ onMounted(() => {
 								>
 									<VisDonut
 										:value="donutValue"
+										:color="(_d: any, i: number) => `var(--chart-${(i % 5) + 1})`"
 										:arc-width="24"
 										:pad-angle="0.02"
 									/>
@@ -599,14 +600,14 @@ onMounted(() => {
 						class="block"
 					>
 						<Card
-							class="hover:bg-muted/50 transition-colors cursor-pointer py-2"
+							class="hover:bg-muted/50 transition-colors cursor-pointer py-2 border-none shadow-sm"
 						>
 							<CardContent class="p-0 px-3">
 								<div class="flex items-center justify-between">
 									<p class="text-xs text-muted-foreground">
 										{{ getTypeLabel(type) }}
 									</p>
-									<p class="text-lg font-semibold text-emerald-600">
+									<p class="text-lg font-semibold text-chart-1">
 										{{ dashboardData?.by_type[type]?.active || 0 }}
 									</p>
 								</div>

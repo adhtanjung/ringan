@@ -337,6 +337,26 @@ const validationResults = computed(() => {
 				);
 				fieldErrors.category_id = true;
 			}
+		} else if (props.dataType === "problem_types") {
+			if (!item.type_name) {
+				errors.push("Type name is required");
+				fieldErrors.type_name = true;
+			}
+			if (!item.category_id) {
+				errors.push("Category ID is required");
+				fieldErrors.category_id = true;
+			}
+			// Check for valid alphanumeric/underscore format for category_id
+			if (item.category_id && !/^[a-z0-9_]+$/i.test(item.category_id)) {
+				errors.push(
+					"Category ID must contain only letters, numbers, and underscores"
+				);
+				fieldErrors.category_id = true;
+			}
+			if (!item.description) {
+				errors.push("Description is required");
+				fieldErrors.description = true;
+			}
 		}
 
 		return {
