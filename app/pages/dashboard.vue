@@ -3,25 +3,21 @@ import { ref, onMounted, computed } from "vue";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { datasetLabels } from "@/composables/useDatasetManagement";
 import { useSupabase } from "@/composables/useSupabase";
-import {
-	VisXYContainer,
-	VisStackedBar,
-	VisAxis,
-	VisTooltip,
-	VisDonut,
-	VisSingleContainer,
-} from "@unovis/vue";
+import { VisTooltip, VisDonut, VisSingleContainer } from "@unovis/vue";
 import { Donut } from "@unovis/ts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
-	LayoutDashboard,
 	RefreshCw,
 	Database,
-	Activity,
 	Zap,
 	Clock,
 	AlertCircle,
 	CheckCircle2,
 	FileText,
+	LayoutGrid,
+	TrendingUp,
+	ArrowRight,
 } from "lucide-vue-next";
 
 // --- Types ---
@@ -45,7 +41,7 @@ interface DashboardStats {
 				id: string;
 				name: string;
 				updated_at: string;
-				type: string; // Added type here for the unified feed
+				type: string;
 			}>;
 		};
 	};
@@ -92,7 +88,6 @@ const fetchDashboardData = async () => {
 		};
 
 		const tableQueries = datasetTypes.map(async (type) => {
-			// 1. Get counts
 			const [totalRes, activeRes] = await Promise.all([
 				supabase.from(type).select("*", { count: "exact", head: true }),
 				supabase
@@ -101,7 +96,6 @@ const fetchDashboardData = async () => {
 					.eq("is_active", true),
 			]);
 
-			// 2. Get recent updates
 			let nameField = "id";
 			if (type === "problems") nameField = "problem_name";
 			else if (type === "assessments") nameField = "question_text";
@@ -115,9 +109,8 @@ const fetchDashboardData = async () => {
 				supabase.from(type).select(`id, ${nameField}, updated_at`) as any
 			)
 				.order("updated_at", { ascending: false })
-				.limit(5);
+				.limit(3);
 
-			// 3. Domain breakdown
 			let domainBreakdown = {};
 			if (type === "problems") {
 				const { data: categories } = await supabase
@@ -144,11 +137,10 @@ const fetchDashboardData = async () => {
 					id: item.id,
 					name: item[nameField] || item.id,
 					updated_at: item.updated_at,
-					type: type, // Inject type for the feed
+					type: type,
 				})),
 			};
 
-			// Map to overall counts
 			if (type === "problems") stats.overall.problems_count = total;
 			if (type === "assessments")
 				stats.overall.assessment_questions_count = total;
@@ -162,7 +154,6 @@ const fetchDashboardData = async () => {
 
 		await Promise.all(tableQueries);
 
-		// Calculate generic last updated
 		let maxDate = new Date(0).toISOString();
 		Object.values(stats.by_type).forEach((typeStats) => {
 			typeStats.recent_updates.forEach((u) => {
@@ -186,7 +177,6 @@ const fetchDashboardData = async () => {
 };
 
 // --- Computed & Formatting ---
-
 const formatNumber = (num: number) =>
 	new Intl.NumberFormat("en-US").format(num);
 
@@ -205,7 +195,7 @@ const formatDateRelative = (dateString: string) => {
 	}).format(date);
 };
 
-// 1. Totals Logic
+// Totals Logic
 const totalItems = computed(() => {
 	if (!dashboardData.value?.by_type) return 0;
 	return Object.values(dashboardData.value.by_type).reduce(
@@ -227,50 +217,91 @@ const activeRate = computed(() => {
 	return Math.round((totalActive.value / totalItems.value) * 100);
 });
 
-// 2. Main Bar Chart Data
+// Bar Chart Data - compact for 3 main types
 const barChartData = computed(() => {
 	if (!dashboardData.value) return [];
-	return datasetTypes.map((type) => {
+	const mainTypes = ["problems", "problem_types", "assessments"];
+	return mainTypes.map((type) => {
 		const data = dashboardData.value?.by_type[type];
 		return {
-			type: (datasetLabels as any)[type] || type,
+			type:
+				type === "problem_types"
+					? "Types"
+					: (datasetLabels as any)[type]?.split(" ")[0] || type,
 			active: data?.active || 0,
 			inactive: data?.inactive || 0,
 		};
 	});
 });
 
-const xAccessor = (d: any) => d.type;
-const yAccessors = [(d: any) => d.active, (d: any) => d.inactive];
+type BarData = (typeof barChartData.value)[number];
+const xAccessor = (d: BarData) => d.type;
+const yAccessors = [(d: BarData) => d.active, (d: BarData) => d.inactive];
 
-// 3. Donut Chart Data (Problems)
+// Donut Chart Data
 const donutData = computed(() => {
 	const breakdown =
 		dashboardData.value?.by_type["problems"]?.domain_breakdown || {};
-	return Object.entries(breakdown).map(([key, value]) => ({ key, value }));
+	return Object.entries(breakdown)
+		.map(([key, value]) => ({ key, value }))
+		.slice(0, 5);
 });
-const donutValue = (d: any) => d.value;
-const donutLabel = (d: any) => d.key;
+type DonutData = (typeof donutData.value)[number];
+const donutValue = (d: DonutData) => d.value;
 
-// 4. Unified Activity Feed
-const unifiedFeed = computed(() => {
+// Helper functions
+const getActiveRate = (
+	typeData: { total: number; active: number } | undefined
+) => {
+	if (!typeData || typeData.total === 0) return 0;
+	return Math.round((typeData.active / typeData.total) * 100);
+};
+
+const getTypeLabel = (typeKey: string) =>
+	(datasetLabels as any)[typeKey] || typeKey;
+
+// Feature cards config
+const featureCards = computed(() => [
+	{
+		key: "problems",
+		label: "Problems",
+		icon: FileText,
+		color: "text-blue-600",
+		bgColor: "bg-blue-50",
+		route: "/problems",
+	},
+	{
+		key: "problem_types",
+		label: "Types",
+		icon: LayoutGrid,
+		color: "text-purple-600",
+		bgColor: "bg-purple-50",
+		route: "/problem-types",
+	},
+	{
+		key: "assessments",
+		label: "Assessments",
+		icon: Zap,
+		color: "text-amber-600",
+		bgColor: "bg-amber-50",
+		route: "/assessments",
+	},
+]);
+
+// Recent activity - combined feed (top 5)
+const recentActivity = computed(() => {
 	if (!dashboardData.value) return [];
 	const allUpdates: any[] = [];
-
 	Object.values(dashboardData.value.by_type).forEach((type) => {
 		allUpdates.push(...type.recent_updates);
 	});
-
 	return allUpdates
 		.sort(
 			(a, b) =>
 				new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
 		)
-		.slice(0, 10); // Show top 10 most recent across all types
+		.slice(0, 5);
 });
-
-const getTypeLabel = (typeKey: string) =>
-	(datasetLabels as any)[typeKey] || typeKey;
 
 onMounted(() => {
 	fetchDashboardData();
@@ -278,167 +309,165 @@ onMounted(() => {
 </script>
 
 <template>
-	<div class="min-h-screen bg-background pb-12 text-foreground">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-			<div
-				class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-			>
+	<div class="min-h-screen bg-background text-foreground">
+		<div class="mx-auto max-w-7xl px-4 py-4 space-y-4">
+			<!-- Header Row -->
+			<div class="flex items-center justify-between">
 				<div>
-					<h1 class="text-3xl font-bold tracking-tight">Dataset Overview</h1>
-					<p class="text-muted-foreground mt-1">
-						Real-time insights into dataset quality and volume.
-					</p>
+					<h1 class="text-xl font-semibold">Dashboard</h1>
+					<p class="text-xs text-muted-foreground">Dataset overview</p>
 				</div>
-				<div class="flex items-center gap-3">
-					<div
-						v-if="dashboardData"
-						class="hidden sm:block text-xs text-right text-muted-foreground mr-2"
-					>
-						<p>Last synced</p>
-						<p class="font-medium text-foreground">
-							{{ formatDateRelative(dashboardData.overall.last_updated) }}
-						</p>
-					</div>
-					<button
-						@click="fetchDashboardData"
-						:disabled="loading"
-						class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50"
-					>
-						<RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
-						<span>{{ loading ? "Syncing..." : "Refresh" }}</span>
-					</button>
-				</div>
+				<button
+					@click="fetchDashboardData"
+					:disabled="loading"
+					class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
+				>
+					<RefreshCw class="h-3 w-3" :class="{ 'animate-spin': loading }" />
+					<span>{{ loading ? "..." : "Refresh" }}</span>
+				</button>
 			</div>
 
+			<!-- Error State -->
 			<div
 				v-if="error"
-				class="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive flex items-center gap-3"
+				class="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-destructive flex items-center gap-2 text-sm"
 			>
-				<AlertCircle class="h-5 w-5" />
+				<AlertCircle class="h-4 w-4" />
 				<p>{{ error }}</p>
 			</div>
 
+			<!-- Main Dashboard -->
 			<div
 				v-if="dashboardData && !loading"
-				class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+				class="space-y-4 animate-in fade-in duration-300"
 			>
-				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-					<div
-						class="rounded-xl border bg-card text-card-foreground shadow-sm p-6"
-					>
-						<div class="flex items-center justify-between space-y-0 pb-2">
-							<p class="text-sm font-medium text-muted-foreground">
-								Total Datasets
-							</p>
-							<Database class="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div class="text-2xl font-bold">{{ formatNumber(totalItems) }}</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							+{{ formatNumber(dashboardData.overall.problems_count) }} problems
-						</p>
-					</div>
+				<!-- Stats Row - 3 Feature Cards -->
+				<div class="grid grid-cols-3 gap-3">
+					<Card class="py-3">
+						<CardContent class="p-0 px-4">
+							<div class="flex items-center gap-3">
+								<div
+									class="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center"
+								>
+									<FileText class="h-4 w-4 text-blue-600" />
+								</div>
+								<div>
+									<p class="text-2xl font-bold leading-none">
+										{{
+											formatNumber(
+												dashboardData?.by_type?.problems?.active || 0
+											)
+										}}
+									</p>
+									<p class="text-xs text-muted-foreground mt-0.5">Problems</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 
-					<div
-						class="rounded-xl border bg-card text-card-foreground shadow-sm p-6"
-					>
-						<div class="flex items-center justify-between space-y-0 pb-2">
-							<p class="text-sm font-medium text-muted-foreground">
-								Active Usage
-							</p>
-							<Activity class="h-4 w-4 text-emerald-500" />
-						</div>
-						<div class="text-2xl font-bold">{{ activeRate }}%</div>
-						<div
-							class="w-full bg-secondary h-1.5 rounded-full mt-2 overflow-hidden"
-						>
-							<div
-								class="bg-emerald-500 h-full transition-all duration-1000"
-								:style="{ width: `${activeRate}%` }"
-							></div>
-						</div>
-					</div>
+					<Card class="py-3">
+						<CardContent class="p-0 px-4">
+							<div class="flex items-center gap-3">
+								<div
+									class="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center"
+								>
+									<LayoutGrid class="h-4 w-4 text-purple-600" />
+								</div>
+								<div>
+									<p class="text-2xl font-bold leading-none">
+										{{
+											formatNumber(
+												dashboardData?.by_type?.problem_types?.active || 0
+											)
+										}}
+									</p>
+									<p class="text-xs text-muted-foreground mt-0.5">Types</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 
-					<div
-						class="rounded-xl border bg-card text-card-foreground shadow-sm p-6"
-					>
-						<div class="flex items-center justify-between space-y-0 pb-2">
-							<p class="text-sm font-medium text-muted-foreground">
-								Active Items
-							</p>
-							<CheckCircle2 class="h-4 w-4 text-muted-foreground" />
-						</div>
-						<div class="text-2xl font-bold">
-							{{ formatNumber(totalActive) }}
-						</div>
-						<p class="text-xs text-muted-foreground mt-1">
-							Available for production
-						</p>
-					</div>
-
-					<div
-						class="rounded-xl border bg-card text-card-foreground shadow-sm p-6"
-					>
-						<div class="flex items-center justify-between space-y-0 pb-2">
-							<p class="text-sm font-medium text-muted-foreground">
-								Draft / Inactive
-							</p>
-							<Clock class="h-4 w-4 text-orange-500" />
-						</div>
-						<div class="text-2xl font-bold">
-							{{ formatNumber(totalItems - totalActive) }}
-						</div>
-						<p class="text-xs text-muted-foreground mt-1">Requires review</p>
-					</div>
+					<Card class="py-3">
+						<CardContent class="p-0 px-4">
+							<div class="flex items-center gap-3">
+								<div
+									class="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center"
+								>
+									<Zap class="h-4 w-4 text-amber-600" />
+								</div>
+								<div>
+									<p class="text-2xl font-bold leading-none">
+										{{
+											formatNumber(
+												dashboardData?.by_type?.assessments?.active || 0
+											)
+										}}
+									</p>
+									<p class="text-xs text-muted-foreground mt-0.5">
+										Assessments
+									</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
 
-				<div class="grid gap-4 md:grid-cols-7">
-					<div
-						class="col-span-4 rounded-xl border bg-card text-card-foreground shadow-sm"
-					>
-						<div class="p-6">
-							<h3 class="font-semibold leading-none tracking-tight mb-4">
-								Volume Distribution
-							</h3>
-							<div class="h-[350px] w-full">
-								<VisXYContainer :data="barChartData" :height="350">
-									<VisStackedBar
-										:x="xAccessor"
-										:y="yAccessors"
-										:color="(d, i) => (i === 0 ? '#10b981' : '#e2e8f0')"
-									/>
-									<VisAxis type="x" :tickFormat="(d) => d" />
-									<VisAxis type="y" />
-									<VisTooltip />
-								</VisXYContainer>
-							</div>
-							<div class="flex items-center justify-center gap-6 mt-4 text-sm">
-								<div class="flex items-center gap-2">
-									<span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-									<span class="text-muted-foreground">Active</span>
-								</div>
-								<div class="flex items-center gap-2">
-									<span class="w-3 h-3 rounded-full bg-slate-200"></span>
-									<span class="text-muted-foreground">Inactive</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div
-						class="col-span-3 rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col"
-					>
-						<div class="p-6 flex-1">
-							<h3 class="font-semibold leading-none tracking-tight mb-4">
-								Problem Domains
-							</h3>
+				<!-- Charts Row -->
+				<div class="grid grid-cols-5 gap-4">
+					<!-- Active Counts Distribution -->
+					<Card class="col-span-2">
+						<CardHeader class="pb-2 pt-4 px-4">
+							<CardTitle class="text-sm font-medium">Active Records</CardTitle>
+						</CardHeader>
+						<CardContent class="px-4 pb-4 space-y-3">
+							<!-- Simple Bars for Active Counts -->
 							<div
-								class="h-[300px] w-full flex items-center justify-center relative"
+								v-for="item in barChartData"
+								:key="item.type"
+								class="space-y-1"
 							>
-								<VisSingleContainer :data="donutData" :height="300">
-									<VisDonut :value="donutValue" :arcWidth="40" />
+								<div class="flex justify-between text-xs">
+									<span class="font-medium">{{ item.type }}</span>
+									<span class="font-semibold text-emerald-600">{{
+										item.active
+									}}</span>
+								</div>
+								<div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+									<div
+										class="bg-emerald-500 h-full rounded-full transition-all duration-500"
+										:style="{
+											width: `${Math.min((item.active / 500) * 100, 100)}%`,
+										}"
+									></div>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+
+					<!-- Donut Chart -->
+					<Card class="col-span-2">
+						<CardHeader class="pb-2 pt-4 px-4">
+							<CardTitle class="text-sm font-medium"
+								>Problem Categories</CardTitle
+							>
+						</CardHeader>
+						<CardContent class="px-4 pb-4">
+							<div
+								class="h-[160px] w-full flex items-center justify-center relative"
+							>
+								<VisSingleContainer
+									:data="donutData"
+									:height="160"
+									:width="160"
+								>
+									<VisDonut
+										:value="donutValue"
+										:arc-width="24"
+										:pad-angle="0.02"
+									/>
 									<VisTooltip
 										:triggers="{
-											[Donut.selectors.segment]: (d) =>
+											[Donut.selectors.segment]: (d: { data: DonutData }) =>
 												`${d.data.key}: ${d.data.value}`,
 										}"
 									/>
@@ -447,104 +476,157 @@ onMounted(() => {
 									class="absolute inset-0 flex items-center justify-center pointer-events-none"
 								>
 									<div class="text-center">
-										<span class="block text-2xl font-bold">{{
+										<span class="block text-xl font-bold">{{
 											dashboardData.overall.problems_count
 										}}</span>
-										<span class="text-xs text-muted-foreground uppercase"
+										<span class="text-[10px] text-muted-foreground uppercase"
 											>Problems</span
 										>
 									</div>
 								</div>
 							</div>
-							<div class="mt-4 grid grid-cols-2 gap-2 text-xs">
-								<div
-									v-for="(item, index) in donutData.slice(0, 6)"
+							<!-- Category Legend -->
+							<div
+								class="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-2 text-xs text-muted-foreground"
+							>
+								<span
+									v-for="item in donutData.slice(0, 4)"
 									:key="item.key"
-									class="flex items-center justify-between"
+									class="truncate max-w-[80px]"
 								>
-									<span
-										class="text-muted-foreground truncate max-w-[100px]"
-										:title="item.key"
-										>{{ item.key }}</span
+									{{ item.key }}: {{ item.value }}
+								</span>
+							</div>
+						</CardContent>
+					</Card>
+
+					<!-- Recent Activity -->
+					<Card class="col-span-1">
+						<CardHeader class="pb-2 pt-4 px-4">
+							<CardTitle class="text-sm font-medium">Recent</CardTitle>
+						</CardHeader>
+						<CardContent class="px-4 pb-4">
+							<div class="space-y-2">
+								<div
+									v-for="update in recentActivity"
+									:key="update.id"
+									class="text-xs border-l-2 border-primary/20 pl-2 py-0.5"
+								>
+									<p
+										class="font-medium truncate max-w-[120px]"
+										:title="update.name"
 									>
-									<span class="font-mono font-medium">{{ item.value }}</span>
+										{{ update.name?.slice(0, 20)
+										}}{{ update.name?.length > 20 ? "..." : "" }}
+									</p>
+									<p class="text-muted-foreground text-[10px]">
+										{{ getTypeLabel(update.type)?.split(" ")[0] }} ·
+										{{ formatDateRelative(update.updated_at) }}
+									</p>
+								</div>
+								<div
+									v-if="recentActivity.length === 0"
+									class="text-xs text-muted-foreground py-4 text-center"
+								>
+									No recent activity
 								</div>
 							</div>
-						</div>
-					</div>
+						</CardContent>
+					</Card>
 				</div>
 
-				<div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-					<div class="p-6">
-						<div class="flex items-center justify-between mb-6">
-							<h3 class="font-semibold leading-none tracking-tight">
-								Recent Activity
-							</h3>
-							<span
-								class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md"
-								>Last 10 updates</span
-							>
-						</div>
-
-						<div class="relative">
-							<div class="absolute left-4 top-0 bottom-0 w-px bg-border"></div>
-
-							<div class="space-y-6">
-								<div
-									v-for="update in unifiedFeed"
-									:key="update.id"
-									class="relative pl-10 group"
-								>
-									<div
-										class="absolute left-0 top-1 w-8 h-8 rounded-full bg-background border flex items-center justify-center z-10 group-hover:border-primary group-hover:text-primary transition-colors"
-									>
-										<FileText
-											v-if="update.type === 'problems'"
-											class="w-4 h-4"
-										/>
-										<Zap v-else class="w-4 h-4" />
-									</div>
-
-									<div
-										class="flex flex-col sm:flex-row sm:items-center justify-between gap-1"
-									>
-										<div>
-											<p class="text-sm font-medium leading-none">
-												{{ update.name }}
-											</p>
-											<p class="text-xs text-muted-foreground mt-1">
-												Modified in
-												<span class="font-medium text-foreground">{{
-													getTypeLabel(update.type)
-												}}</span>
-											</p>
-										</div>
-										<time
-											class="text-xs text-muted-foreground font-mono whitespace-nowrap"
+				<!-- Feature Cards Row - Compact -->
+				<div class="grid grid-cols-3 gap-3">
+					<NuxtLink
+						v-for="card in featureCards"
+						:key="card.key"
+						:to="card.route"
+						class="block"
+					>
+						<Card
+							class="hover:shadow-md transition-shadow cursor-pointer group"
+						>
+							<CardContent class="p-4">
+								<div class="flex items-center justify-between mb-3">
+									<div class="flex items-center gap-2">
+										<div
+											:class="[
+												card.bgColor,
+												'h-7 w-7 rounded-md flex items-center justify-center',
+											]"
 										>
-											{{ formatDateRelative(update.updated_at) }}
-										</time>
+											<component
+												:is="card.icon"
+												:class="[card.color, 'h-3.5 w-3.5']"
+											/>
+										</div>
+										<span class="font-medium text-sm">{{ card.label }}</span>
+									</div>
+									<ArrowRight
+										class="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+									/>
+								</div>
+
+								<div class="space-y-2">
+									<div class="flex items-baseline justify-between">
+										<span class="text-2xl font-bold">{{
+											formatNumber(
+												dashboardData?.by_type[card.key]?.active || 0
+											)
+										}}</span>
+										<span class="text-xs text-muted-foreground"
+											>active records</span
+										>
 									</div>
 								</div>
-							</div>
+							</CardContent>
+						</Card>
+					</NuxtLink>
+				</div>
 
-							<div
-								v-if="unifiedFeed.length === 0"
-								class="py-8 text-center text-muted-foreground text-sm"
-							>
-								No recent activity recorded.
-							</div>
-						</div>
-					</div>
+				<!-- Other Datasets Row - Mini Cards -->
+				<div class="grid grid-cols-4 gap-2">
+					<NuxtLink
+						v-for="type in [
+							'suggestions',
+							'feedback_prompts',
+							'next_actions',
+							'training_examples',
+						]"
+						:key="type"
+						:to="`/${type.replace('_', '-')}`"
+						class="block"
+					>
+						<Card
+							class="hover:bg-muted/50 transition-colors cursor-pointer py-2"
+						>
+							<CardContent class="p-0 px-3">
+								<div class="flex items-center justify-between">
+									<p class="text-xs text-muted-foreground">
+										{{ getTypeLabel(type) }}
+									</p>
+									<p class="text-lg font-semibold text-emerald-600">
+										{{ dashboardData?.by_type[type]?.active || 0 }}
+									</p>
+								</div>
+							</CardContent>
+						</Card>
+					</NuxtLink>
+				</div>
+
+				<!-- Last Updated Footer -->
+				<div class="text-center text-xs text-muted-foreground pt-2">
+					Last synced
+					{{ formatDateRelative(dashboardData.overall.last_updated) }}
 				</div>
 			</div>
 
-			<div
-				v-else
-				class="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-pulse"
-			>
-				<div v-for="i in 4" :key="i" class="h-32 rounded-xl bg-muted/50"></div>
-				<div class="col-span-4 h-96 rounded-xl bg-muted/50"></div>
+			<!-- Loading State -->
+			<div v-else class="grid grid-cols-4 gap-3 animate-pulse">
+				<div v-for="i in 4" :key="i" class="h-20 rounded-xl bg-muted/50"></div>
+				<div class="col-span-2 h-48 rounded-xl bg-muted/50"></div>
+				<div class="col-span-2 h-48 rounded-xl bg-muted/50"></div>
+				<div class="col-span-3 h-32 rounded-xl bg-muted/50"></div>
 			</div>
 		</div>
 	</div>
@@ -553,22 +635,15 @@ onMounted(() => {
 <style scoped>
 @reference "../assets/css/tailwind.css";
 
-/* Unovis Customizations to match Shadcn/Tailwind */
+/* Unovis Customizations */
 :deep(.unovis-tooltip) {
-	@apply bg-popover text-popover-foreground border shadow-md rounded-md px-3 py-1.5 text-xs font-medium;
-
+	@apply bg-popover text-popover-foreground border shadow-md rounded-md px-2 py-1 text-xs font-medium;
 	--vis-tooltip-background-color: transparent;
 	--vis-tooltip-text-color: inherit;
-
 	--vis-tooltip-border-color: transparent;
 }
 
-:deep(.vis-axis-grid) {
-	@apply stroke-border stroke-[1px];
-	stroke-dasharray: 4;
-}
-
 :deep(.vis-axis-tick-label) {
-	@apply fill-muted-foreground text-xs font-sans;
+	@apply fill-muted-foreground text-[10px] font-sans;
 }
 </style>
