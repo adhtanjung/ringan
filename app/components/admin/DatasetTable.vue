@@ -4,10 +4,12 @@
 			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-2">
-				<div>
-					<h3 class="text-base font-semibold tracking-tight">{{ title }}</h3>
-					<p class="text-xs text-muted-foreground">{{ totalItems }} items</p>
-				</div>
+				<slot name="header-title">
+					<div>
+						<h3 class="text-base font-semibold tracking-tight">{{ title }}</h3>
+						<p class="text-xs text-muted-foreground">{{ totalItems }} items</p>
+					</div>
+				</slot>
 			</div>
 
 			<div class="flex flex-1 items-center justify-end gap-2">

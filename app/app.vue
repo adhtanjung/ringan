@@ -9,8 +9,61 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import FeedbackWidget from "@/components/admin/FeedbackWidget.vue";
+import AppFooter from "@/components/AppFooter.vue";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from '@/components/ui/avatar'
+import {
+	LogOut,
+	Settings,
+	User,
+	ChevronsUpDown,
+} from "lucide-vue-next";
+import GlobalSearch from "@/components/GlobalSearch.vue";
 
 const { supabase, session, isInitialized, init } = useSupabase();
+const route = useRoute();
+
+const breadcrumbs = computed(() => {
+	const path = route.path;
+	if (path === "/" || path === "/dashboard") {
+		return [{ title: "Dashboard", url: "/dashboard", active: true }];
+	}
+
+	const segments = path.split("/").filter(Boolean);
+	const items = segments.map((segment, index) => {
+		const url = "/" + segments.slice(0, index + 1).join("/");
+		return {
+			title: segment.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+			url,
+			active: index === segments.length - 1,
+		};
+	});
+
+	return [
+		{ title: "Dashboard", url: "/dashboard", active: false },
+		...items,
+	];
+});
 
 const email = ref("");
 const password = ref("");
@@ -67,23 +120,85 @@ onMounted(() => {
 						<div class="flex items-center gap-2">
 							<SidebarTrigger class="-ml-1" />
 							<Separator orientation="vertical" class="mr-2 h-4" />
-							<h2 class="text-sm font-semibold text-gray-700">Ringan Data</h2>
+							<Breadcrumb>
+								<BreadcrumbList>
+									<template
+										v-for="(item, index) in breadcrumbs"
+										:key="item.url"
+									>
+										<BreadcrumbItem>
+											<BreadcrumbPage v-if="item.active">
+												{{ item.title }}
+											</BreadcrumbPage>
+											<BreadcrumbLink v-else :href="item.url">
+												{{ item.title }}
+											</BreadcrumbLink>
+										</BreadcrumbItem>
+										<BreadcrumbSeparator
+											v-if="index < breadcrumbs.length - 1"
+										/>
+									</template>
+								</BreadcrumbList>
+							</Breadcrumb>
 						</div>
 						<div class="flex items-center gap-4">
-							<span class="text-xs text-gray-500 hidden sm:inline">{{
-								session.user.email
-							}}</span>
-							<button
-								@click="supabase.auth.signOut()"
-								class="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-md border border-red-100 transition-all"
-							>
-								Sign Out
-							</button>
+							<GlobalSearch />
+							<DropdownMenu>
+								<DropdownMenuTrigger as-child>
+									<div class="flex items-center gap-2 cursor-pointer hover:bg-accent rounded-md p-2 transition-colors">
+										<Avatar class="h-8 w-8 rounded-lg">
+											<AvatarImage :src="session.user?.user_metadata?.avatar_url" :alt="session.user?.email" />
+											<AvatarFallback class="rounded-lg">CN</AvatarFallback>
+										</Avatar>
+										<div class="grid flex-1 text-left text-sm leading-tight">
+											<span class="truncate font-semibold">{{ session.user?.user_metadata?.full_name || 'User' }}</span>
+											<span class="truncate text-xs">{{ session.user?.email }}</span>
+										</div>
+										<ChevronsUpDown class="ml-auto size-4" />
+									</div>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent
+									class="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+									side="bottom"
+									align="end"
+									:side-offset="4"
+								>
+									<DropdownMenuLabel class="p-0 font-normal">
+										<div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+											<Avatar class="h-8 w-8 rounded-lg">
+												<AvatarImage :src="session.user?.user_metadata?.avatar_url" :alt="session.user?.email" />
+												<AvatarFallback class="rounded-lg">CN</AvatarFallback>
+											</Avatar>
+											<div class="grid flex-1 text-left text-sm leading-tight">
+												<span class="truncate font-semibold">{{ session.user?.user_metadata?.full_name || 'User' }}</span>
+												<span class="truncate text-xs">{{ session.user?.email }}</span>
+											</div>
+										</div>
+									</DropdownMenuLabel>
+									<DropdownMenuSeparator />
+									<DropdownMenuGroup>
+										<DropdownMenuItem>
+											<User />
+											Profile
+										</DropdownMenuItem>
+										<DropdownMenuItem>
+											<Settings />
+											Settings
+										</DropdownMenuItem>
+									</DropdownMenuGroup>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem @click="supabase.auth.signOut()">
+										<LogOut />
+										Log out
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
 						</div>
 					</header>
 					<main class="flex-1 overflow-auto">
 						<NuxtPage />
 					</main>
+					<AppFooter />
 					<FeedbackWidget />
 				</SidebarInset>
 			</SidebarProvider>

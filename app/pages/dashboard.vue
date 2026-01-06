@@ -19,6 +19,8 @@ import {
 	TrendingUp,
 	ArrowRight,
 } from "lucide-vue-next";
+import PageHeader from "@/components/PageHeader.vue";
+import { Button } from "@/components/ui/button";
 
 // --- Types ---
 interface DashboardStats {
@@ -312,20 +314,19 @@ onMounted(() => {
 	<div class="min-h-screen bg-background text-foreground">
 		<div class="mx-auto max-w-7xl px-4 py-4 space-y-4">
 			<!-- Header Row -->
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-xl font-semibold">Dashboard</h1>
-					<p class="text-xs text-muted-foreground">Dataset overview</p>
-				</div>
-				<button
-					@click="fetchDashboardData"
-					:disabled="loading"
-					class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
-				>
-					<RefreshCw class="h-3 w-3" :class="{ 'animate-spin': loading }" />
-					<span>{{ loading ? "..." : "Refresh" }}</span>
-				</button>
-			</div>
+			<PageHeader title="Dashboard" description="Dataset overview">
+				<template #actions>
+					<Button
+						@click="fetchDashboardData"
+						:disabled="loading"
+						size="sm"
+						class="gap-1.5"
+					>
+						<RefreshCw class="h-3 w-3" :class="{ 'animate-spin': loading }" />
+						<span>{{ loading ? "..." : "Refresh" }}</span>
+					</Button>
+				</template>
+			</PageHeader>
 
 			<!-- Error State -->
 			<div

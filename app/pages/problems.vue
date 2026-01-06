@@ -3,6 +3,10 @@
 		<div
 			class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 w-full"
 		>
+			<PageHeader
+				title="Problems"
+				description="Manage and organize problem definitions"
+			/>
 			<div class="mt-6">
 				<DatasetTable
 					:title="dataTypeLabel"
@@ -31,7 +35,11 @@
 					@search-change="(value) => (searchQuery = value)"
 					@filter-change="setFilter"
 					@clear-filters="clearFilters"
-				/>
+				>
+					<template #header-title>
+						<span></span>
+					</template>
+				</DatasetTable>
 			</div>
 		</div>
 
@@ -285,6 +293,7 @@
 import { onMounted, ref } from "vue";
 
 // Components
+import PageHeader from "@/components/PageHeader.vue";
 import DatasetTable from "@/components/admin/DatasetTable.vue";
 import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
