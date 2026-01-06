@@ -59,15 +59,7 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const dashboardData = ref<DashboardStats | null>(null);
 
-const datasetTypes = [
-	"problems",
-	"assessments",
-	"suggestions",
-	"feedback_prompts",
-	"next_actions",
-	"training_examples",
-	"problem_types",
-];
+const datasetTypes = ["problems", "assessments", "problem_types"];
 
 // --- Data Fetching ---
 const fetchDashboardData = async () => {
@@ -587,34 +579,7 @@ onMounted(() => {
 				</div>
 
 				<!-- Other Datasets Row - Mini Cards -->
-				<div class="grid grid-cols-4 gap-2">
-					<NuxtLink
-						v-for="type in [
-							'suggestions',
-							'feedback_prompts',
-							'next_actions',
-							'training_examples',
-						]"
-						:key="type"
-						:to="`/${type.replace('_', '-')}`"
-						class="block"
-					>
-						<Card
-							class="hover:bg-muted/50 transition-colors cursor-pointer py-2 border-none shadow-sm"
-						>
-							<CardContent class="p-0 px-3">
-								<div class="flex items-center justify-between">
-									<p class="text-xs text-muted-foreground">
-										{{ getTypeLabel(type) }}
-									</p>
-									<p class="text-lg font-semibold text-chart-1">
-										{{ dashboardData?.by_type[type]?.active || 0 }}
-									</p>
-								</div>
-							</CardContent>
-						</Card>
-					</NuxtLink>
-				</div>
+				<div class="grid grid-cols-4 gap-2"></div>
 
 				<!-- Last Updated Footer -->
 				<div class="text-center text-xs text-muted-foreground pt-2">

@@ -138,30 +138,6 @@ const data = {
 			url: "/assessments",
 			icon: IconListDetails,
 		},
-		{
-			name: "Suggestions",
-			url: "/suggestions",
-			icon: IconFileAi,
-			disabled: true,
-		},
-		{
-			name: "Feedback Prompts",
-			url: "/feedback-prompts",
-			icon: IconFileDescription,
-			disabled: true,
-		},
-		{
-			name: "Next Actions",
-			url: "/next-actions",
-			icon: IconListDetails,
-			disabled: true,
-		},
-		{
-			name: "Training Examples",
-			url: "/training-examples",
-			icon: IconDatabase,
-			disabled: true,
-		},
 	],
 };
 </script>
@@ -173,7 +149,7 @@ const data = {
 				<SidebarMenuItem>
 					<SidebarMenuButton
 						as-child
-						class="data-[slot=sidebar-menu-button]:!p-1.5"
+						class="data-[slot=sidebar-menu-button]:p-1.5!"
 					>
 						<a href="#">
 							<IconInnerShadowTop class="size-5!" />
