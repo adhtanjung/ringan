@@ -123,12 +123,12 @@ const data = {
 	// ],
 	dataset: [
 		{
-			name: "Problem Types",
+			name: "Categories",
 			url: "/problem-types",
 			icon: IconFileDescription,
 		},
 		{
-			name: "Problems",
+			name: "Subcategories",
 			url: "/problems",
 			icon: IconFileDescription,
 		},

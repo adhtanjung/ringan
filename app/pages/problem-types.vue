@@ -28,10 +28,20 @@
 					@page-size-change="changePageSize"
 					@next-page="nextPage"
 					@prev-page="prevPage"
-					@search-change="(value) => (searchQuery = value)"
-					@filter-change="setFilter"
 					@clear-filters="clearFilters"
-				/>
+					enable-expansion
+					name-column-key="type_name"
+				>
+					<template #row-expansion="{ item }">
+						<NestedDataList
+							data-type="problems"
+							filter-key="category_id"
+							:filter-value="item.category_id"
+							:level="0"
+							:icon="FileText"
+						/>
+					</template>
+				</DatasetTable>
 			</div>
 		</div>
 
@@ -69,9 +79,9 @@
 			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
 				<div class="p-4 pb-0">
 					<SheetHeader class="space-y-1">
-						<SheetTitle class="text-lg">Problem Type Details</SheetTitle>
+						<SheetTitle class="text-lg">Category Details</SheetTitle>
 						<SheetDescription class="text-sm">
-							View detailed information about this problem type
+							View detailed information about this category
 						</SheetDescription>
 					</SheetHeader>
 				</div>
@@ -175,9 +185,11 @@ import { onMounted, ref } from "vue";
 
 // Components
 import DatasetTable from "@/components/admin/DatasetTable.vue";
+import NestedDataList from "@/components/admin/NestedDataList.vue";
 import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
 import ProblemTypeModal from "@/components/admin/ProblemTypeModal.vue";
+import { FileText } from "lucide-vue-next";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";

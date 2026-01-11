@@ -428,13 +428,13 @@ export const columnConfigs = {
 
 // Dataset type labels
 export const datasetLabels = {
-	problems: "Problem Categories",
+	problems: "Subcategories",
 	assessments: "Assessment Questions",
 	suggestions: "Therapeutic Suggestions",
 	feedback_prompts: "Feedback Prompts",
 	next_actions: "Next Actions",
 	training_examples: "Fine-tuning Examples",
-	problem_types: "Problem Types",
+	problem_types: "Categories",
 };
 
 // List of data types to use Supabase instead of the backend API

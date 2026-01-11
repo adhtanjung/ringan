@@ -141,13 +141,13 @@ const activeOnly = ref(true);
 
 // Data types configuration
 const allDataTypes = [
-	{ key: "problems", label: "Problem Categories" },
+	{ key: "problems", label: "Subcategories" },
 	{ key: "assessments", label: "Assessment Questions" },
 	{ key: "suggestions", label: "Therapeutic Suggestions" },
 	{ key: "feedback_prompts", label: "Feedback Prompts" },
 	{ key: "next_actions", label: "Next Actions" },
 	{ key: "training_examples", label: "Fine-tuning Examples" },
-	{ key: "problem_types", label: "Problem Types" },
+	{ key: "problem_types", label: "Categories" },
 	{ key: "domain_types", label: "Domain Types" },
 ];
 

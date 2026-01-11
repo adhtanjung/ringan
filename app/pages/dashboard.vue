@@ -258,7 +258,7 @@ const getTypeLabel = (typeKey: string) =>
 const featureCards = computed(() => [
 	{
 		key: "problems",
-		label: "Problems",
+		label: "Subcategories",
 		icon: FileText,
 		color: "text-chart-1",
 		bgColor: "bg-chart-1/10",
@@ -352,7 +352,9 @@ onMounted(() => {
 											)
 										}}
 									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">Problems</p>
+									<p class="text-xs text-muted-foreground mt-0.5">
+										Subcategories
+									</p>
 								</div>
 							</div>
 						</CardContent>
@@ -474,7 +476,7 @@ onMounted(() => {
 											dashboardData.overall.problems_count
 										}}</span>
 										<span class="text-[10px] text-muted-foreground uppercase"
-											>Problems</span
+											>Subcategories</span
 										>
 									</div>
 								</div>

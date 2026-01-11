@@ -1,18 +1,18 @@
 <template>
 	<Dialog :open="isOpen" @update:open="closeModal">
 		<DialogContent
-			class="max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden"
+			class="w-full max-w-full sm:max-w-2xl h-dvh sm:h-auto sm:max-h-[90vh] p-0 flex flex-col overflow-hidden rounded-none sm:rounded-lg"
 		>
 			<div class="px-6 py-4 border-b">
 				<DialogHeader>
 					<DialogTitle>
-						{{ isEditing ? "Edit" : "Create" }} Problem
+						{{ isEditing ? "Edit" : "Create" }} Subcategory
 					</DialogTitle>
 					<DialogDescription>
 						{{
 							isEditing
 								? "Update the information below"
-								: "Fill in the details to create a new problem"
+								: "Fill in the details to create a new subcategory"
 						}}
 					</DialogDescription>
 				</DialogHeader>
@@ -20,16 +20,19 @@
 
 			<!-- Form -->
 			<TooltipProvider>
-				<form @submit.prevent="saveItem" class="flex-1 flex flex-col min-h-0">
-					<ScrollArea class="flex-1 px-6">
-						<div class="py-6">
+				<form
+					@submit.prevent="saveItem"
+					class="flex-1 flex flex-col min-h-0 overflow-hidden"
+				>
+					<ScrollArea class="flex-auto w-full flex flex-col min-h-0">
+						<div class="px-6 py-6">
 							<!-- Form Fields -->
 							<div class="grid grid-cols-1 gap-4 sm:gap-6">
 								<!-- Problem Name -->
 								<div>
 									<FormFieldLabel
 										field-key="problem_name"
-										label="Problem Name"
+										label="Subcategory Name"
 										:required="true"
 										hint-title="Core Entity"
 										description="The common name for this issue (e.g. 'Difficulty Falling Asleep'). Avoid clinical jargon if possible."
@@ -43,7 +46,7 @@
 									/>
 								</div>
 
-								<!-- Category (from Problem Types) -->
+								<!-- Category (from Categories) -->
 								<div>
 									<FormFieldLabel
 										field-key="category"
@@ -137,7 +140,7 @@
 										id="description"
 										v-model="formData.description"
 										rows="3"
-										placeholder="Detailed description of this problem"
+										placeholder="Detailed description of this subcategory"
 										required
 										class="mt-1"
 									/>
@@ -357,10 +360,10 @@ const fetchProblemTypes = async () => {
 
 		problemTypes.value = data || [];
 	} catch (error) {
-		console.error("Error fetching problem types:", error);
+		console.error("Error fetching categories:", error);
 		toast({
 			title: "Fetch Error",
-			description: "Failed to load problem types. Please try again.",
+			description: "Failed to load categories. Please try again.",
 			variant: "destructive",
 		});
 	} finally {

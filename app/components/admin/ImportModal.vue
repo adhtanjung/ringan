@@ -240,39 +240,6 @@
 					</div>
 				</div>
 
-				<!-- Import Options (only shown when file is selected) -->
-				<div v-if="selectedFile" class="mb-4 sm:mb-6 space-y-4">
-					<div class="flex items-center">
-						<input
-							id="overwrite-existing"
-							v-model="overwriteExisting"
-							type="checkbox"
-							class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-						/>
-						<label
-							for="overwrite-existing"
-							class="ml-2 block text-sm sm:text-base text-gray-900"
-						>
-							Overwrite existing data
-						</label>
-					</div>
-
-					<div class="flex items-center">
-						<input
-							id="validate-data"
-							v-model="validateData"
-							type="checkbox"
-							class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-						/>
-						<label
-							for="validate-data"
-							class="ml-2 block text-sm sm:text-base text-gray-900"
-						>
-							Validate data before import
-						</label>
-					</div>
-				</div>
-
 				<!-- Progress Bar -->
 				<div v-if="isUploading" class="mb-4 sm:mb-6">
 					<div class="flex items-center justify-between mb-2">
@@ -427,20 +394,15 @@
 				</div>
 			</div>
 
-			<SheetFooter class="flex flex-col sm:flex-row gap-2 sm:gap-0">
+			<SheetFooter class="flex flex-row justify-end gap-3 pt-4">
 				<Button
 					variant="outline"
 					@click="$emit('close')"
 					:disabled="isUploading"
-					class="w-full sm:w-auto order-2 sm:order-1"
 				>
 					Cancel
 				</Button>
-				<Button
-					@click="startImport"
-					:disabled="!canImport || isUploading"
-					class="w-full sm:w-auto order-1 sm:order-2"
-				>
+				<Button @click="startImport" :disabled="!canImport || isUploading">
 					<svg
 						v-if="isUploading"
 						class="animate-spin -ml-1 mr-2 h-4 w-4"
@@ -519,8 +481,6 @@ const emit = defineEmits(["close", "import-success"]);
 // Reactive data
 const selectedFile = ref(null);
 const selectedDataType = ref(props.dataType || "");
-const overwriteExisting = ref(false);
-const validateData = ref(false);
 const isDragOver = ref(false);
 const isUploading = ref(false);
 const uploadProgress = ref(0);
@@ -547,13 +507,13 @@ const { supabase } = useSupabase();
 
 // Data types configuration
 const allDataTypes = [
-	{ value: "problems", label: "Problem Categories" },
+	{ value: "problems", label: "Subcategories" },
 	{ value: "assessments", label: "Assessment Questions" },
 	{ value: "suggestions", label: "Therapeutic Suggestions" },
 	{ value: "feedback_prompts", label: "Feedback Prompts" },
 	{ value: "next_actions", label: "Next Actions" },
 	{ value: "training_examples", label: "Fine-tuning Examples" },
-	{ value: "problem_types", label: "Problem Types" },
+	{ value: "problem_types", label: "Categories" },
 	{ value: "domain_types", label: "Domain Types" },
 ];
 
@@ -588,8 +548,6 @@ const closeModal = () => {
 const resetForm = () => {
 	selectedFile.value = null;
 	selectedDataType.value = props.dataType || "";
-	overwriteExisting.value = false;
-	validateData.value = false;
 	isDragOver.value = false;
 	isUploading.value = false;
 	uploadProgress.value = 0;
@@ -910,21 +868,74 @@ const handleConfirmImport = async (validItems) => {
 			return dataToInsert;
 		});
 
-		// Specialized logic for assessments to generate question_id if missing
+		// Specialized logic for assessments: match by question_text + sub_category_id + batch_id
 		if (selectedDataType.value === "assessments") {
+			// Get all existing assessments to match against
+			const { data: existingAssessments } = await supabase
+				.from("assessments")
+				.select("question_id, question_text, sub_category_id, batch_id");
+
+			// Build a lookup map for existing assessments
+			const existingMap = new Map();
+			let maxSequence = 0;
+
+			if (existingAssessments && existingAssessments.length > 0) {
+				for (const assessment of existingAssessments) {
+					// Create a composite key from the three fields
+					const key = `${assessment.question_text || ""}|${
+						assessment.sub_category_id || ""
+					}|${assessment.batch_id || ""}`;
+					existingMap.set(key, assessment.question_id);
+
+					// Track max sequence for new IDs
+					const match = assessment.question_id?.match(/^Q(\d+)$/);
+					if (match) {
+						const seq = parseInt(match[1], 10);
+						if (seq > maxSequence) maxSequence = seq;
+					}
+				}
+			}
+
+			// Assign question_ids: reuse existing if match found, otherwise generate new
 			for (const item of cleanedItems) {
-				if (!item.question_id && item.question_text) {
-					item.question_id = await generateQuestionId(
-						supabase,
-						item.question_text
-					);
+				const key = `${item.question_text || ""}|${
+					item.sub_category_id || ""
+				}|${item.batch_id || ""}`;
+				const existingId = existingMap.get(key);
+
+				if (existingId) {
+					// Match found - reuse existing question_id for update
+					item.question_id = existingId;
+				} else if (!item.question_id) {
+					// No match and no ID - generate new one
+					maxSequence++;
+					item.question_id = `Q${maxSequence}`;
+					// Add to map to prevent duplicates within same batch
+					existingMap.set(key, item.question_id);
 				}
 			}
 		}
 
+		// Determine the conflict column based on data type
+		const conflictColumns = {
+			assessments: "question_id",
+			problem_types: "category_id",
+			problems: "sub_category_id",
+			suggestions: "suggestion_id",
+			feedback_prompts: "prompt_id",
+			next_actions: "action_id",
+			training_examples: "example_id",
+		};
+
+		const onConflictColumn = conflictColumns[selectedDataType.value];
+
+		// Use upsert to handle duplicates (update existing, insert new)
 		const { data, error: supabaseError } = await supabase
 			.from(selectedDataType.value)
-			.insert(cleanedItems);
+			.upsert(cleanedItems, {
+				onConflict: onConflictColumn,
+				ignoreDuplicates: false, // Update existing records
+			});
 
 		if (supabaseError) throw supabaseError;
 

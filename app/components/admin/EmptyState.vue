@@ -88,7 +88,7 @@ const config = computed(() => {
 				description:
 					"Suggestions are the 'advice' given back to users based on their assessment results.",
 				tips: [
-					"Tailor suggestions to specific problem types",
+					"Tailor suggestions to specific categories",
 					"Keep advice actionable and supportive",
 					"Use structured IDs to link with backend logic",
 				],

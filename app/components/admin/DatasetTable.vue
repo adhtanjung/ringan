@@ -1,6 +1,7 @@
 <template>
 	<div class="h-full flex flex-col bg-background text-foreground">
 		<header
+			v-if="!hideToolbar"
 			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-2">
@@ -235,12 +236,18 @@
 			<ScrollArea class="h-full w-full">
 				<div class="min-w-[800px]">
 					<Table>
-						<TableHeader class="sticky top-0 z-10 bg-background shadow-sm">
-							<TableRow class="hover:bg-transparent border-b border-border">
+						<TableHeader class="sticky top-0 z-10 bg-muted/40 backdrop-blur-sm">
+							<TableRow class="hover:bg-transparent border-b border-border/60">
+								<!-- Expansion Toggle Header -->
+								<TableHead
+									v-if="enableExpansion"
+									class="w-[40px] px-2"
+								></TableHead>
+
+								<!-- Checkbox Header -->
 								<TableHead class="w-[40px] px-2 text-center">
-									<Checkbox
-										:checked="isAllSelected"
-										:indeterminate="isIndeterminate"
+									<SimpleCheckbox
+										:checked="isIndeterminate ? 'indeterminate' : isAllSelected"
 										@update:checked="toggleSelectAll"
 									/>
 								</TableHead>
@@ -248,7 +255,7 @@
 								<TableHead
 									v-for="column in columns"
 									:key="column.key"
-									class="h-9 px-3 text-xs font-medium text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors"
+									class="h-10 px-3 text-xs font-bold text-foreground/80 uppercase tracking-wide select-none cursor-pointer hover:text-foreground transition-colors"
 									@click="sortBy(column.key)"
 								>
 									<div class="flex items-center gap-1">
@@ -261,7 +268,7 @@
 								</TableHead>
 
 								<TableHead
-									class="w-[50px] px-2 sticky right-0 z-20 bg-background shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+									class="w-[50px] px-2 sticky right-0 z-20 bg-muted/40 backdrop-blur-sm shadow-[inset_1px_0_0_0_hsl(var(--border))]"
 								></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -283,7 +290,10 @@
 							</template>
 
 							<TableRow v-else-if="filteredData.length === 0">
-								<TableCell :colspan="columns.length + 2" class="p-0 h-[400px]">
+								<TableCell
+									:colspan="columns.length + (enableExpansion ? 3 : 2)"
+									class="p-0 h-[400px]"
+								>
 									<EmptyState
 										:dataset-type="dataType"
 										:has-filters="hasActiveFilters || searchQuery !== ''"
@@ -294,114 +304,169 @@
 								</TableCell>
 							</TableRow>
 
-							<TableRow
+							<template
 								v-else
 								v-for="(item, index) in paginatedData"
 								:key="item.id || index"
-								class="group h-10 border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
-								:data-state="selectedItems.includes(item.id) ? 'selected' : ''"
-								@click="emit('view', item)"
 							>
-								<TableCell class="p-2 text-center" @click.stop>
-									<Checkbox
-										:checked="selectedItems.includes(item.id)"
-										@update:checked="
-											(checked) => handleRowSelect(item.id, checked)
-										"
-									/>
-								</TableCell>
-
-								<TableCell
-									v-for="column in columns"
-									:key="column.key"
-									class="px-3 py-2 text-xs"
+								<!-- Main Row -->
+								<TableRow
+									class="group border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer transition-colors"
+									:class="[
+										expandedRows.has(item.id) ? 'bg-muted/30' : '',
+										variant === 'compact' ? 'h-8 text-xs' : 'h-10',
+									]"
+									:data-state="
+										selectedItems.includes(item.id) ? 'selected' : ''
+									"
+									@click="emit('view', item)"
 								>
-									<div v-if="column.type === 'text'" class="max-w-[300px]">
-										<span
-											v-if="column.key !== 'question_text'"
-											class="truncate block"
-											:title="getNestedValue(item, column.key)"
+									<!-- Expand/Collapse Toggle -->
+									<TableCell
+										v-if="enableExpansion"
+										class="text-center"
+										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										@click.stop
+									>
+										<Button
+											variant="ghost"
+											size="icon"
+											class="h-5 w-5 p-0 hover:bg-muted"
+											@click="(e) => toggleRowExpansion(item, e)"
 										>
-											{{ getNestedValue(item, column.key) || "-" }}
-										</span>
-										<div v-else>
-											<p
-												:class="expandedRows.has(item.id) ? '' : 'line-clamp-1'"
-												class="text-xs text-foreground/90"
+											<component
+												:is="expandedRows.has(item.id) ? Minus : Plus"
+												class="h-3 w-3"
+											/>
+										</Button>
+									</TableCell>
+
+									<!-- Checkbox -->
+									<TableCell
+										class="text-center"
+										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										@click.stop
+									>
+										<SimpleCheckbox
+											:checked="selectedItemsSet.has(item.id)"
+											@update:checked="
+												(checked) => handleRowSelect(item.id, checked)
+											"
+										/>
+									</TableCell>
+
+									<!-- Data Columns -->
+									<TableCell
+										v-for="column in columns"
+										:key="column.key"
+										class="px-3"
+										:class="[
+											variant === 'compact'
+												? 'py-1 text-[11px]'
+												: 'py-2 text-xs',
+										]"
+									>
+										<div v-if="column.type === 'text'" class="max-w-[300px]">
+											<span
+												v-if="column.key !== 'question_text'"
+												class="truncate block"
+												:title="getNestedValue(item, column.key)"
 											>
 												{{ getNestedValue(item, column.key) || "-" }}
-											</p>
+											</span>
+											<div v-else>
+												<p
+													:class="
+														expandedRows.has(item.id) ? '' : 'line-clamp-1'
+													"
+													class="text-xs text-foreground/90"
+												>
+													{{ getNestedValue(item, column.key) || "-" }}
+												</p>
+											</div>
 										</div>
-									</div>
 
-									<div
-										v-else-if="column.type === 'badge'"
-										class="flex flex-wrap gap-1"
+										<div
+											v-else-if="column.type === 'badge'"
+											class="flex flex-wrap gap-1"
+										>
+											<Badge
+												v-for="tag in normalizeArray(
+													getNestedValue(item, column.key)
+												)"
+												:key="tag"
+												variant="secondary"
+												class="px-1.5 py-0 h-5 text-[10px] font-normal border-0"
+												:class="getBadgeColorClass(tag, column.key)"
+											>
+												{{ tag }}
+											</Badge>
+										</div>
+
+										<div v-else-if="column.type === 'boolean'">
+											<Badge
+												variant="outline"
+												class="h-5 px-1.5 text-[10px]"
+												:class="
+													getNestedValue(item, column.key)
+														? 'bg-green-50 text-green-700 border-green-200'
+														: 'bg-red-50 text-red-700 border-red-200'
+												"
+											>
+												{{ getNestedValue(item, column.key) ? "Yes" : "No" }}
+											</Badge>
+										</div>
+
+										<span v-else>{{
+											getNestedValue(item, column.key) || "-"
+										}}</span>
+									</TableCell>
+
+									<TableCell
+										class="text-right sticky right-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted shadow-[inset_1px_0_0_0_hsl(var(--border))]"
+										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										@click.stop
 									>
-										<Badge
-											v-for="tag in normalizeArray(
-												getNestedValue(item, column.key)
-											)"
-											:key="tag"
-											variant="secondary"
-											class="px-1.5 py-0 h-5 text-[10px] font-normal border-0"
-											:class="getBadgeColorClass(tag, column.key)"
-										>
-											{{ tag }}
-										</Badge>
-									</div>
+										<DropdownMenu>
+											<DropdownMenuTrigger as-child>
+												<Button
+													variant="ghost"
+													size="icon"
+													class="opacity-100 transition-opacity"
+													:class="variant === 'compact' ? 'h-5 w-5' : 'h-6 w-6'"
+												>
+													<MoreHorizontal class="h-3.5 w-3.5" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem @click="editItem(item)"
+													>Edit</DropdownMenuItem
+												>
+												<DropdownMenuItem @click="openHistory(item)"
+													>View History</DropdownMenuItem
+												>
+												<DropdownMenuSeparator />
+												<DropdownMenuItem
+													@click="confirmDelete(item)"
+													class="text-red-600 focus:text-red-600"
+												>
+													Delete
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
 
-									<div v-else-if="column.type === 'boolean'">
-										<Badge
-											variant="outline"
-											class="h-5 px-1.5 text-[10px]"
-											:class="
-												getNestedValue(item, column.key)
-													? 'bg-green-50 text-green-700 border-green-200'
-													: 'bg-red-50 text-red-700 border-red-200'
-											"
-										>
-											{{ getNestedValue(item, column.key) ? "Yes" : "No" }}
-										</Badge>
-									</div>
-
-									<span v-else>{{
-										getNestedValue(item, column.key) || "-"
-									}}</span>
-								</TableCell>
-
-								<TableCell
-									class="p-2 text-right sticky right-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted shadow-[inset_1px_0_0_0_hsl(var(--border))]"
-									@click.stop
+								<!-- Nested Row -->
+								<TableRow
+									v-if="enableExpansion && expandedRows.has(item.id)"
+									class="bg-muted/30 hover:bg-muted/30"
 								>
-									<DropdownMenu>
-										<DropdownMenuTrigger as-child>
-											<Button
-												variant="ghost"
-												size="icon"
-												class="h-6 w-6 opacity-100 transition-opacity"
-											>
-												<MoreHorizontal class="h-3.5 w-3.5" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem @click="editItem(item)"
-												>Edit</DropdownMenuItem
-											>
-											<DropdownMenuItem @click="openHistory(item)"
-												>View History</DropdownMenuItem
-											>
-											<DropdownMenuSeparator />
-											<DropdownMenuItem
-												@click="confirmDelete(item)"
-												class="text-red-600 focus:text-red-600"
-											>
-												Delete
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</TableCell>
-							</TableRow>
+									<TableCell :colspan="columns.length + 2" class="p-0">
+										<slot name="row-expansion" :item="item" />
+									</TableCell>
+								</TableRow>
+							</template>
 						</TableBody>
 					</Table>
 				</div>
@@ -409,7 +474,8 @@
 		</div>
 
 		<div
-			class="flex items-center justify-between border-t border-border p-2 px-4 bg-muted/20"
+			class="flex items-center justify-between border-t border-border bg-muted/20"
+			:class="variant === 'compact' ? 'p-1 px-3 min-h-[36px]' : 'p-2 px-4'"
 		>
 			<div class="text-xs text-muted-foreground hidden sm:block">
 				{{ selectedItems.length }} selected
@@ -422,7 +488,10 @@
 						:model-value="props.pagination.limit.toString()"
 						@update:model-value="(v) => emit('page-size-change', parseInt(v))"
 					>
-						<SelectTrigger class="h-7 w-[60px] text-xs">
+						<SelectTrigger
+							class="w-[60px] text-xs"
+							:class="variant === 'compact' ? 'h-6' : 'h-7'"
+						>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -442,7 +511,7 @@
 					<Button
 						variant="outline"
 						size="icon"
-						class="h-7 w-7"
+						:class="variant === 'compact' ? 'h-6 w-6' : 'h-7 w-7'"
 						:disabled="props.currentPage <= 1"
 						@click="goToPage(props.currentPage - 1)"
 					>
@@ -451,7 +520,7 @@
 					<Button
 						variant="outline"
 						size="icon"
-						class="h-7 w-7"
+						:class="variant === 'compact' ? 'h-6 w-6' : 'h-7 w-7'"
 						:disabled="props.currentPage >= totalPages"
 						@click="goToPage(props.currentPage + 1)"
 					>
@@ -518,15 +587,17 @@ import { ref, computed, watch } from "vue";
 import {
 	Search,
 	RotateCw,
-	Plus,
 	Download,
 	ListFilter,
 	ChevronLeft,
 	ChevronRight,
+	ChevronDown,
 	ArrowUpDown,
 	MoreHorizontal,
 	Inbox,
 	AlertTriangle,
+	Plus,
+	Minus,
 } from "lucide-vue-next";
 
 // Admin Components
@@ -539,7 +610,7 @@ import HistoryDialog from "@/components/admin/HistoryDialog.vue";
 // Shadcn Components (Assumed Imports based on your setup)
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import SimpleCheckbox from "@/components/ui/SimpleCheckbox.vue";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -607,6 +678,13 @@ const props = defineProps({
 	searchQuery: { type: String, default: "" },
 	filters: { type: Object, default: () => ({}) },
 	dataType: { type: String, default: "" },
+	orderBy: { type: String, default: "" },
+	orderDirection: { type: String, default: "asc" },
+	enableExpansion: { type: Boolean, default: false },
+	variant: { type: String, default: "default" }, // 'default' | 'compact'
+	hideToolbar: { type: Boolean, default: false },
+	indentLevel: { type: Number, default: 0 },
+	nameColumnKey: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -629,6 +707,7 @@ const emit = defineEmits([
 
 // --- State ---
 const selectedItems = ref([]);
+const selectedItemsSet = computed(() => new Set(selectedItems.value));
 const sortColumn = ref("");
 const sortDirection = ref("asc");
 const expandedRows = ref(new Set());
@@ -772,6 +851,17 @@ const historyRecordId = ref("");
 const openHistory = (item) => {
 	historyRecordId.value = item.id;
 	showHistory.value = true;
+};
+
+// Expansion Logic
+const toggleRowExpansion = (item, event) => {
+	event.stopPropagation();
+	const id = item.id;
+	if (expandedRows.value.has(id)) {
+		expandedRows.value.delete(id);
+	} else {
+		expandedRows.value.add(id);
+	}
 };
 </script>
 

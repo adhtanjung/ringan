@@ -6,13 +6,13 @@
 			<div class="px-6 py-4 border-b">
 				<DialogHeader>
 					<DialogTitle>
-						{{ isEditing ? "Edit" : "Create" }} Problem Type
+						{{ isEditing ? "Edit" : "Create" }} Category
 					</DialogTitle>
 					<DialogDescription>
 						{{
 							isEditing
 								? "Update the information below"
-								: "Fill in the details to create a new problem type"
+								: "Fill in the details to create a new category"
 						}}
 					</DialogDescription>
 				</DialogHeader>
@@ -31,7 +31,7 @@
 										field-key="type_name"
 										label="Type Name"
 										:required="true"
-										description="Problem type category name"
+										description="Category name"
 									/>
 									<div class="mt-1 flex flex-col sm:flex-row gap-2">
 										<Input
@@ -51,7 +51,7 @@
 												validationStatus.type_name.loading ||
 												(isEditing && formData.type_name === originalTypeName)
 											"
-											class="whitespace-nowrap flex-shrink-0"
+											class="whitespace-nowrap shrink-0"
 										>
 											<Loader2
 												v-if="validationStatus.type_name.loading"
@@ -126,13 +126,13 @@
 										field-key="description"
 										label="Description"
 										:required="true"
-										description="Detailed description of this problem type"
+										description="Detailed description of this category"
 									/>
 									<Textarea
 										id="description"
 										v-model="formData.description"
 										rows="3"
-										placeholder="Detailed description of this problem type"
+										placeholder="Detailed description of this category"
 										required
 										class="mt-1"
 									/>

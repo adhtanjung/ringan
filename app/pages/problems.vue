@@ -4,7 +4,7 @@
 			class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 w-full"
 		>
 			<PageHeader
-				title="Problems"
+				title="Subcategories"
 				description="Manage and organize problem definitions"
 			/>
 			<div class="mt-6">
@@ -72,9 +72,9 @@
 			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
 				<div class="p-4 pb-0">
 					<SheetHeader class="space-y-1">
-						<SheetTitle class="text-lg">Problem Details</SheetTitle>
+						<SheetTitle class="text-lg">Subcategory Details</SheetTitle>
 						<SheetDescription class="text-sm">
-							View detailed information about this problem
+							View detailed information about this subcategory
 						</SheetDescription>
 					</SheetHeader>
 				</div>
@@ -83,7 +83,7 @@
 					<div v-if="viewingItem" class="mt-4 space-y-4">
 						<div class="space-y-2">
 							<h4 class="text-sm font-medium text-muted-foreground">
-								Problem Name
+								Subcategory Name
 							</h4>
 							<p class="text-base">{{ viewingItem.problem_name }}</p>
 						</div>
