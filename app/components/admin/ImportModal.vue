@@ -843,18 +843,6 @@ const handleConfirmImport = async (validItems) => {
 			}
 		}
 
-		uploadProgress.value = 60;
-
-		// If overwrite, delete first
-		if (overwriteExisting.value) {
-			const { error: deleteError } = await supabase
-				.from(selectedDataType.value)
-				.delete()
-				.neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
-
-			if (deleteError) throw deleteError;
-		}
-
 		uploadProgress.value = 70;
 
 		// Batch insert
