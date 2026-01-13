@@ -752,10 +752,10 @@ export function useDatasetManagement(dataType: string) {
 
 		try {
 			if (USE_SUPABASE_FOR.includes(dataType)) {
-				// Use Supabase
+				// Use Supabase - Soft delete by setting is_active to false
 				const { error: supabaseError } = await supabase
 					.from(dataType)
-					.delete()
+					.update({ is_active: false, updated_at: new Date().toISOString() })
 					.eq("id", item.id);
 
 				if (supabaseError) throw supabaseError;
@@ -797,10 +797,10 @@ export function useDatasetManagement(dataType: string) {
 
 		try {
 			if (USE_SUPABASE_FOR.includes(dataType)) {
-				// Use Supabase
+				// Use Supabase - Soft delete by setting is_active to false
 				const { error: supabaseError } = await supabase
 					.from(dataType)
-					.delete()
+					.update({ is_active: false, updated_at: new Date().toISOString() })
 					.in("id", itemIds);
 
 				if (supabaseError) throw supabaseError;

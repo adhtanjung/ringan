@@ -564,11 +564,11 @@ const handleBatchSave = async (payload) => {
 	}
 
 	try {
-		// Delete removed rows first
+		// Soft delete removed rows (set is_active to false)
 		if (deletedIds && deletedIds.length > 0) {
 			const { error: deleteError } = await supabaseClient
 				.from("assessments")
-				.delete()
+				.update({ is_active: false, updated_at: new Date().toISOString() })
 				.in("id", deletedIds);
 
 			if (deleteError) throw deleteError;

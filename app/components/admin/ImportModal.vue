@@ -845,6 +845,19 @@ const handleConfirmImport = async (validItems) => {
 
 		uploadProgress.value = 70;
 
+		// If overwrite, soft delete existing records first (set is_active to false)
+		if (overwriteExisting.value) {
+			const { error: softDeleteError } = await supabase
+				.from(selectedDataType.value)
+				.update({ is_active: false, updated_at: new Date().toISOString() })
+				.neq("id", "00000000-0000-0000-0000-000000000000"); // Update all
+
+			if (softDeleteError) {
+				console.warn("Soft delete warning:", softDeleteError);
+				// Continue anyway - some tables might not have is_active column
+			}
+		}
+
 		// Batch insert
 		const cleanedItems = items.map((item) => {
 			const { id, _id, created_at, updated_at, ...rest } = item;
@@ -852,6 +865,7 @@ const handleConfirmImport = async (validItems) => {
 			// For assessments, generate question_id if missing
 			const dataToInsert = {
 				...rest,
+				is_active: true, // Ensure imported items are active
 				updated_at: new Date().toISOString(),
 			};
 
