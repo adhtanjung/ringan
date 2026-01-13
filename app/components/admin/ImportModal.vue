@@ -490,6 +490,8 @@ const allErrors = ref([]);
 const showAllErrors = ref(false);
 const showPreviewModal = ref(false);
 const previewData = ref([]);
+const overwriteExisting = ref(true); // Always overwrite when importing
+const validateData = ref(true);
 
 // List of data types migrated to Supabase
 const USE_SUPABASE_FOR = [
