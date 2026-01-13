@@ -26,7 +26,7 @@
 					/>
 				</div>
 
-				<Sheet>
+				<Sheet v-if="showFilters">
 					<SheetTrigger as-child>
 						<Button
 							variant="outline"
@@ -46,137 +46,264 @@
 							>
 						</Button>
 					</SheetTrigger>
-					<SheetContent>
-						<SheetHeader>
-							<SheetTitle>Filter {{ title }}</SheetTitle>
-							<SheetDescription>Narrow down your results.</SheetDescription>
-						</SheetHeader>
-						<div class="grid gap-4 py-4">
-							<div v-if="showFilters" class="space-y-4">
-								<template v-if="title === 'Problem Categories'">
-									<div class="space-y-2">
-										<Label class="text-xs">Domain</Label>
-										<Select
-											:model-value="props.filters.domain || '__all__'"
-											@update:model-value="
-												(v) =>
-													handleFilterChange(
-														'domain',
-														v === '__all__' ? null : v
-													)
-											"
-										>
-											<SelectTrigger
-												><SelectValue placeholder="All domains"
-											/></SelectTrigger>
-											<SelectContent>
-												<SelectItem value="__all__">All domains</SelectItem>
-												<SelectItem
-													v-for="d in uniqueDomains"
-													:key="d"
-													:value="d"
-													>{{ d }}</SelectItem
-												>
-											</SelectContent>
-										</Select>
-									</div>
-									<div class="space-y-2">
-										<Label class="text-xs">Category</Label>
-										<Select
-											:model-value="props.filters.category || '__all__'"
-											@update:model-value="
-												(v) =>
-													handleFilterChange(
-														'category',
-														v === '__all__' ? null : v
-													)
-											"
-										>
-											<SelectTrigger
-												><SelectValue placeholder="All categories"
-											/></SelectTrigger>
-											<SelectContent>
-												<SelectItem value="__all__">All categories</SelectItem>
-												<SelectItem
-													v-for="c in uniqueCategories"
-													:key="c"
-													:value="c"
-													>{{ c }}</SelectItem
-												>
-											</SelectContent>
-										</Select>
-									</div>
-								</template>
-
-								<div class="pt-4 border-t space-y-4">
-									<h4
-										class="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"
+					<SheetContent
+						class="sm:max-w-md flex flex-col h-full bg-background border-l-border"
+					>
+						<SheetHeader class="pb-6 border-b border-border/50 space-y-2">
+							<div class="flex items-center gap-2">
+								<div class="p-2 bg-primary/10 rounded-lg">
+									<ListFilter class="h-5 w-5 text-primary" />
+								</div>
+								<div>
+									<SheetTitle
+										class="text-xl font-bold tracking-tight text-foreground"
 									>
-										<AlertTriangle class="h-3.5 w-3.5 text-amber-500" />
-										Data Quality
-									</h4>
+										Filter {{ title }}
+									</SheetTitle>
+									<SheetDescription
+										class="text-xs text-muted-foreground font-medium"
+									>
+										{{ activeFilterCount }} active filters applied
+									</SheetDescription>
+								</div>
+							</div>
+						</SheetHeader>
 
-									<div class="space-y-3">
+						<ScrollArea class="flex-1 -mx-6 px-6">
+							<div class="grid gap-8 py-6">
+								<div v-if="showFilters" class="space-y-6">
+									<template
+										v-if="
+											title === 'Problem Categories' || dataType === 'problems'
+										"
+									>
+										<!-- Classification Section -->
+										<div class="space-y-4">
+											<div class="flex items-center justify-between">
+												<h4
+													class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
+												>
+													Classification
+												</h4>
+												<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
+											</div>
+
+											<div class="space-y-4 px-1">
+												<div class="space-y-1.5">
+													<Label
+														class="text-xs font-semibold text-foreground/80"
+														>Domain</Label
+													>
+													<Select
+														:model-value="props.filters.domain || '__all__'"
+														@update:model-value="
+															(v) =>
+																handleFilterChange(
+																	'domain',
+																	v === '__all__' ? null : v
+																)
+														"
+													>
+														<SelectTrigger
+															class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
+														>
+															<div
+																class="flex items-center gap-2 text-muted-foreground"
+															>
+																<Globe class="h-3.5 w-3.5" />
+																<SelectValue
+																	placeholder="All domains"
+																	class="text-foreground"
+																/>
+															</div>
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="__all__" class="text-xs"
+																>All domains</SelectItem
+															>
+															<SelectItem
+																v-for="d in uniqueDomains"
+																:key="d"
+																:value="d"
+																class="text-xs"
+																>{{ d }}</SelectItem
+															>
+														</SelectContent>
+													</Select>
+												</div>
+
+												<div class="space-y-1.5">
+													<Label
+														class="text-xs font-semibold text-foreground/80"
+														>Category</Label
+													>
+													<Select
+														:model-value="props.filters.category || '__all__'"
+														@update:model-value="
+															(v) =>
+																handleFilterChange(
+																	'category',
+																	v === '__all__' ? null : v
+																)
+														"
+													>
+														<SelectTrigger
+															class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
+														>
+															<div
+																class="flex items-center gap-2 text-muted-foreground"
+															>
+																<Tag class="h-3.5 w-3.5" />
+																<SelectValue
+																	placeholder="All categories"
+																	class="text-foreground"
+																/>
+															</div>
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="__all__" class="text-xs"
+																>All categories</SelectItem
+															>
+															<SelectItem
+																v-for="c in uniqueCategories"
+																:key="c"
+																:value="c"
+																class="text-xs"
+																>{{ c }}</SelectItem
+															>
+														</SelectContent>
+													</Select>
+												</div>
+											</div>
+										</div>
+									</template>
+
+									<template v-if="dataType === 'assessments'">
+										<div class="space-y-4">
+											<div class="flex items-center justify-between">
+												<h4
+													class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
+												>
+													Grouping
+												</h4>
+												<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
+											</div>
+											<div class="space-y-1.5 px-1">
+												<Label class="text-xs font-semibold text-foreground/80"
+													>Subcategory</Label
+												>
+												<Select
+													:model-value="
+														props.filters.sub_category_id || '__all__'
+													"
+													@update:model-value="
+														(v) =>
+															handleFilterChange(
+																'sub_category_id',
+																v === '__all__' ? null : v
+															)
+													"
+												>
+													<SelectTrigger
+														class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
+													>
+														<div
+															class="flex items-center gap-2 text-muted-foreground"
+														>
+															<Layers class="h-3.5 w-3.5" />
+															<SelectValue
+																placeholder="All subcategories"
+																class="text-foreground"
+															/>
+														</div>
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="__all__" class="text-xs"
+															>All subcategories</SelectItem
+														>
+														<SelectItem
+															v-for="sc in uniqueSubCategories"
+															:key="sc"
+															:value="sc"
+															class="text-xs"
+															>{{ sc }}</SelectItem
+														>
+													</SelectContent>
+												</Select>
+											</div>
+										</div>
+									</template>
+
+									<div class="space-y-4">
 										<div class="flex items-center justify-between">
-											<Label class="text-xs font-medium"
-												>Missing Required Fields</Label
+											<h4
+												class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
 											>
-											<Switch
-												:checked="props.filters.quality === 'missing_fields'"
-												@update:checked="
+												Status & State
+											</h4>
+											<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
+										</div>
+										<div class="space-y-1.5 px-1">
+											<Label class="text-xs font-semibold text-foreground/80"
+												>Status</Label
+											>
+											<Select
+												:model-value="props.filters.is_active || '__all__'"
+												@update:model-value="
 													(v) =>
 														handleFilterChange(
-															'quality',
-															v ? 'missing_fields' : null
+															'is_active',
+															v === '__all__' ? null : v
 														)
 												"
-											/>
-										</div>
-
-										<div
-											v-if="dataType === 'assessments'"
-											class="flex items-center justify-between"
-										>
-											<Label class="text-xs font-medium"
-												>Incomplete Scale Labels</Label
 											>
-											<Switch
-												:checked="props.filters.quality === 'incomplete_scale'"
-												@update:checked="
-													(v) =>
-														handleFilterChange(
-															'quality',
-															v ? 'incomplete_scale' : null
-														)
-												"
-											/>
-										</div>
-
-										<div class="flex items-center justify-between">
-											<Label class="text-xs font-medium"
-												>Inactive Items Only</Label
-											>
-											<Switch
-												:checked="props.filters.is_active === 'false'"
-												@update:checked="
-													(v) =>
-														handleFilterChange('is_active', v ? 'false' : null)
-												"
-											/>
+												<SelectTrigger
+													class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
+												>
+													<div
+														class="flex items-center gap-2 text-muted-foreground"
+													>
+														<Activity class="h-3.5 w-3.5" />
+														<SelectValue
+															placeholder="All Statuses"
+															class="text-foreground"
+														/>
+													</div>
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="__all__" class="text-xs"
+														>All Statuses</SelectItem
+													>
+													<SelectItem value="true" class="text-xs"
+														>Active</SelectItem
+													>
+													<SelectItem value="false" class="text-xs"
+														>Inactive</SelectItem
+													>
+												</SelectContent>
+											</Select>
 										</div>
 									</div>
 								</div>
 							</div>
-						</div>
-						<SheetFooter>
+						</ScrollArea>
+
+						<SheetFooter class="pt-6 border-t border-border mt-auto pb-2">
 							<Button
 								v-if="hasActiveFilters"
-								variant="ghost"
+								variant="outline"
 								@click="handleClearFilters"
-								class="w-full justify-start text-red-500 hover:text-red-600"
+								class="w-full text-destructive hover:text-destructive hover:bg-destructive/5 hover:border-destructive/30 h-10 gap-2 font-medium transition-all"
 							>
+								<Trash2 class="h-4 w-4" />
 								Clear all filters
 							</Button>
+							<div
+								v-else
+								class="text-center w-full text-xs text-muted-foreground py-2 italic opacity-60"
+							>
+								No active filters
+							</div>
 						</SheetFooter>
 					</SheetContent>
 				</Sheet>
@@ -307,17 +434,17 @@
 							<template
 								v-else
 								v-for="(item, index) in paginatedData"
-								:key="item.id || index"
+								:key="item[props.idKey] || index"
 							>
 								<!-- Main Row -->
 								<TableRow
 									class="group border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer transition-colors"
 									:class="[
-										expandedRows.has(item.id) ? 'bg-muted/30' : '',
+										expandedRows.has(item[props.idKey]) ? 'bg-muted/30' : '',
 										variant === 'compact' ? 'h-8 text-xs' : 'h-10',
 									]"
 									:data-state="
-										selectedItems.includes(item.id) ? 'selected' : ''
+										selectedItems.includes(item[props.idKey]) ? 'selected' : ''
 									"
 									@click="emit('view', item)"
 								>
@@ -335,7 +462,7 @@
 											@click="(e) => toggleRowExpansion(item, e)"
 										>
 											<component
-												:is="expandedRows.has(item.id) ? Minus : Plus"
+												:is="expandedRows.has(item[props.idKey]) ? Minus : Plus"
 												class="h-3 w-3"
 											/>
 										</Button>
@@ -348,9 +475,9 @@
 										@click.stop
 									>
 										<SimpleCheckbox
-											:checked="selectedItemsSet.has(item.id)"
+											:checked="selectedItemsSet.has(item[props.idKey])"
 											@update:checked="
-												(checked) => handleRowSelect(item.id, checked)
+												(checked) => handleRowSelect(item[props.idKey], checked)
 											"
 										/>
 									</TableCell>
@@ -459,7 +586,7 @@
 
 								<!-- Nested Row -->
 								<TableRow
-									v-if="enableExpansion && expandedRows.has(item.id)"
+									v-if="enableExpansion && expandedRows.has(item[props.idKey])"
 									class="bg-muted/30 hover:bg-muted/30"
 								>
 									<TableCell :colspan="columns.length + 2" class="p-0">
@@ -598,6 +725,11 @@ import {
 	AlertTriangle,
 	Plus,
 	Minus,
+	Globe,
+	Tag,
+	Trash2,
+	Layers,
+	Activity,
 } from "lucide-vue-next";
 
 // Admin Components
@@ -685,6 +817,7 @@ const props = defineProps({
 	hideToolbar: { type: Boolean, default: false },
 	indentLevel: { type: Number, default: 0 },
 	nameColumnKey: { type: String, default: "" },
+	idKey: { type: String, default: "id" },
 });
 
 const emit = defineEmits([
@@ -748,16 +881,29 @@ const paginatedData = computed(() => {
 });
 
 // Logic to show filters based on title (Copied from logic)
-const showFilters = computed(() =>
-	[
+const showFilters = computed(() => {
+	const filterableTitles = [
 		"Problem Categories",
 		"Therapeutic Suggestions",
 		"Assessment Questions",
 		"Feedback Prompts",
 		"Next Actions",
 		"Fine-tuning Examples",
-	].includes(props.title)
-);
+		"Subcategories", // New label for problems
+	];
+	const filterableTypes = [
+		"problems",
+		"assessments",
+		"suggestions",
+		"feedback_prompts",
+		"next_actions",
+		"training_examples",
+	];
+	return (
+		filterableTitles.includes(props.title) ||
+		filterableTypes.includes(props.dataType)
+	);
+});
 
 // Unique value extractors (Simplified for brevity)
 const extractUnique = (key) =>
@@ -766,6 +912,7 @@ const extractUnique = (key) =>
 	].sort();
 const uniqueDomains = computed(() => extractUnique("domain"));
 const uniqueCategories = computed(() => extractUnique("category"));
+const uniqueSubCategories = computed(() => extractUnique("sub_category_id"));
 
 // --- Actions ---
 const getNestedValue = (obj, path) =>
@@ -777,7 +924,9 @@ const handleFilterChange = (k, v) => emit("filter-change", k, v);
 const handleClearFilters = () => emit("clear-filters");
 
 const toggleSelectAll = (checked) => {
-	selectedItems.value = checked ? filteredData.value.map((i) => i.id) : [];
+	selectedItems.value = checked
+		? filteredData.value.map((i) => i[props.idKey])
+		: [];
 };
 const handleRowSelect = (id, checked) => {
 	if (checked) selectedItems.value.push(id);
@@ -803,6 +952,7 @@ const handleDeleteConfirm = () => {
 	showDeleteDialog.value = false;
 };
 const openCreateModal = () => emit("create");
+const goToPage = (page) => emit("page-change", page);
 const previousPage = () => {
 	if (props.currentPage > 1) emit("prev-page");
 };
@@ -849,14 +999,14 @@ const showHistory = ref(false);
 const historyRecordId = ref("");
 
 const openHistory = (item) => {
-	historyRecordId.value = item.id;
+	historyRecordId.value = item[props.idKey];
 	showHistory.value = true;
 };
 
 // Expansion Logic
 const toggleRowExpansion = (item, event) => {
 	event.stopPropagation();
-	const id = item.id;
+	const id = item[props.idKey];
 	if (expandedRows.value.has(id)) {
 		expandedRows.value.delete(id);
 	} else {

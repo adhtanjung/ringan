@@ -26,10 +26,16 @@
 import { computed } from "vue";
 import { Check, Minus } from "lucide-vue-next";
 
-const props = defineProps<{
-	modelValue?: boolean | "indeterminate";
-	checked?: boolean | "indeterminate";
-}>();
+const props = withDefaults(
+	defineProps<{
+		modelValue?: boolean | "indeterminate";
+		checked?: boolean | "indeterminate";
+	}>(),
+	{
+		modelValue: undefined,
+		checked: undefined,
+	}
+);
 
 const emit = defineEmits(["update:modelValue", "update:checked", "change"]);
 

@@ -13,9 +13,7 @@
 		<!-- Normal Mode -->
 		<template v-else>
 			<!-- Main Container -->
-			<div
-				class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 w-full"
-			>
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sm:py-3 w-full">
 				<!-- Bulk Edit Toggle Header -->
 				<div class="flex items-center justify-between mb-4">
 					<div></div>

@@ -1,7 +1,7 @@
 <template>
 	<div class="min-h-screen bg-gray-50 overflow-x-hidden">
 		<!-- Main Container -->
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<!-- Dataset Table Container -->
 			<div class="mt-6">
 				<DatasetTable
@@ -16,6 +16,8 @@
 					:total-pages="totalPages"
 					:search-query="searchQuery"
 					:filters="filters"
+					@search-change="(q) => (searchQuery = q)"
+					@filter-change="setFilter"
 					@create="openCreateModal"
 					@edit="openEditModal"
 					@view="openDetailView"
@@ -31,6 +33,7 @@
 					@clear-filters="clearFilters"
 					enable-expansion
 					name-column-key="type_name"
+					id-key="category_id"
 				>
 					<template #row-expansion="{ item }">
 						<NestedDataList

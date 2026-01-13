@@ -1,12 +1,7 @@
 <template>
 	<div class="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full">
-		<div
-			class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 w-full"
-		>
-			<PageHeader
-				title="Subcategories"
-				description="Manage and organize problem definitions"
-			/>
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+			<!-- PageHeader removed for consistency -->
 			<div class="mt-6">
 				<DatasetTable
 					:title="dataTypeLabel"
@@ -32,13 +27,7 @@
 					@page-size-change="changePageSize"
 					@next-page="nextPage"
 					@prev-page="prevPage"
-					@search-change="(value) => (searchQuery = value)"
-					@filter-change="setFilter"
-					@clear-filters="clearFilters"
 				>
-					<template #header-title>
-						<span></span>
-					</template>
 				</DatasetTable>
 			</div>
 		</div>

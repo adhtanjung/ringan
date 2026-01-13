@@ -457,6 +457,9 @@ export function useDatasetManagement(dataType: string) {
 	const adminApiUrl =
 		config.public.adminApiUrl || "http://localhost:8000/api/v1/admin";
 
+	const route = useRoute();
+	const router = useRouter();
+
 	// Reactive data
 	const loading = ref(false);
 	const error = ref<string | null>(null);
@@ -477,6 +480,14 @@ export function useDatasetManagement(dataType: string) {
 		total: 0,
 		has_more: false,
 	});
+
+	// Initialize page from URL
+	if (route.query.page) {
+		const pageFromUrl = parseInt(route.query.page as string) || 1;
+		if (pageFromUrl > 1) {
+			pagination.value.skip = (pageFromUrl - 1) * pagination.value.limit;
+		}
+	}
 
 	// Toast notifications
 	const { toast } = useToast();
@@ -534,29 +545,7 @@ export function useDatasetManagement(dataType: string) {
 				Object.keys(filters.value).forEach((key) => {
 					const value = filters.value[key];
 					if (value) {
-						if (key === "quality") {
-							if (value === "missing_fields") {
-								// Check for null or empty strings in key fields
-								if (dataType === "problems") {
-									query = query.or("description.is.null,description.eq.''");
-								} else if (dataType === "assessments") {
-									query = query.or(
-										"description.is.null,description.eq.'',question_text.is.null,question_text.eq.''"
-									);
-								} else if (dataType === "suggestions") {
-									query = query.or(
-										"suggestion_text.is.null,suggestion_text.eq.''"
-									);
-								}
-							} else if (
-								value === "incomplete_scale" &&
-								dataType === "assessments"
-							) {
-								query = query.or(
-									"scale_label_1.is.null,scale_label_2.is.null,scale_label_3.is.null,scale_label_4.is.null"
-								);
-							}
-						} else if (key === "is_active") {
+						if (key === "is_active") {
 							query = query.eq(key, value === "true");
 						} else {
 							query = query.eq(key, value);
@@ -899,18 +888,46 @@ export function useDatasetManagement(dataType: string) {
 	const goToPage = async (page: number) => {
 		const newSkip = (page - 1) * pagination.value.limit;
 		pagination.value.skip = newSkip;
+
+		// Update URL
+		router.push({
+			query: {
+				...route.query,
+				page: page.toString(),
+			},
+		});
+
 		await refreshData();
 	};
 
 	const changePageSize = async (newLimit: number) => {
 		pagination.value.limit = newLimit;
 		pagination.value.skip = 0; // Reset to first page
+
+		// Update URL (reset to page 1)
+		router.push({
+			query: {
+				...route.query,
+				page: "1",
+			},
+		});
+
 		await refreshData();
 	};
 
 	const nextPage = async () => {
 		if (pagination.value.has_more) {
 			pagination.value.skip += pagination.value.limit;
+
+			const nextPageNum =
+				Math.floor(pagination.value.skip / pagination.value.limit) + 1;
+			router.push({
+				query: {
+					...route.query,
+					page: nextPageNum.toString(),
+				},
+			});
+
 			await refreshData();
 		}
 	};
@@ -921,6 +938,16 @@ export function useDatasetManagement(dataType: string) {
 				0,
 				pagination.value.skip - pagination.value.limit
 			);
+
+			const prevPageNum =
+				Math.floor(pagination.value.skip / pagination.value.limit) + 1;
+			router.push({
+				query: {
+					...route.query,
+					page: prevPageNum.toString(),
+				},
+			});
+
 			await refreshData();
 		}
 	};
