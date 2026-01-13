@@ -190,6 +190,34 @@
 											class="mt-1"
 										/>
 									</div>
+
+									<div>
+										<FormFieldLabel field-key="clusters" label="Cluster" />
+										<Input
+											id="clusters"
+											:model-value="formData.clusters ?? undefined"
+											@update:model-value="(v) => (formData.clusters = v as string)"
+											placeholder="e.g. c1"
+											class="mt-1"
+										/>
+									</div>
+
+									<div>
+										<FormFieldLabel
+											field-key="order_number"
+											label="Order Number"
+										/>
+										<Input
+											id="order_number"
+											type="number"
+											:model-value="formData.order_number ?? undefined"
+											@update:model-value="
+												(v) => (formData.order_number = v ? Number(v) : null)
+											"
+											placeholder="e.g. 1"
+											class="mt-1"
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -284,6 +312,8 @@ interface Assessment {
 	scale_label_3?: string | null;
 	scale_label_4?: string | null;
 	batch_id?: string | null;
+	clusters?: string | null;
+	order_number?: number | null;
 	is_active: boolean;
 	created_at?: string;
 	updated_at?: string;
@@ -314,6 +344,8 @@ const getInitialState = (): Assessment => ({
 	scale_label_3: null,
 	scale_label_4: null,
 	batch_id: null,
+	clusters: null,
+	order_number: null,
 	is_active: true,
 });
 

@@ -131,6 +131,12 @@ export const columnConfigs = {
 			description: "Groups questions that were added or updated together",
 		},
 		{
+			key: "order_number",
+			label: "Order",
+			type: "number",
+			description: "Display order of the question within a batch/cluster",
+		},
+		{
 			key: "created_at",
 			label: "Created",
 			type: "date",

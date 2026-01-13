@@ -1010,7 +1010,10 @@ const downloadTemplate = async (format) => {
 						scale_label_4: "Nearly every day",
 						next_step: "continue",
 						clusters: "c1",
+						next_step: "continue",
+						clusters: "c1",
 						batch_id: "B001",
+						order_number: 1,
 					},
 					{
 						sub_category_id: "P005-7",
@@ -1023,6 +1026,7 @@ const downloadTemplate = async (format) => {
 						next_step: "continue",
 						clusters: "c1",
 						batch_id: "B001",
+						order_number: 2,
 					},
 				],
 				suggestions: [

@@ -517,6 +517,8 @@ const spreadsheetColumns = computed(() => [
 	{ key: "scale_label_3", label: "Label 3", type: "text" },
 	{ key: "scale_label_4", label: "Label 4", type: "text" },
 	{ key: "batch_id", label: "Batch ID", type: "text" },
+	{ key: "clusters", label: "Cluster", type: "text" },
+	{ key: "order_number", label: "Order", type: "number" },
 ]);
 
 // Fetch all assessments for spreadsheet mode (no pagination)
