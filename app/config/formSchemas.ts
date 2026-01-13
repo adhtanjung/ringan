@@ -434,7 +434,7 @@ export const FORM_SCHEMAS: Record<string, FormFieldConfig[]> = {
 	problem_types: [
 		{
 			key: "type_name",
-			label: "Type Name",
+			label: "Category Name",
 			type: "text",
 			required: true,
 			placeholder: "e.g., Work Stress, Social Anxiety",

@@ -179,7 +179,7 @@
 									</template>
 
 									<template v-if="dataType === 'assessments'">
-										<div class="space-y-4">
+										<div class="space-y-4 px-4">
 											<div class="flex items-center justify-between">
 												<h4
 													class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
@@ -235,7 +235,7 @@
 									</template>
 
 									<div class="space-y-4">
-										<div class="flex items-center justify-between">
+										<div class="flex items-center justify-between px-4">
 											<h4
 												class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
 											>

@@ -6,18 +6,18 @@ import { useSupabase } from "./useSupabase";
 export const columnConfigs = {
 	problems: [
 		{
-			key: "problem_name",
-			label: "Problem Name",
-			type: "text",
-			description:
-				"Human-readable name of the mental health problem or condition",
-		},
-		{
 			key: "category",
 			label: "Category",
 			type: "badge",
 			description:
 				"Primary classification of the mental health issue (e.g., Anxiety, Depression, Stress)",
+		},
+		{
+			key: "problem_name",
+			label: "Sub Category Name",
+			type: "text",
+			description:
+				"Human-readable name of the mental health problem or condition",
 		},
 		{
 			key: "category_id",
@@ -401,7 +401,7 @@ export const columnConfigs = {
 	problem_types: [
 		{
 			key: "type_name",
-			label: "Type Name",
+			label: "Category Name",
 			type: "text",
 			description: "Problem type category name",
 		},
@@ -477,7 +477,7 @@ export function useDatasetManagement(dataType: string) {
 	const editingItem = ref<any>(null);
 	const searchQuery = ref("");
 	const searchDebounceTimer = ref<NodeJS.Timeout | null>(null);
-	const filters = ref<Record<string, string>>({});
+	const filters = ref<Record<string, string>>({ is_active: "true" });
 	const sortBy = ref<string>("");
 	const sortOrder = ref<"asc" | "desc">("desc");
 
@@ -657,7 +657,7 @@ export function useDatasetManagement(dataType: string) {
 	};
 
 	const clearFilters = () => {
-		filters.value = {};
+		filters.value = { is_active: "true" };
 		pagination.value.skip = 0;
 		refreshData();
 	};

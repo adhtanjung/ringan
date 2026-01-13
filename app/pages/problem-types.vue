@@ -33,7 +33,7 @@
 					@clear-filters="clearFilters"
 					enable-expansion
 					name-column-key="type_name"
-					id-key="category_id"
+					id-key="id"
 				>
 					<template #row-expansion="{ item }">
 						<NestedDataList
@@ -96,7 +96,7 @@
 							<h4
 								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
 							>
-								Type Name
+								Category Name
 							</h4>
 							<p class="text-sm font-medium">{{ viewingItem.type_name }}</p>
 						</div>

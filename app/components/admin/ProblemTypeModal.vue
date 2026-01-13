@@ -29,7 +29,7 @@
 								<div>
 									<FormFieldLabel
 										field-key="type_name"
-										label="Type Name"
+										label="Category Name"
 										:required="true"
 										description="Category name"
 									/>

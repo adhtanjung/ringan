@@ -105,7 +105,7 @@
 				<!-- Type Name (for problem_type) -->
 				<div v-if="type === 'problem_type'">
 					<Label for="type_name" class="text-sm font-medium">
-						Type Name
+						Category Name
 						<span class="text-red-500 ml-1">*</span>
 					</Label>
 					<div class="mt-1 flex gap-2">

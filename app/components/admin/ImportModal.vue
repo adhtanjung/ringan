@@ -983,16 +983,16 @@ const downloadTemplate = async (format) => {
 				],
 				problems: [
 					{
-						problem_name: "Panic Attack",
 						category: "Anxiety",
+						problem_name: "Panic Attack",
 						category_id: "ANX_001",
 						sub_category_id: "P005-7",
 						description: "Sudden episode of intense fear",
 						severity_level: "1",
 					},
 					{
-						problem_name: "Social Phobia",
 						category: "Anxiety",
+						problem_name: "Social Phobia",
 						category_id: "ANX_002",
 						sub_category_id: "P008-2",
 						description: "Fear of being judged by others",

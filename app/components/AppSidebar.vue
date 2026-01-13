@@ -134,7 +134,7 @@ const data = {
 		},
 
 		{
-			name: "Assessments",
+			name: "Assessment Questions",
 			url: "/assessments",
 			icon: IconListDetails,
 		},
