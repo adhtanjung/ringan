@@ -27,6 +27,9 @@
 					@page-size-change="changePageSize"
 					@next-page="nextPage"
 					@prev-page="prevPage"
+					@search-change="(value) => (searchQuery = value)"
+					@filter-change="setFilter"
+					@clear-filters="clearFilters"
 				>
 				</DatasetTable>
 			</div>
