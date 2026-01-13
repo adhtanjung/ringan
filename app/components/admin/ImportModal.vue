@@ -913,7 +913,7 @@ const handleConfirmImport = async (validItems) => {
 				} else if (!item.question_id) {
 					// No match and no ID - generate new one
 					maxSequence++;
-					item.question_id = `Q${maxSequence}`;
+					item.question_id = `Q${String(maxSequence).padStart(8, "0")}`;
 					// Add to map to prevent duplicates within same batch
 					existingMap.set(key, item.question_id);
 				}

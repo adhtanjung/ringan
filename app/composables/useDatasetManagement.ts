@@ -478,6 +478,8 @@ export function useDatasetManagement(dataType: string) {
 	const searchQuery = ref("");
 	const searchDebounceTimer = ref<NodeJS.Timeout | null>(null);
 	const filters = ref<Record<string, string>>({});
+	const sortBy = ref<string>("");
+	const sortOrder = ref<"asc" | "desc">("desc");
 
 	// Pagination state
 	const pagination = ref({
@@ -561,10 +563,13 @@ export function useDatasetManagement(dataType: string) {
 
 				// Sorting
 				// Default sort by created_at desc, but problem_types by type_name asc
-				const sortBy =
-					dataType === "problem_types" ? "type_name" : "created_at";
-				const ascending = dataType === "problem_types";
-				query = query.order(sortBy, { ascending });
+				const finalSortBy =
+					sortBy.value ||
+					(dataType === "problem_types" ? "type_name" : "created_at");
+				const finalAscending = sortBy.value
+					? sortOrder.value === "asc"
+					: dataType === "problem_types";
+				query = query.order(finalSortBy, { ascending: finalAscending });
 
 				const { data: items, count, error: supabaseError } = await query;
 
@@ -653,6 +658,13 @@ export function useDatasetManagement(dataType: string) {
 
 	const clearFilters = () => {
 		filters.value = {};
+		pagination.value.skip = 0;
+		refreshData();
+	};
+
+	const setSort = (column: string, order: "asc" | "desc") => {
+		sortBy.value = column;
+		sortOrder.value = order;
 		pagination.value.skip = 0;
 		refreshData();
 	};
@@ -1040,5 +1052,8 @@ export function useDatasetManagement(dataType: string) {
 		prevPage,
 		setFilter,
 		clearFilters,
+		setSort,
+		sortBy,
+		sortOrder,
 	};
 }

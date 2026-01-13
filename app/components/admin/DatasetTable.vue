@@ -836,13 +836,14 @@ const emit = defineEmits([
 	"filter-change",
 	"clear-filters",
 	"view",
+	"sort",
 ]);
 
 // --- State ---
 const selectedItems = ref([]);
 const selectedItemsSet = computed(() => new Set(selectedItems.value));
-const sortColumn = ref("");
-const sortDirection = ref("asc");
+const sortColumn = ref(props.orderBy || "");
+const sortDirection = ref(props.orderDirection || "asc");
 const expandedRows = ref(new Set());
 const showDeleteDialog = ref(false);
 const itemToDelete = ref(null);
@@ -873,9 +874,12 @@ const paginatedData = computed(() => {
 	// Sorting logic for current page view
 	if (!sortColumn.value) return filteredData.value;
 	return [...filteredData.value].sort((a, b) => {
-		const valA = getNestedValue(a, sortColumn.value);
-		const valB = getNestedValue(b, sortColumn.value);
-		const comp = valA < valB ? -1 : valA > valB ? 1 : 0;
+		const valA = String(getNestedValue(a, sortColumn.value) || "");
+		const valB = String(getNestedValue(b, sortColumn.value) || "");
+		const comp = valA.localeCompare(valB, undefined, {
+			numeric: true,
+			sensitivity: "base",
+		});
 		return sortDirection.value === "asc" ? comp : -comp;
 	});
 });
@@ -940,6 +944,7 @@ const sortBy = (key) => {
 		sortColumn.value = key;
 		sortDirection.value = "asc";
 	}
+	emit("sort", { column: sortColumn.value, direction: sortDirection.value });
 };
 
 const editItem = (item) => emit("edit", item);
@@ -970,6 +975,16 @@ const getBadgeColorClass = (val, key) => {
 watch(
 	() => props.searchQuery,
 	(v) => (localSearchQuery.value = v || "")
+);
+
+watch(
+	() => props.orderBy,
+	(v) => (sortColumn.value = v || "")
+);
+
+watch(
+	() => props.orderDirection,
+	(v) => (sortDirection.value = v || "asc")
 );
 const showBulkEdit = ref(false);
 const showBulkDelete = ref(false);

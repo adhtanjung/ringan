@@ -38,8 +38,8 @@ export async function generateQuestionId(
 		// Find the maximum sequence number
 		const maxSequence = sequences.length > 0 ? Math.max(...sequences) : 0;
 
-		// Return next sequence in format Q{number}
-		return `Q${maxSequence + 1}`;
+		// Return next sequence in format Q{padded_number}
+		return `Q${String(maxSequence + 1).padStart(8, "0")}`;
 	} catch (error) {
 		console.error("Unexpected error in generateQuestionId:", error);
 		return "Q1";

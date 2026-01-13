@@ -42,6 +42,8 @@
 						:total-pages="totalPages"
 						:search-query="searchQuery"
 						:filters="filters"
+						:order-by="sortBy"
+						:order-direction="sortOrder"
 						@create="openCreateModal"
 						@edit="openEditModal"
 						@delete="deleteItem"
@@ -56,6 +58,7 @@
 						@search-change="(value) => (searchQuery = value)"
 						@filter-change="setFilter"
 						@clear-filters="clearFilters"
+						@sort="({ column, direction }) => setSort(column, direction)"
 						@view="openDetailView"
 					/>
 				</div>
@@ -395,6 +398,9 @@ const {
 	prevPage,
 	setFilter,
 	clearFilters,
+	setSort,
+	sortBy,
+	sortOrder,
 } = useDatasetManagement("assessments");
 
 const { supabase: supabaseClient } = useSupabase(); // Explicitly get supabase client
