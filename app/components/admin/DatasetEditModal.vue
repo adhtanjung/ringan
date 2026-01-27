@@ -4,9 +4,20 @@
 			class="w-[95vw] sm:max-w-2xl max-h-[92dvh] flex flex-col p-0 overflow-hidden"
 		>
 			<DialogHeader class="px-6 py-4 border-b">
-				<DialogTitle class="text-xl font-semibold">
-					{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
-				</DialogTitle>
+				<div class="flex items-center justify-between">
+					<DialogTitle class="text-xl font-semibold" id="tour-edit-modal-title">
+						{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
+					</DialogTitle>
+					<Button
+						variant="ghost"
+						size="sm"
+						class="gap-1 h-7"
+						@click="startTour('edit_general')"
+					>
+						<HelpCircle class="h-4 w-4" />
+						<span class="text-xs">Help</span>
+					</Button>
+				</div>
 			</DialogHeader>
 
 			<div class="flex-1 overflow-y-auto min-h-0 p-6 pt-2">
@@ -240,6 +251,7 @@
 						form="dataset-edit-form"
 						class="w-full sm:w-auto sm:min-w-[100px]"
 						:disabled="isSaving || (hasTouched && validationErrors.length > 0)"
+						id="tour-edit-save-btn"
 					>
 						<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
 						{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
@@ -253,7 +265,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from "vue";
 import { cn } from "@/lib/utils";
-import { X, Loader2, AlertCircle } from "lucide-vue-next";
+import { X, Loader2, AlertCircle, HelpCircle } from "lucide-vue-next";
+import { useOnboarding } from "@/composables/useOnboarding";
 import {
 	Dialog,
 	DialogContent,
@@ -305,6 +318,8 @@ const jsonErrors = reactive<Record<string, string>>({});
 const newTag = reactive<Record<string, string>>({});
 const isSaving = ref(false);
 const hasTouched = ref(false);
+
+const { startTour } = useOnboarding();
 
 // Computed properties
 const isEditing = computed(() => !!props.item);

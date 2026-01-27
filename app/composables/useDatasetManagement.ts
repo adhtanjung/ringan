@@ -6,11 +6,10 @@ import { useSupabase } from "./useSupabase";
 export const columnConfigs = {
 	problems: [
 		{
-			key: "category",
+			key: "category_display",
 			label: "Category",
-			type: "badge",
-			description:
-				"Primary classification of the mental health issue (e.g., Anxiety, Depression, Stress)",
+			type: "text",
+			description: "Category ID - Name",
 		},
 		{
 			key: "problem_name",
@@ -18,12 +17,6 @@ export const columnConfigs = {
 			type: "text",
 			description:
 				"Human-readable name of the mental health problem or condition",
-		},
-		{
-			key: "category_id",
-			label: "Category ID",
-			type: "text",
-			description: "Category identifier from problem_types (via lookup)",
 		},
 		{
 			key: "sub_category_id",
@@ -40,11 +33,11 @@ export const columnConfigs = {
 				"Detailed explanation of the problem, its symptoms, and characteristics",
 		},
 		{
-			key: "severity_level",
-			label: "Severity",
+			key: "is_active",
+			label: "Status",
 			type: "badge",
 			description:
-				"Numeric scale (1-5) indicating the typical severity level of this problem",
+				"Whether this subcategory is currently active and selectable",
 		},
 	],
 	assessments: [
@@ -418,6 +411,12 @@ export const columnConfigs = {
 			description: "Detailed description of this problem type",
 		},
 		{
+			key: "is_active",
+			label: "Status",
+			type: "badge",
+			description: "Whether this category is currently active",
+		},
+		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -454,7 +453,10 @@ const USE_SUPABASE_FOR = [
 	"training_examples",
 ];
 
-export function useDatasetManagement(dataType: string) {
+export function useDatasetManagement(
+	dataType: string,
+	initialFilters: Record<string, string> = {},
+) {
 	// Get Supabase client
 	const { supabase } = useSupabase();
 
@@ -477,7 +479,7 @@ export function useDatasetManagement(dataType: string) {
 	const editingItem = ref<any>(null);
 	const searchQuery = ref("");
 	const searchDebounceTimer = ref<NodeJS.Timeout | null>(null);
-	const filters = ref<Record<string, string>>({ is_active: "true" });
+	const filters = ref<Record<string, string>>({ ...initialFilters });
 	const sortBy = ref<string>("");
 	const sortOrder = ref<"asc" | "desc">("desc");
 
@@ -503,7 +505,7 @@ export function useDatasetManagement(dataType: string) {
 	// Computed properties
 	const columns = computed(() => (columnConfigs as any)[dataType] || []);
 	const dataTypeLabel = computed(
-		() => (datasetLabels as any)[dataType] || "Dataset"
+		() => (datasetLabels as any)[dataType] || "Dataset",
 	);
 
 	// Methods
@@ -528,7 +530,7 @@ export function useDatasetManagement(dataType: string) {
 						query = query.ilike("question_text", `%${search}%`);
 					} else if (dataType === "problems") {
 						query = query.or(
-							`problem_name.ilike.%${search}%,description.ilike.%${search}%`
+							`problem_name.ilike.%${search}%,description.ilike.%${search}%`,
 						);
 					} else if (dataType === "suggestions") {
 						query = query.ilike("suggestion_text", `%${search}%`);
@@ -536,15 +538,15 @@ export function useDatasetManagement(dataType: string) {
 						query = query.ilike("prompt_text", `%${search}%`);
 					} else if (dataType === "next_actions") {
 						query = query.or(
-							`action_name.ilike.%${search}%,description.ilike.%${search}%`
+							`action_name.ilike.%${search}%,description.ilike.%${search}%`,
 						);
 					} else if (dataType === "training_examples") {
 						query = query.or(
-							`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`
+							`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`,
 						);
 					} else if (dataType === "problem_types") {
 						query = query.or(
-							`type_name.ilike.%${search}%,description.ilike.%${search}%`
+							`type_name.ilike.%${search}%,description.ilike.%${search}%`,
 						);
 					}
 				}
@@ -575,7 +577,31 @@ export function useDatasetManagement(dataType: string) {
 
 				if (supabaseError) throw supabaseError;
 
-				data.value = items || [];
+				if (supabaseError) throw supabaseError;
+
+				// Transform data if needed
+				if (dataType === "problems") {
+					// Fetch category names from problem_types to ensure accuracy
+					const { data: types } = await supabase
+						.from("problem_types")
+						.select("category_id, type_name");
+					const typeMap = new Map(
+						types?.map((t) => [t.category_id, t.type_name]) || [],
+					);
+
+					data.value = (items || []).map((item) => {
+						const catName =
+							typeMap.get(item.category_id) || item.category || "";
+						return {
+							...item,
+							category_display: item.category_id
+								? `${item.category_id} - ${catName}`
+								: catName,
+						};
+					});
+				} else {
+					data.value = items || [];
+				}
 				pagination.value = {
 					skip: from,
 					limit: pagination.value.limit,
@@ -603,7 +629,7 @@ export function useDatasetManagement(dataType: string) {
 				});
 
 				const response = (await $fetch(
-					`${adminApiUrl}/dataset/${dataType}?${params.toString()}`
+					`${adminApiUrl}/dataset/${dataType}?${params.toString()}`,
 				)) as any;
 
 				data.value = response.data?.items || [];
@@ -657,7 +683,7 @@ export function useDatasetManagement(dataType: string) {
 	};
 
 	const clearFilters = () => {
-		filters.value = { is_active: "true" };
+		filters.value = { ...initialFilters };
 		pagination.value.skip = 0;
 		refreshData();
 	};
@@ -722,7 +748,7 @@ export function useDatasetManagement(dataType: string) {
 						{
 							method: "PUT",
 							body: itemData,
-						}
+						},
 					);
 				} else {
 					// Create new item
@@ -800,6 +826,7 @@ export function useDatasetManagement(dataType: string) {
 			toast({
 				title: "Error",
 				description:
+					(err as any)?.message ||
 					(err as any)?.data?.detail ||
 					`Failed to delete ${dataTypeLabel.value.toLowerCase()}. Please try again.`,
 				variant: "destructive",
@@ -848,6 +875,7 @@ export function useDatasetManagement(dataType: string) {
 			toast({
 				title: "Error",
 				description:
+					(err as any)?.message ||
 					(err as any)?.data?.detail ||
 					`Failed to delete ${dataTypeLabel.value.toLowerCase()}s. Please try again.`,
 				variant: "destructive",
@@ -954,7 +982,7 @@ export function useDatasetManagement(dataType: string) {
 		if (pagination.value.skip > 0) {
 			pagination.value.skip = Math.max(
 				0,
-				pagination.value.skip - pagination.value.limit
+				pagination.value.skip - pagination.value.limit,
 			);
 
 			const prevPageNum =
@@ -972,24 +1000,49 @@ export function useDatasetManagement(dataType: string) {
 
 	// Computed properties for pagination
 	const currentPage = computed(
-		() => Math.floor(pagination.value.skip / pagination.value.limit) + 1
+		() => Math.floor(pagination.value.skip / pagination.value.limit) + 1,
 	);
 	const totalPages = computed(() =>
-		Math.ceil(pagination.value.total / pagination.value.limit)
+		Math.ceil(pagination.value.total / pagination.value.limit),
 	);
 
-	const bulkUpdateItems = async (ids: string[], field: string, value: any) => {
+	const bulkUpdateItems = async (
+		idsOrData: string[] | { ids: string[]; field: string; value: any },
+		field?: string,
+		value?: any,
+	) => {
 		actionLoading.value = true;
 		try {
+			let ids: string[];
+			let targetField: string;
+			let targetValue: any;
+
+			if (Array.isArray(idsOrData)) {
+				ids = idsOrData;
+				targetField = field!;
+				targetValue = value;
+			} else {
+				ids = idsOrData.ids;
+				targetField = idsOrData.field;
+				targetValue = idsOrData.value;
+			}
+
 			if (USE_SUPABASE_FOR.includes(dataType)) {
 				const { error: supabaseError } = await supabase
 					.from(dataType)
-					.update({ [field]: value, updated_at: new Date().toISOString() })
+					.update({
+						[targetField]: targetValue,
+						updated_at: new Date().toISOString(),
+					})
 					.in("id", ids);
 
 				if (supabaseError) throw supabaseError;
 			} else {
 				// API implementation if needed
+				await $fetch(`${adminApiUrl}/dataset/${dataType}/bulk-update`, {
+					method: "POST",
+					body: { ids, field: targetField, value: targetValue },
+				});
 			}
 
 			toast({

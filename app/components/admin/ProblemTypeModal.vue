@@ -5,9 +5,20 @@
 		>
 			<div class="px-6 py-4 border-b">
 				<DialogHeader>
-					<DialogTitle>
-						{{ isEditing ? "Edit" : "Create" }} Category
-					</DialogTitle>
+					<div class="flex items-center justify-between">
+						<DialogTitle id="tour-pt-modal-title">
+							{{ isEditing ? "Edit" : "Create" }} Category
+						</DialogTitle>
+						<Button
+							variant="ghost"
+							size="sm"
+							class="gap-1 h-7"
+							@click="startTour('edit_problem_type')"
+						>
+							<HelpCircle class="h-4 w-4" />
+							<span class="text-xs">Help</span>
+						</Button>
+					</div>
 					<DialogDescription>
 						{{
 							isEditing
@@ -55,6 +66,7 @@
 												(isEditing && formData.type_name === originalTypeName)
 											"
 											class="whitespace-nowrap shrink-0"
+											id="tour-pt-check-btn"
 										>
 											<Loader2
 												v-if="validationStatus.type_name.loading"
@@ -181,6 +193,7 @@
 								:disabled="
 									isSaving || (hasTouched && validationErrors.length > 0)
 								"
+								id="tour-pt-save-btn"
 							>
 								<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
 								{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
@@ -195,10 +208,17 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, reactive, nextTick } from "vue";
-import { AlertCircle, Loader2, CheckCircle, XCircle } from "lucide-vue-next";
+import {
+	AlertCircle,
+	Loader2,
+	CheckCircle,
+	XCircle,
+	HelpCircle,
+} from "lucide-vue-next";
 import { useSupabase } from "@/composables/useSupabase";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { generateCategoryId } from "@/utils/categoryIdGenerator";
+import { useOnboarding } from "@/composables/useOnboarding";
 
 // shadcn-vue components
 import { Button } from "@/components/ui/button";
@@ -248,6 +268,7 @@ const emit = defineEmits<{
 // Composables
 const { supabase } = useSupabase();
 const { toast } = useToast();
+const { startTour } = useOnboarding();
 
 // Reactive data
 const formData = reactive<ProblemType>({

@@ -1,0 +1,76 @@
+/* Driver.js Custom Theme for Modern Clean Look */
+.driverjs-theme {
+	background-color: white;
+	color: #1a1a1a;
+	border-radius: 12px;
+	box-shadow:
+		0 10px 15px -3px rgba(0, 0, 0, 0.1),
+		0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	padding: 0;
+	max-width: 300px;
+}
+
+.driverjs-theme .driver-popover-title {
+	font-family: "DM Sans", sans-serif;
+	font-weight: 600;
+	font-size: 16px;
+	margin-bottom: 8px;
+	color: #111827;
+}
+
+.driverjs-theme .driver-popover-description {
+	font-family: "Inter", sans-serif;
+	font-size: 14px;
+	line-height: 1.5;
+	color: #4b5563;
+	margin-bottom: 0;
+}
+
+.driverjs-theme .driver-popover-footer {
+	margin-top: 12px;
+}
+
+.driverjs-theme .driver-popover-btn {
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	padding: 6px 12px;
+	transition: all 0.2s;
+}
+
+.driverjs-theme .driver-popover-next-btn {
+	background-color: #0f172a; /* Slate 900 */
+	color: white;
+	border: none;
+	text-shadow: none;
+}
+.driverjs-theme .driver-popover-next-btn:hover {
+	background-color: #1e293b; /* Slate 800 */
+}
+
+.driverjs-theme .driver-popover-prev-btn {
+	border: 1px solid #e2e8f0;
+	color: #64748b;
+	background-color: white;
+}
+.driverjs-theme .driver-popover-prev-btn:hover {
+	background-color: #f8fafc;
+	color: #0f172a;
+}
+
+.driverjs-theme .driver-popover-close-btn {
+	color: #94a3b8;
+}
+.driverjs-theme .driver-popover-close-btn:hover {
+	color: #ef4444;
+}
+
+/* Ensure driver.js appears above Shadcn Modals (z-index 50) */
+.driver-active .driver-overlay,
+.driver-active-element {
+	z-index: 10000 !important;
+}
+
+.driver-popover {
+	z-index: 10001 !important;
+}

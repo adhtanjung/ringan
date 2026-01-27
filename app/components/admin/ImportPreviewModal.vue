@@ -208,22 +208,36 @@ watch(
 			fetchValidationData();
 		}
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 const dataTypeLabel = computed(
-	() => (datasetLabels as any)[props.dataType] || props.dataType
+	() => (datasetLabels as any)[props.dataType] || props.dataType,
 );
 const EXCLUDED_FIELDS = [
 	"id",
 	"question_id",
+	"sub_category_id",
 	"created_at",
 	"updated_at",
 	"is_active",
 ];
 const columns = computed(() => {
 	const allCols = (columnConfigs as any)[props.dataType] || [];
-	return allCols.filter((col: any) => !EXCLUDED_FIELDS.includes(col.key));
+	const cols = allCols.filter((col: any) => !EXCLUDED_FIELDS.includes(col.key));
+
+	// Ensure category_id is included for problems, even if removed from main table config
+	if (props.dataType === "problems") {
+		if (!cols.find((c: any) => c.key === "category_id")) {
+			cols.unshift({
+				key: "category_id",
+				label: "Category ID",
+				type: "text",
+			});
+		}
+	}
+
+	return cols;
 });
 
 const normalizedData = computed(() => {
@@ -251,7 +265,9 @@ const normalizedData = computed(() => {
 						lk === key.toLowerCase() ||
 						lk === label ||
 						lk.replace(/\s/g, "_") === key ||
-						key.replace(/_/g, " ") === lk
+						key.replace(/_/g, " ") === lk ||
+						(key === "problem_name" &&
+							(lk === "sub_category_name" || lk === "subcategory_name"))
 					);
 				});
 
@@ -282,7 +298,7 @@ const validationResults = computed(() => {
 				!validSubCategoryIds.value.includes(item.sub_category_id)
 			) {
 				errors.push(
-					`Subcategory ID "${item.sub_category_id}" does not exist in the database`
+					`Subcategory ID "${item.sub_category_id}" does not exist in the database`,
 				);
 				fieldErrors.sub_category_id = true;
 			}
@@ -310,7 +326,7 @@ const validationResults = computed(() => {
 				].forEach((key) => {
 					if (!item[key]) {
 						errors.push(
-							`${key.replace(/_/g, " ")} is required for scale questions`
+							`${key.replace(/_/g, " ")} is required for scale questions`,
 						);
 						fieldErrors[key] = true;
 					}
@@ -318,22 +334,18 @@ const validationResults = computed(() => {
 			}
 		} else if (props.dataType === "problems") {
 			if (!item.problem_name) {
-				errors.push("Problem name is required");
+				errors.push("Subcategory Name is required");
 				fieldErrors.problem_name = true;
 			}
-			if (!item.sub_category_id) {
-				errors.push("Subcategory ID is required");
-				fieldErrors.sub_category_id = true;
-			}
-			// Only validate if we are NOT in the process of generating new IDs (overwrite case)
-			// But for import, it's safer to just check if it already exists or keep it simple
-			if (
-				item.category_id &&
+			if (!item.category_id) {
+				errors.push("Category ID is required");
+				fieldErrors.category_id = true;
+			} else if (
 				!isLoadingValidationData.value &&
 				!validCategoryIds.value.includes(item.category_id)
 			) {
 				errors.push(
-					`Category ID "${item.category_id}" does not exist in the database`
+					`Category ID "${item.category_id}" does not exist in the database`,
 				);
 				fieldErrors.category_id = true;
 			}
@@ -349,7 +361,7 @@ const validationResults = computed(() => {
 			// Check for valid alphanumeric/underscore format for category_id
 			if (item.category_id && !/^[a-z0-9_]+$/i.test(item.category_id)) {
 				errors.push(
-					"Category ID must contain only letters, numbers, and underscores"
+					"Category ID must contain only letters, numbers, and underscores",
 				);
 				fieldErrors.category_id = true;
 			}
@@ -369,11 +381,11 @@ const validationResults = computed(() => {
 });
 
 const validItems = computed(() =>
-	validationResults.value.filter((r) => r.isValid).map((r) => r.data)
+	validationResults.value.filter((r) => r.isValid).map((r) => r.data),
 );
 
 const invalidItems = computed(() =>
-	validationResults.value.filter((r) => !r.isValid)
+	validationResults.value.filter((r) => !r.isValid),
 );
 
 const confirmImport = () => {

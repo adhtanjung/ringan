@@ -16,12 +16,29 @@
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sm:py-3 w-full">
 				<!-- Bulk Edit Toggle Header -->
 				<div class="flex items-center justify-between mb-4">
-					<div></div>
+					<div class="flex items-center gap-2">
+						<h1
+							class="text-2xl font-semibold tracking-tight"
+							id="tour-page-title"
+						>
+							Assessments
+						</h1>
+						<Button
+							variant="outline"
+							size="sm"
+							class="gap-2"
+							@click="startTour('assessments')"
+						>
+							<HelpCircle class="h-4 w-4" />
+							Help
+						</Button>
+					</div>
 					<Button
 						variant="outline"
 						size="sm"
 						class="gap-2"
 						@click="enterSpreadsheetMode"
+						id="tour-bulk-edit"
 					>
 						<TableIcon class="h-4 w-4" />
 						Bulk Edit Mode
@@ -359,7 +376,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Table as TableIcon } from "lucide-vue-next";
+import { Loader2, Table as TableIcon, HelpCircle } from "lucide-vue-next";
+import { useOnboarding } from "@/composables/useOnboarding";
 
 // Use the shared composable
 const {
@@ -401,8 +419,9 @@ const {
 	setSort,
 	sortBy,
 	sortOrder,
-} = useDatasetManagement("assessments");
+} = useDatasetManagement("assessments", { is_active: "true" });
 
+const { startTour } = useOnboarding();
 const { supabase: supabaseClient } = useSupabase(); // Explicitly get supabase client
 
 // Detail view state
@@ -590,6 +609,7 @@ const handleBatchSave = async (payload) => {
 		if (newItems.length > 0) {
 			const itemsToInsert = newItems.map((item) => ({
 				...item,
+				is_active: true,
 				created_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
 			}));

@@ -18,7 +18,7 @@
 			</div>
 
 			<div class="flex flex-1 items-center justify-end gap-2">
-				<div class="relative w-full max-w-[250px]">
+				<div class="relative w-full max-w-[250px]" id="tour-search">
 					<Search
 						class="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground"
 					/>
@@ -42,6 +42,7 @@
 						)
 					"
 					@click="showFilterBar = !showFilterBar"
+					id="tour-filter-toggle"
 				>
 					<ListFilter class="h-3.5 w-3.5" />
 					Filters
@@ -65,6 +66,7 @@
 									class="h-8 w-8"
 									@click="emit('refresh')"
 									:disabled="loading"
+									id="tour-refresh"
 								>
 									<RotateCw
 										class="h-3.5 w-3.5"
@@ -77,7 +79,7 @@
 					</TooltipProvider>
 
 					<DropdownMenu>
-						<DropdownMenuTrigger as-child>
+						<DropdownMenuTrigger as-child id="tour-import-export">
 							<Button variant="outline" size="icon" class="h-8 w-8">
 								<Download class="h-3.5 w-3.5" />
 							</Button>
@@ -96,6 +98,7 @@
 						size="sm"
 						class="h-8 gap-1 ml-2 text-xs"
 						@click="openCreateModal"
+						id="tour-create-new"
 					>
 						<Plus class="h-3.5 w-3.5" />
 						New
@@ -107,11 +110,12 @@
 		<!-- Inline Filter Bar -->
 		<div
 			v-if="showFilters && showFilterBar"
+			id="tour-filter-bar"
 			class="border-b border-border bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200"
 		>
 			<div class="flex items-center gap-4 flex-wrap flex-1">
 				<template
-					v-if="title === 'Problem Categories' || dataType === 'problems'"
+					v-if="dataType === 'problem_types' || title === 'Problem Categories'"
 				>
 					<div class="flex flex-col gap-1.5 min-w-[160px]">
 						<Label
@@ -157,7 +161,9 @@
 							</SelectContent>
 						</Select>
 					</div>
+				</template>
 
+				<template v-if="dataType === 'problems' || title === 'Subcategories'">
 					<div class="flex flex-col gap-1.5 min-w-[160px]">
 						<Label
 							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
@@ -199,6 +205,60 @@
 									:value="c"
 									class="text-xs"
 									>{{ c }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.sub_category_id
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Subcategory
+							<span
+								v-if="props.filters.sub_category_id"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.sub_category_id || '__all__'"
+							@update:model-value="
+								(v) =>
+									handleFilterChange(
+										'sub_category_id',
+										v === '__all__' ? null : v,
+									)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue
+										placeholder="All subcategories"
+										class="truncate"
+									/>
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All subcategories</SelectItem
+								>
+								<SelectItem
+									v-for="sc in uniqueSubCategories"
+									:key="sc.id"
+									:value="sc.id"
+									class="text-xs"
+									>{{
+										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
+									}}</SelectItem
 								>
 							</SelectContent>
 						</Select>
@@ -249,10 +309,12 @@
 								>
 								<SelectItem
 									v-for="sc in uniqueSubCategories"
-									:key="sc"
-									:value="sc"
+									:key="sc.id"
+									:value="sc.id"
 									class="text-xs"
-									>{{ sc }}</SelectItem
+									>{{
+										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
+									}}</SelectItem
 								>
 							</SelectContent>
 						</Select>
@@ -448,50 +510,6 @@
 						</Select>
 					</div>
 				</template>
-
-				<div class="flex flex-col gap-1.5 min-w-[140px]">
-					<Label
-						class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
-						:class="
-							cn(
-								props.filters.is_active !== undefined &&
-									props.filters.is_active !== 'true'
-									? 'text-primary'
-									: 'text-muted-foreground',
-							)
-						"
-						>Status
-						<span
-							v-if="
-								props.filters.is_active !== undefined &&
-								props.filters.is_active !== 'true'
-							"
-							class="h-1 w-1 rounded-full bg-primary"
-						/>
-					</Label>
-					<Select
-						:model-value="props.filters.is_active || '__all__'"
-						@update:model-value="
-							(v) => handleFilterChange('is_active', v === '__all__' ? null : v)
-						"
-					>
-						<SelectTrigger
-							class="bg-background border-input shadow-none h-8 text-xs"
-						>
-							<div class="flex items-center gap-2">
-								<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
-								<SelectValue placeholder="All Statuses" />
-							</div>
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="__all__" class="text-xs"
-								>All Statuses</SelectItem
-							>
-							<SelectItem value="true" class="text-xs">Active</SelectItem>
-							<SelectItem value="false" class="text-xs">Inactive</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
 			</div>
 
 			<div class="flex items-center gap-2 self-end pb-0.5">
@@ -541,6 +559,7 @@
 									:key="column.key"
 									class="h-10 px-3 text-xs font-bold text-foreground/80 uppercase tracking-wide select-none cursor-pointer hover:text-foreground transition-colors"
 									@click="sortBy(column.key)"
+									id="tour-table-headers"
 								>
 									<div class="flex items-center gap-1">
 										{{ column.label }}
@@ -974,6 +993,8 @@ const props = defineProps({
 	nameColumnKey: { type: String, default: "" },
 	idKey: { type: String, default: "id" },
 	class: { type: String, default: "" },
+	categories: { type: Array, default: () => [] },
+	subCategories: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -993,6 +1014,7 @@ const emit = defineEmits([
 	"clear-filters",
 	"view",
 	"sort",
+	"bulk-update",
 ]);
 
 // --- State ---
@@ -1014,6 +1036,7 @@ const totalItems = computed(
 const activeFilterCount = computed(() => {
 	return Object.entries(props.filters).filter(([key, v]) => {
 		if (v === null || v === "__all__") return false;
+		// Don't count is_active=true as an "active" filter if it's the default
 		if (key === "is_active" && v === "true") return false;
 		return String(v).trim() !== "";
 	}).length;
@@ -1055,6 +1078,7 @@ const showFilters = computed(() => {
 		"Subcategories", // New label for problems
 	];
 	const filterableTypes = [
+		"problem_types",
 		"problems",
 		"assessments",
 		"suggestions",
@@ -1074,8 +1098,19 @@ const extractUnique = (key) =>
 		...new Set(props.data.map((i) => getNestedValue(i, key)).filter(Boolean)),
 	].sort();
 const uniqueDomains = computed(() => extractUnique("domain"));
-const uniqueCategories = computed(() => extractUnique("category"));
-const uniqueSubCategories = computed(() => extractUnique("sub_category_id"));
+const uniqueCategories = computed(() => {
+	if (props.categories && props.categories.length > 0) {
+		return props.categories;
+	}
+	return extractUnique("category");
+});
+const uniqueSubCategories = computed(() => {
+	if (props.subCategories && props.subCategories.length > 0) {
+		return props.subCategories;
+	}
+	// Fallback to extraction from data, but format as objects for consistency
+	return extractUnique("sub_category_id").map((id) => ({ id, name: id }));
+});
 const uniqueClusters = computed(() => extractUnique("cluster"));
 const uniqueStages = computed(() => extractUnique("stage"));
 const uniqueActionTypes = computed(() => extractUnique("action_type"));

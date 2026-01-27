@@ -145,30 +145,6 @@
 										class="mt-1"
 									/>
 								</div>
-
-								<!-- Severity Level -->
-								<div>
-									<FormFieldLabel
-										field-key="severity_level"
-										label="Severity Level"
-										hint-title="Clinical Weighting"
-										description="1: Mild/Sub-clinical, 5: Severe/Critical. This affects prioritization logic."
-									/>
-									<Input
-										id="severity_level"
-										:model-value="formData.severity_level ?? undefined"
-										@update:model-value="
-											(val) =>
-												(formData.severity_level =
-													val === '' ? null : Number(val))
-										"
-										type="number"
-										min="1"
-										max="5"
-										placeholder="1-5"
-										class="mt-1"
-									/>
-								</div>
 							</div>
 
 							<!-- Validation Errors -->
@@ -249,7 +225,6 @@ interface Problem {
 	category_id: string;
 	sub_category_id: string;
 	description: string;
-	severity_level?: number | null;
 	is_active: boolean;
 	created_at?: string;
 	updated_at?: string;
@@ -286,7 +261,6 @@ const formData = reactive<Problem>({
 	category_id: "",
 	sub_category_id: "",
 	description: "",
-	severity_level: null,
 	is_active: true,
 });
 
@@ -313,7 +287,6 @@ const resetForm = () => {
 	formData.category_id = "";
 	formData.sub_category_id = "";
 	formData.description = "";
-	formData.severity_level = null;
 	formData.is_active = true;
 	validationErrors.value = [];
 	isSaving.value = false;
@@ -333,7 +306,6 @@ const initializeForm = async () => {
 		formData.category_id = props.item.category_id || "";
 		formData.sub_category_id = props.item.sub_category_id || "";
 		formData.description = props.item.description || "";
-		formData.severity_level = props.item.severity_level ?? null;
 		formData.is_active = props.item.is_active ?? true;
 	} else {
 		// Create mode - set defaults
@@ -342,7 +314,6 @@ const initializeForm = async () => {
 		formData.category_id = "";
 		formData.sub_category_id = "";
 		formData.description = "";
-		formData.severity_level = null;
 		formData.is_active = true;
 	}
 };
@@ -374,7 +345,7 @@ const fetchProblemTypes = async () => {
 const handleCategoryChange = () => {
 	// Auto-fill category_id when category is selected
 	const selectedType = problemTypes.value.find(
-		(type) => type.type_name === formData.category
+		(type) => type.type_name === formData.category,
 	);
 
 	if (selectedType) {
@@ -395,7 +366,7 @@ const autoGenerateSubCategoryId = async () => {
 	try {
 		const subCategoryId = await generateSubCategoryId(
 			supabase,
-			formData.problem_name
+			formData.problem_name,
 		);
 		formData.sub_category_id = subCategoryId;
 	} catch (error) {
@@ -428,15 +399,6 @@ const validateForm = () => {
 	}
 	if (!formData.description) {
 		errors.push("Description is required");
-	}
-
-	if (
-		formData.severity_level !== null &&
-		formData.severity_level !== undefined
-	) {
-		if (formData.severity_level < 1 || formData.severity_level > 5) {
-			errors.push("Severity Level must be between 1 and 5");
-		}
 	}
 
 	validationErrors.value = errors;
@@ -475,7 +437,7 @@ watch(
 			await fetchProblemTypes();
 			initializeForm();
 		}
-	}
+	},
 );
 
 watch(
@@ -485,7 +447,7 @@ watch(
 			initializeForm();
 		}
 	},
-	{ deep: true }
+	{ deep: true },
 );
 
 // Watch problem_name changes to auto-generate subcategory ID
@@ -496,7 +458,7 @@ watch(
 		if (!isEditing.value && formData.problem_name) {
 			await autoGenerateSubCategoryId();
 		}
-	}
+	},
 );
 
 // Lifecycle

@@ -1,14 +1,29 @@
 <template>
 	<div class="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-			<!-- PageHeader removed for consistency -->
-			<div class="mt-6">
+			<div class="mt-6 flex items-center justify-between mb-4">
+				<h1 class="text-2xl font-semibold tracking-tight" id="tour-page-title">
+					Subcategories
+				</h1>
+				<Button
+					variant="outline"
+					size="sm"
+					class="gap-2"
+					@click="startTour('problems')"
+				>
+					<HelpCircle class="h-4 w-4" />
+					Help
+				</Button>
+			</div>
+
+			<div>
 				<DatasetTable
 					:title="dataTypeLabel"
+					:hide-toolbar="false"
 					:data-type="dataType"
 					:data="data"
 					:columns="columns"
-					:loading="loading"
+					:loading="loading || actionLoading"
 					:error="error"
 					:pagination="pagination"
 					:current-page="currentPage"
@@ -20,6 +35,7 @@
 					@view="openDetailView"
 					@delete="deleteItem"
 					@bulk-delete="bulkDeleteItems"
+					@bulk-update="bulkUpdateItems"
 					@refresh="refreshData"
 					@import="openImportModal"
 					@export="openExportModal"
@@ -30,6 +46,8 @@
 					@search-change="(value) => (searchQuery = value)"
 					@filter-change="setFilter"
 					@clear-filters="clearFilters"
+					:categories="problemCategories"
+					:sub-categories="subCategories"
 				>
 				</DatasetTable>
 			</div>
@@ -303,10 +321,12 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-vue-next";
+import { Loader2, HelpCircle } from "lucide-vue-next";
+import { useOnboarding } from "@/composables/useOnboarding";
 
 // Composables
 const { supabase } = useSupabase();
+const { startTour } = useOnboarding();
 
 // Use the shared composable
 const {
@@ -344,7 +364,8 @@ const {
 	prevPage,
 	setFilter,
 	clearFilters,
-} = useDatasetManagement("problems");
+	bulkUpdateItems,
+} = useDatasetManagement("problems", { is_active: "true" });
 
 // Detail view state
 const showDetailSheet = ref(false);
@@ -354,6 +375,53 @@ const viewingItem = ref(null);
 const showCategorySheet = ref(false);
 const viewingCategory = ref(null);
 const loadingCategory = ref(false);
+const problemCategories = ref([]);
+const subCategories = ref([]);
+
+const fetchCategories = async () => {
+	try {
+		const { data: catData, error: catError } = await supabase
+			.from("problem_types")
+			.select("type_name")
+			.eq("is_active", true)
+			.order("type_name", { ascending: true });
+
+		if (catError) throw catError;
+		problemCategories.value = catData.map((c) => c.type_name);
+	} catch (err) {
+		console.error("Error fetching categories:", err);
+	}
+};
+
+const fetchSubCategories = async () => {
+	try {
+		const { data: subData, error: subError } = await supabase
+			.from("problems")
+			.select("sub_category_id, problem_name")
+			.eq("is_active", true)
+			.order("sub_category_id", { ascending: true });
+
+		if (subError) throw subError;
+
+		// Get unique entries based on sub_category_id
+		const seenIds = new Set();
+		const formattedSubCategories = [];
+
+		for (const item of subData) {
+			if (!seenIds.has(item.sub_category_id)) {
+				seenIds.add(item.sub_category_id);
+				formattedSubCategories.push({
+					id: item.sub_category_id,
+					name: item.problem_name,
+				});
+			}
+		}
+
+		subCategories.value = formattedSubCategories;
+	} catch (err) {
+		console.error("Error fetching subcategories:", err);
+	}
+};
 
 // Detail view handlers
 const openDetailView = (item) => {
@@ -435,5 +503,7 @@ const getSeverityClass = (level) => {
 // Lifecycle
 onMounted(() => {
 	refreshData();
+	fetchCategories();
+	fetchSubCategories();
 });
 </script>

@@ -11,7 +11,7 @@ export default defineNuxtConfig({
 		},
 	},
 	modules: ["shadcn-nuxt"],
-	css: ["~/assets/css/tailwind.css"],
+	css: ["~/assets/css/tailwind.css", "~/assets/css/driver-theme.css"],
 	runtimeConfig: {
 		public: {
 			supabaseUrl: process.env.SUPABASE_URL,

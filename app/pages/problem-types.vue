@@ -3,13 +3,28 @@
 		<!-- Main Container -->
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<!-- Dataset Table Container -->
-			<div class="mt-6">
+			<div class="mt-6 flex items-center justify-between mb-4">
+				<h1 class="text-2xl font-semibold tracking-tight" id="tour-page-title">
+					Problem Categories
+				</h1>
+				<Button
+					variant="outline"
+					size="sm"
+					class="gap-2"
+					@click="startTour('problem_types')"
+				>
+					<HelpCircle class="h-4 w-4" />
+					Help
+				</Button>
+			</div>
+
+			<div>
 				<DatasetTable
 					:title="dataTypeLabel"
 					:data-type="dataType"
 					:data="data"
 					:columns="columns"
-					:loading="loading"
+					:loading="loading || actionLoading"
 					:error="error"
 					:pagination="pagination"
 					:current-page="currentPage"
@@ -23,6 +38,7 @@
 					@view="openDetailView"
 					@delete="deleteItem"
 					@bulk-delete="bulkDeleteItems"
+					@bulk-update="bulkUpdateItems"
 					@refresh="refreshData"
 					@import="openImportModal"
 					@export="openExportModal"
@@ -192,7 +208,8 @@ import NestedDataList from "@/components/admin/NestedDataList.vue";
 import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
 import ProblemTypeModal from "@/components/admin/ProblemTypeModal.vue";
-import { FileText } from "lucide-vue-next";
+import { FileText, HelpCircle } from "lucide-vue-next";
+import { useOnboarding } from "@/composables/useOnboarding";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";
@@ -208,6 +225,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 // Use the shared composable
+const { startTour } = useOnboarding();
 const {
 	loading,
 	dataType,
@@ -243,7 +261,8 @@ const {
 	prevPage,
 	setFilter,
 	clearFilters,
-} = useDatasetManagement("problem_types");
+	bulkUpdateItems,
+} = useDatasetManagement("problem_types", { is_active: "true" });
 
 // Detail view state
 const showDetailSheet = ref(false);
