@@ -1,191 +1,142 @@
 <template>
-	<div
-		v-if="isOpen"
-		class="fixed inset-0 z-50 overflow-y-auto"
-		aria-labelledby="modal-title"
-		role="dialog"
-		aria-modal="true"
-	>
-		<!-- Background overlay -->
-		<div
-			class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+	<Dialog :open="isOpen" @update:open="$emit('close')">
+		<DialogContent
+			class="w-[95vw] sm:max-w-2xl max-h-[92dvh] flex flex-col p-0 overflow-hidden"
 		>
-			<div
-				class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-				aria-hidden="true"
-				@click="closeModal"
-			></div>
+			<DialogHeader class="px-6 py-4 border-b">
+				<DialogTitle class="text-xl font-semibold">
+					{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
+				</DialogTitle>
+			</DialogHeader>
 
-			<!-- Modal panel -->
-			<div
-				class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6"
-			>
-				<!-- Header -->
-				<div class="flex items-center justify-between mb-6">
-					<h3
-						class="text-lg leading-6 font-medium text-gray-900"
-						id="modal-title"
-					>
-						{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
-					</h3>
-					<button
-						@click="closeModal"
-						class="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md p-1"
-					>
-						<svg
-							class="h-6 w-6"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
-				</div>
-
-				<!-- Form -->
-				<form @submit.prevent="saveItem" class="space-y-6">
+			<div class="flex-1 overflow-y-auto min-h-0 p-6 pt-2">
+				<form
+					id="dataset-edit-form"
+					@submit.prevent="saveItem"
+					class="space-y-6"
+				>
 					<!-- Dynamic Form Fields -->
-					<div v-for="field in formFields" :key="field.key" class="space-y-2">
+					<div v-for="field in formFields" :key="field.key" class="space-y-1.5">
 						<!-- Text Input -->
-						<div v-if="field.type === 'text'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-if="field.type === 'text'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<input
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<Input
 								:id="field.key"
 								v-model="formData[field.key]"
 								type="text"
 								:placeholder="field.placeholder"
 								:required="field.required"
-								class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+								class="w-full"
 							/>
 						</div>
 
 						<!-- Textarea -->
-						<div v-else-if="field.type === 'textarea'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-else-if="field.type === 'textarea'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<textarea
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<Textarea
 								:id="field.key"
 								v-model="formData[field.key]"
 								:rows="field.rows || 3"
 								:placeholder="field.placeholder"
 								:required="field.required"
-								class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-							></textarea>
+								class="w-full min-h-[100px] resize-y"
+							/>
 						</div>
 
 						<!-- Select Dropdown -->
-						<div v-else-if="field.type === 'select'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-else-if="field.type === 'select'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<select
-								:id="field.key"
-								v-model="formData[field.key]"
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<Select
+								:model-value="formData[field.key]"
+								@update:model-value="(val: any) => (formData[field.key] = val)"
 								:required="field.required"
-								class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
 							>
-								<option value="">
-									{{ field.placeholder || "Select an option" }}
-								</option>
-								<option
-									v-for="option in field.options"
-									:key="option.value"
-									:value="option.value"
-								>
-									{{ option.label }}
-								</option>
-							</select>
+								<SelectTrigger class="w-full">
+									<SelectValue
+										:placeholder="field.placeholder || 'Select option'"
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem
+										v-for="option in field.options"
+										:key="option.value"
+										:value="option.value"
+									>
+										{{ option.label }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
 
 						<!-- Multi-select Tags -->
-						<div v-else-if="field.type === 'tags'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-else-if="field.type === 'tags'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<div class="mt-1">
-								<div class="flex flex-wrap gap-2 mb-2">
-									<span
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<div class="space-y-2">
+								<div
+									class="flex flex-wrap gap-1.5 min-h-[32px] p-1 border rounded-md bg-muted/30"
+								>
+									<Badge
 										v-for="(tag, index) in formData[field.key] || []"
 										:key="index"
-										class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+										variant="secondary"
+										class="gap-1 pl-2 pr-1 h-6"
 									>
 										{{ tag }}
-										<button
+										<Button
 											type="button"
-											@click="removeTag(field.key, index)"
-											class="ml-1 inline-flex items-center p-0.5 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600 focus:outline-none focus:bg-blue-200 focus:text-blue-600"
+											variant="ghost"
+											size="icon"
+											class="h-4 w-4 rounded-full hover:bg-muted-foreground/20"
+											@click="removeTag(field.key, Number(index))"
 										>
-											<svg
-												class="h-3 w-3"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M6 18L18 6M6 6l12 12"
-												/>
-											</svg>
-										</button>
+											<X class="h-3 w-3" />
+										</Button>
+									</Badge>
+									<span
+										v-if="!formData[field.key]?.length"
+										class="text-xs text-muted-foreground px-2 py-1"
+									>
+										No tags added
 									</span>
 								</div>
-								<div class="flex">
-									<input
+								<div class="flex gap-2">
+									<Input
 										v-model="newTag[field.key]"
 										type="text"
 										:placeholder="field.placeholder"
-										class="flex-1 border-gray-300 rounded-l-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+										class="flex-1"
 										@keydown.enter.prevent="addTag(field.key)"
-										@keydown.comma.prevent="addTag(field.key)"
 									/>
-									<button
+									<Button
 										type="button"
+										variant="outline"
 										@click="addTag(field.key)"
-										class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-500 text-sm hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
 									>
 										Add
-									</button>
+									</Button>
 								</div>
 							</div>
 						</div>
 
 						<!-- Number Input -->
-						<div v-else-if="field.type === 'number'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-else-if="field.type === 'number'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<input
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<Input
 								:id="field.key"
 								v-model.number="formData[field.key]"
 								type="number"
@@ -194,46 +145,54 @@
 								:step="field.step"
 								:placeholder="field.placeholder"
 								:required="field.required"
-								class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+								class="w-full"
 							/>
 						</div>
 
 						<!-- Checkbox -->
-						<div v-else-if="field.type === 'checkbox'">
-							<div class="flex items-center">
-								<input
-									:id="field.key"
-									v-model="formData[field.key]"
-									type="checkbox"
-									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-								/>
-								<label
-									:for="field.key"
-									class="ml-2 block text-sm text-gray-900"
-								>
-									{{ field.label }}
-								</label>
-							</div>
+						<div
+							v-else-if="field.type === 'checkbox'"
+							class="flex items-center space-x-2 py-2"
+						>
+							<Checkbox
+								:id="field.key"
+								:checked="formData[field.key]"
+								@update:checked="(val: boolean) => (formData[field.key] = val)"
+							/>
+							<Label
+								:for="field.key"
+								class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+							>
+								{{ field.label }}
+							</Label>
 						</div>
 
 						<!-- JSON Editor -->
-						<div v-else-if="field.type === 'json'">
-							<label
-								:for="field.key"
-								class="block text-sm font-medium text-gray-700"
-							>
+						<div v-else-if="field.type === 'json'" class="grid gap-2">
+							<Label :for="field.key" class="text-sm font-medium">
 								{{ field.label }}
-								<span v-if="field.required" class="text-red-500">*</span>
-							</label>
-							<textarea
-								:id="field.key"
-								v-model="jsonFields[field.key]"
-								:rows="field.rows || 4"
-								:placeholder="field.placeholder"
-								class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono text-xs"
-								@blur="validateJson(field.key)"
-							></textarea>
-							<p v-if="jsonErrors[field.key]" class="mt-1 text-sm text-red-600">
+								<span v-if="field.required" class="text-destructive">*</span>
+							</Label>
+							<div class="relative">
+								<Textarea
+									:id="field.key"
+									v-model="jsonFields[field.key]"
+									:rows="field.rows || 4"
+									:placeholder="field.placeholder"
+									class="w-full font-mono text-xs bg-muted/20 pr-10"
+									@blur="validateJson(field.key)"
+								/>
+								<div
+									v-if="jsonErrors[field.key]"
+									class="absolute top-2 right-2"
+								>
+									<AlertCircle class="h-4 w-4 text-destructive" />
+								</div>
+							</div>
+							<p
+								v-if="jsonErrors[field.key]"
+								class="text-xs text-destructive font-medium"
+							>
 								{{ jsonErrors[field.key] }}
 							</p>
 						</div>
@@ -241,88 +200,80 @@
 
 					<!-- Validation Errors -->
 					<div
-						v-if="validationErrors.length > 0"
-						class="bg-red-50 border border-red-200 rounded-md p-4"
+						v-if="hasTouched && validationErrors.length > 0"
+						class="bg-destructive/10 border border-destructive/20 rounded-lg p-4"
 					>
-						<div class="flex">
-							<div class="shrink-0">
-								<svg
-									class="h-5 w-5 text-red-400"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-									/>
-								</svg>
-							</div>
-							<div class="ml-3">
-								<h3 class="text-sm font-medium text-red-800">
+						<div class="flex gap-3">
+							<AlertCircle class="h-5 w-5 text-destructive" />
+							<div class="grid gap-1">
+								<h3 class="text-sm font-semibold text-destructive">
 									Validation Errors
 								</h3>
-								<div class="mt-2 text-sm text-red-700">
-									<ul class="list-disc pl-5 space-y-1">
-										<li v-for="error in validationErrors" :key="error">
-											{{ error }}
-										</li>
-									</ul>
-								</div>
+								<ul
+									class="text-xs text-destructive/90 list-disc pl-4 space-y-0.5"
+								>
+									<li v-for="error in validationErrors" :key="error">
+										{{ error }}
+									</li>
+								</ul>
 							</div>
 						</div>
 					</div>
-
-					<!-- Action Buttons -->
-					<div
-						class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200"
-					>
-						<button
-							@click="closeModal"
-							type="button"
-							class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-							:disabled="isSaving"
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-							:disabled="isSaving || validationErrors.length > 0"
-						>
-							<svg
-								v-if="isSaving"
-								class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-								fill="none"
-								viewBox="0 0 24 24"
-							>
-								<circle
-									class="opacity-25"
-									cx="12"
-									cy="12"
-									r="10"
-									stroke="currentColor"
-									stroke-width="4"
-								></circle>
-								<path
-									class="opacity-75"
-									fill="currentColor"
-									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-								></path>
-							</svg>
-							{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
-						</button>
-					</div>
 				</form>
 			</div>
-		</div>
-	</div>
+
+			<DialogFooter class="px-6 py-4 border-t bg-muted/10">
+				<div
+					class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 w-full"
+				>
+					<Button
+						variant="outline"
+						type="button"
+						class="w-full sm:w-auto"
+						@click="closeModal"
+						:disabled="isSaving"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						form="dataset-edit-form"
+						class="w-full sm:w-auto sm:min-w-[100px]"
+						:disabled="isSaving || (hasTouched && validationErrors.length > 0)"
+					>
+						<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
+						{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
+					</Button>
+				</div>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, reactive } from "vue";
+import { cn } from "@/lib/utils";
+import { X, Loader2, AlertCircle } from "lucide-vue-next";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 // Props
 const props = defineProps({
@@ -338,24 +289,51 @@ const props = defineProps({
 		type: Object,
 		default: null,
 	},
+	class: {
+		type: String,
+		default: "",
+	},
 });
 
 // Emits
 const emit = defineEmits(["close", "save"]);
 
 // Reactive data
-const formData = reactive({});
-const jsonFields = reactive({});
-const jsonErrors = reactive({});
-const newTag = reactive({});
+const formData = reactive<Record<string, any>>({});
+const jsonFields = reactive<Record<string, string>>({});
+const jsonErrors = reactive<Record<string, string>>({});
+const newTag = reactive<Record<string, string>>({});
 const isSaving = ref(false);
-const validationErrors = ref([]);
+const hasTouched = ref(false);
 
 // Computed properties
 const isEditing = computed(() => !!props.item);
 
+const validationErrors = computed(() => {
+	const errors: string[] = [];
+
+	formFields.value.forEach((field) => {
+		const value = formData[field.key];
+		const isValueMissing =
+			value === undefined ||
+			value === null ||
+			value === "" ||
+			(Array.isArray(value) && value.length === 0);
+
+		if (field.required && isValueMissing) {
+			errors.push(`${field.label} is required`);
+		}
+
+		if (field.type === "json" && jsonErrors[field.key]) {
+			errors.push(`${field.label}: ${jsonErrors[field.key]}`);
+		}
+	});
+
+	return errors;
+});
+
 const dataTypeLabel = computed(() => {
-	const labels = {
+	const labels: Record<string, string> = {
 		problems: "Categories",
 		assessments: "Assessment Question",
 		suggestions: "Therapeutic Suggestion",
@@ -367,7 +345,7 @@ const dataTypeLabel = computed(() => {
 });
 
 const formFields = computed(() => {
-	const fieldConfigs = {
+	const fieldConfigs: Record<string, any[]> = {
 		problems: [
 			{
 				key: "id",
@@ -678,7 +656,7 @@ const resetForm = () => {
 	Object.keys(newTag).forEach((key) => {
 		delete newTag[key];
 	});
-	validationErrors.value = [];
+	hasTouched.value = false;
 	isSaving.value = false;
 };
 
@@ -711,7 +689,7 @@ const initializeForm = () => {
 	}
 };
 
-const validateJson = (fieldKey) => {
+const validateJson = (fieldKey: string) => {
 	const value = jsonFields[fieldKey];
 	if (!value) {
 		delete jsonErrors[fieldKey];
@@ -727,7 +705,7 @@ const validateJson = (fieldKey) => {
 	}
 };
 
-const addTag = (fieldKey) => {
+const addTag = (fieldKey: string) => {
 	const value = newTag[fieldKey]?.trim();
 	if (value && !formData[fieldKey]?.includes(value)) {
 		if (!formData[fieldKey]) {
@@ -738,44 +716,29 @@ const addTag = (fieldKey) => {
 	}
 };
 
-const removeTag = (fieldKey, index) => {
+const removeTag = (fieldKey: string, index: number) => {
 	if (formData[fieldKey]) {
 		formData[fieldKey].splice(index, 1);
 	}
 };
 
-const validateForm = () => {
-	const errors = [];
+const saveItem = async () => {
+	hasTouched.value = true;
 
+	// Final sync/validation for JSON fields before save
 	formFields.value.forEach((field) => {
-		if (field.required && !formData[field.key]) {
-			errors.push(`${field.label} is required`);
-		}
-
-		if (field.type === "json" && jsonErrors[field.key]) {
-			errors.push(`${field.label}: ${jsonErrors[field.key]}`);
+		if (field.type === "json" && jsonFields[field.key]) {
+			validateJson(field.key);
 		}
 	});
 
-	validationErrors.value = errors;
-	return errors.length === 0;
-};
-
-const saveItem = async () => {
-	if (!validateForm()) {
+	if (validationErrors.value.length > 0) {
 		return;
 	}
 
 	isSaving.value = true;
 
 	try {
-		// Process JSON fields
-		formFields.value.forEach((field) => {
-			if (field.type === "json" && jsonFields[field.key]) {
-				validateJson(field.key);
-			}
-		});
-
 		// Emit save event
 		emit("save", { ...formData });
 
@@ -785,9 +748,6 @@ const saveItem = async () => {
 		}, 500);
 	} catch (error) {
 		console.error("Save error:", error);
-		validationErrors.value = [
-			"An error occurred while saving. Please try again.",
-		];
 	} finally {
 		isSaving.value = false;
 	}
@@ -800,7 +760,7 @@ watch(
 		if (newValue) {
 			initializeForm();
 		}
-	}
+	},
 );
 
 watch(
@@ -809,48 +769,6 @@ watch(
 		if (props.isOpen) {
 			initializeForm();
 		}
-	}
+	},
 );
 </script>
-
-<style scoped>
-/* Form styling */
-.form-input {
-	@apply mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
-}
-
-/* JSON editor styling */
-.json-editor {
-	font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-}
-
-/* Tag styling */
-.tag {
-	@apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
-}
-
-/* Animation classes */
-.modal-enter-active,
-.modal-leave-active {
-	transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-	opacity: 0;
-}
-
-/* Spinner animation */
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-.animate-spin {
-	animation: spin 1s linear infinite;
-}
-</style>

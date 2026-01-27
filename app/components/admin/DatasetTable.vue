@@ -1,5 +1,9 @@
 <template>
-	<div class="h-full flex flex-col bg-background text-foreground">
+	<div
+		:class="
+			cn('h-full flex flex-col bg-background text-foreground', props.class)
+		"
+	>
 		<header
 			v-if="!hideToolbar"
 			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -26,287 +30,28 @@
 					/>
 				</div>
 
-				<Sheet v-if="showFilters">
-					<SheetTrigger as-child>
-						<Button
-							variant="outline"
-							size="sm"
-							class="h-8 gap-2 px-2 text-xs"
-							:class="{
-								'bg-blue-50 border-blue-200 text-blue-700': hasActiveFilters,
-							}"
-						>
-							<ListFilter class="h-3.5 w-3.5" />
-							Filters
-							<Badge
-								v-if="activeFilterCount > 0"
-								variant="secondary"
-								class="ml-auto h-5 min-w-5 px-1"
-								>{{ activeFilterCount }}</Badge
-							>
-						</Button>
-					</SheetTrigger>
-					<SheetContent
-						class="sm:max-w-md flex flex-col h-full bg-background border-l-border"
+				<Button
+					v-if="showFilters"
+					variant="outline"
+					size="sm"
+					class="h-8 gap-2 px-3 text-xs"
+					:class="
+						cn(
+							hasActiveFilters && 'bg-blue-50 border-blue-200 text-blue-700',
+							showFilterBar && 'bg-accent',
+						)
+					"
+					@click="showFilterBar = !showFilterBar"
+				>
+					<ListFilter class="h-3.5 w-3.5" />
+					Filters
+					<Badge
+						v-if="activeFilterCount > 0"
+						variant="secondary"
+						class="ml-auto h-5 min-w-5 px-1"
+						>{{ activeFilterCount }}</Badge
 					>
-						<SheetHeader class="pb-6 border-b border-border/50 space-y-2">
-							<div class="flex items-center gap-2">
-								<div class="p-2 bg-primary/10 rounded-lg">
-									<ListFilter class="h-5 w-5 text-primary" />
-								</div>
-								<div>
-									<SheetTitle
-										class="text-xl font-bold tracking-tight text-foreground"
-									>
-										Filter {{ title }}
-									</SheetTitle>
-									<SheetDescription
-										class="text-xs text-muted-foreground font-medium"
-									>
-										{{ activeFilterCount }} active filters applied
-									</SheetDescription>
-								</div>
-							</div>
-						</SheetHeader>
-
-						<ScrollArea class="flex-1 -mx-6 px-6">
-							<div class="grid gap-8 py-6">
-								<div v-if="showFilters" class="space-y-6">
-									<template
-										v-if="
-											title === 'Problem Categories' || dataType === 'problems'
-										"
-									>
-										<!-- Classification Section -->
-										<div class="space-y-4">
-											<div class="flex items-center justify-between">
-												<h4
-													class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
-												>
-													Classification
-												</h4>
-												<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
-											</div>
-
-											<div class="space-y-4 px-1">
-												<div class="space-y-1.5">
-													<Label
-														class="text-xs font-semibold text-foreground/80"
-														>Domain</Label
-													>
-													<Select
-														:model-value="props.filters.domain || '__all__'"
-														@update:model-value="
-															(v) =>
-																handleFilterChange(
-																	'domain',
-																	v === '__all__' ? null : v
-																)
-														"
-													>
-														<SelectTrigger
-															class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
-														>
-															<div
-																class="flex items-center gap-2 text-muted-foreground"
-															>
-																<Globe class="h-3.5 w-3.5" />
-																<SelectValue
-																	placeholder="All domains"
-																	class="text-foreground"
-																/>
-															</div>
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="__all__" class="text-xs"
-																>All domains</SelectItem
-															>
-															<SelectItem
-																v-for="d in uniqueDomains"
-																:key="d"
-																:value="d"
-																class="text-xs"
-																>{{ d }}</SelectItem
-															>
-														</SelectContent>
-													</Select>
-												</div>
-
-												<div class="space-y-1.5">
-													<Label
-														class="text-xs font-semibold text-foreground/80"
-														>Category</Label
-													>
-													<Select
-														:model-value="props.filters.category || '__all__'"
-														@update:model-value="
-															(v) =>
-																handleFilterChange(
-																	'category',
-																	v === '__all__' ? null : v
-																)
-														"
-													>
-														<SelectTrigger
-															class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
-														>
-															<div
-																class="flex items-center gap-2 text-muted-foreground"
-															>
-																<Tag class="h-3.5 w-3.5" />
-																<SelectValue
-																	placeholder="All categories"
-																	class="text-foreground"
-																/>
-															</div>
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="__all__" class="text-xs"
-																>All categories</SelectItem
-															>
-															<SelectItem
-																v-for="c in uniqueCategories"
-																:key="c"
-																:value="c"
-																class="text-xs"
-																>{{ c }}</SelectItem
-															>
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-										</div>
-									</template>
-
-									<template v-if="dataType === 'assessments'">
-										<div class="space-y-4 px-4">
-											<div class="flex items-center justify-between">
-												<h4
-													class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
-												>
-													Grouping
-												</h4>
-												<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
-											</div>
-											<div class="space-y-1.5 px-1">
-												<Label class="text-xs font-semibold text-foreground/80"
-													>Subcategory</Label
-												>
-												<Select
-													:model-value="
-														props.filters.sub_category_id || '__all__'
-													"
-													@update:model-value="
-														(v) =>
-															handleFilterChange(
-																'sub_category_id',
-																v === '__all__' ? null : v
-															)
-													"
-												>
-													<SelectTrigger
-														class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
-													>
-														<div
-															class="flex items-center gap-2 text-muted-foreground"
-														>
-															<Layers class="h-3.5 w-3.5" />
-															<SelectValue
-																placeholder="All subcategories"
-																class="text-foreground"
-															/>
-														</div>
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="__all__" class="text-xs"
-															>All subcategories</SelectItem
-														>
-														<SelectItem
-															v-for="sc in uniqueSubCategories"
-															:key="sc"
-															:value="sc"
-															class="text-xs"
-															>{{ sc }}</SelectItem
-														>
-													</SelectContent>
-												</Select>
-											</div>
-										</div>
-									</template>
-
-									<div class="space-y-4">
-										<div class="flex items-center justify-between px-4">
-											<h4
-												class="text-[11px] font-bold text-muted-foreground uppercase tracking-widest"
-											>
-												Status & State
-											</h4>
-											<div class="h-[1px] flex-1 bg-border/50 ml-4"></div>
-										</div>
-										<div class="space-y-1.5 px-1">
-											<Label class="text-xs font-semibold text-foreground/80"
-												>Status</Label
-											>
-											<Select
-												:model-value="props.filters.is_active || '__all__'"
-												@update:model-value="
-													(v) =>
-														handleFilterChange(
-															'is_active',
-															v === '__all__' ? null : v
-														)
-												"
-											>
-												<SelectTrigger
-													class="bg-muted/30 border-input/60 shadow-sm h-9 hover:bg-muted/50 transition-colors"
-												>
-													<div
-														class="flex items-center gap-2 text-muted-foreground"
-													>
-														<Activity class="h-3.5 w-3.5" />
-														<SelectValue
-															placeholder="All Statuses"
-															class="text-foreground"
-														/>
-													</div>
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="__all__" class="text-xs"
-														>All Statuses</SelectItem
-													>
-													<SelectItem value="true" class="text-xs"
-														>Active</SelectItem
-													>
-													<SelectItem value="false" class="text-xs"
-														>Inactive</SelectItem
-													>
-												</SelectContent>
-											</Select>
-										</div>
-									</div>
-								</div>
-							</div>
-						</ScrollArea>
-
-						<SheetFooter class="pt-6 border-t border-border mt-auto pb-2">
-							<Button
-								v-if="hasActiveFilters"
-								variant="outline"
-								@click="handleClearFilters"
-								class="w-full text-destructive hover:text-destructive hover:bg-destructive/5 hover:border-destructive/30 h-10 gap-2 font-medium transition-all"
-							>
-								<Trash2 class="h-4 w-4" />
-								Clear all filters
-							</Button>
-							<div
-								v-else
-								class="text-center w-full text-xs text-muted-foreground py-2 italic opacity-60"
-							>
-								No active filters
-							</div>
-						</SheetFooter>
-					</SheetContent>
-				</Sheet>
+				</Button>
 
 				<Separator orientation="vertical" class="h-6" />
 
@@ -323,7 +68,7 @@
 								>
 									<RotateCw
 										class="h-3.5 w-3.5"
-										:class="{ 'animate-spin': loading }"
+										:class="cn(loading && 'animate-spin')"
 									/>
 								</Button>
 							</TooltipTrigger>
@@ -358,6 +103,418 @@
 				</div>
 			</div>
 		</header>
+
+		<!-- Inline Filter Bar -->
+		<div
+			v-if="showFilters && showFilterBar"
+			class="border-b border-border bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200"
+		>
+			<div class="flex items-center gap-4 flex-wrap flex-1">
+				<template
+					v-if="title === 'Problem Categories' || dataType === 'problems'"
+				>
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.domain
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Domain
+							<span
+								v-if="props.filters.domain"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.domain || '__all__'"
+							@update:model-value="
+								(v) => handleFilterChange('domain', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Globe class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All domains" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All domains</SelectItem
+								>
+								<SelectItem
+									v-for="d in uniqueDomains"
+									:key="d"
+									:value="d"
+									class="text-xs"
+									>{{ d }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.category
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Category
+							<span
+								v-if="props.filters.category"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.category || '__all__'"
+							@update:model-value="
+								(v) =>
+									handleFilterChange('category', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Tag class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All categories" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All categories</SelectItem
+								>
+								<SelectItem
+									v-for="c in uniqueCategories"
+									:key="c"
+									:value="c"
+									class="text-xs"
+									>{{ c }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<template v-if="dataType === 'assessments'">
+					<div class="flex flex-col gap-1.5 min-w-[180px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.sub_category_id
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Subcategory
+							<span
+								v-if="props.filters.sub_category_id"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.sub_category_id || '__all__'"
+							@update:model-value="
+								(v) =>
+									handleFilterChange(
+										'sub_category_id',
+										v === '__all__' ? null : v,
+									)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue
+										placeholder="All subcategories"
+										class="truncate"
+									/>
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All subcategories</SelectItem
+								>
+								<SelectItem
+									v-for="sc in uniqueSubCategories"
+									:key="sc"
+									:value="sc"
+									class="text-xs"
+									>{{ sc }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<template v-if="dataType === 'suggestions'">
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.cluster
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Cluster
+							<span
+								v-if="props.filters.cluster"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.cluster || '__all__'"
+							@update:model-value="
+								(v) => handleFilterChange('cluster', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All clusters" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All clusters</SelectItem
+								>
+								<SelectItem
+									v-for="c in uniqueClusters"
+									:key="c"
+									:value="c"
+									class="text-xs"
+									>{{ c }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<template v-if="dataType === 'feedback_prompts'">
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.stage
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Stage
+							<span
+								v-if="props.filters.stage"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.stage || '__all__'"
+							@update:model-value="
+								(v) => handleFilterChange('stage', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All stages" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All stages</SelectItem
+								>
+								<SelectItem
+									v-for="s in uniqueStages"
+									:key="s"
+									:value="s"
+									class="text-xs"
+									>{{ s }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<template v-if="dataType === 'next_actions'">
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.action_type
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Type
+							<span
+								v-if="props.filters.action_type"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.action_type || '__all__'"
+							@update:model-value="
+								(v) =>
+									handleFilterChange('action_type', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All types" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All types</SelectItem
+								>
+								<SelectItem
+									v-for="t in uniqueActionTypes"
+									:key="t"
+									:value="t"
+									class="text-xs"
+									>{{ t }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<template v-if="dataType === 'training_examples'">
+					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<Label
+							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							:class="
+								cn(
+									props.filters.user_intent
+										? 'text-primary'
+										: 'text-muted-foreground',
+								)
+							"
+							>Intent
+							<span
+								v-if="props.filters.user_intent"
+								class="h-1 w-1 rounded-full bg-primary"
+							/>
+						</Label>
+						<Select
+							:model-value="props.filters.user_intent || '__all__'"
+							@update:model-value="
+								(v) =>
+									handleFilterChange('user_intent', v === '__all__' ? null : v)
+							"
+						>
+							<SelectTrigger
+								class="bg-background border-input shadow-none h-8 text-xs"
+							>
+								<div class="flex items-center gap-2 overflow-hidden">
+									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+									<SelectValue placeholder="All intents" class="truncate" />
+								</div>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="__all__" class="text-xs"
+									>All intents</SelectItem
+								>
+								<SelectItem
+									v-for="i in uniqueUserIntents"
+									:key="i"
+									:value="i"
+									class="text-xs"
+									>{{ i }}</SelectItem
+								>
+							</SelectContent>
+						</Select>
+					</div>
+				</template>
+
+				<div class="flex flex-col gap-1.5 min-w-[140px]">
+					<Label
+						class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+						:class="
+							cn(
+								props.filters.is_active !== undefined &&
+									props.filters.is_active !== 'true'
+									? 'text-primary'
+									: 'text-muted-foreground',
+							)
+						"
+						>Status
+						<span
+							v-if="
+								props.filters.is_active !== undefined &&
+								props.filters.is_active !== 'true'
+							"
+							class="h-1 w-1 rounded-full bg-primary"
+						/>
+					</Label>
+					<Select
+						:model-value="props.filters.is_active || '__all__'"
+						@update:model-value="
+							(v) => handleFilterChange('is_active', v === '__all__' ? null : v)
+						"
+					>
+						<SelectTrigger
+							class="bg-background border-input shadow-none h-8 text-xs"
+						>
+							<div class="flex items-center gap-2">
+								<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+								<SelectValue placeholder="All Statuses" />
+							</div>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="__all__" class="text-xs"
+								>All Statuses</SelectItem
+							>
+							<SelectItem value="true" class="text-xs">Active</SelectItem>
+							<SelectItem value="false" class="text-xs">Inactive</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-2 self-end pb-0.5">
+				<Button
+					v-if="hasActiveFilters"
+					variant="ghost"
+					size="sm"
+					class="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+					@click="handleClearFilters"
+				>
+					<Trash2 class="h-3.5 w-3.5 mr-1" />
+					Reset
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					class="h-8 px-2 text-xs"
+					@click="showFilterBar = false"
+				>
+					Close
+				</Button>
+			</div>
+		</div>
 
 		<div class="flex-1 overflow-hidden relative">
 			<ScrollArea class="h-full w-full">
@@ -436,8 +593,13 @@
 								v-for="(item, index) in paginatedData"
 								:key="item[props.idKey] || index"
 							>
-								<!-- Main Row -->
 								<TableRow
+									v-memo="[
+										selectedItemsSet.has(item[props.idKey]),
+										expandedRows.has(item[props.idKey]),
+										item,
+										variant,
+									]"
 									class="group border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer transition-colors"
 									:class="[
 										expandedRows.has(item[props.idKey]) ? 'bg-muted/30' : '',
@@ -448,11 +610,10 @@
 									"
 									@click="emit('view', item)"
 								>
-									<!-- Expand/Collapse Toggle -->
 									<TableCell
 										v-if="enableExpansion"
 										class="text-center"
-										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										:class="cn(variant === 'compact' ? 'p-1' : 'p-2')"
 										@click.stop
 									>
 										<Button
@@ -471,7 +632,7 @@
 									<!-- Checkbox -->
 									<TableCell
 										class="text-center"
-										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										:class="cn(variant === 'compact' ? 'p-1' : 'p-2')"
 										@click.stop
 									>
 										<SimpleCheckbox
@@ -519,7 +680,7 @@
 										>
 											<Badge
 												v-for="tag in normalizeArray(
-													getNestedValue(item, column.key)
+													getNestedValue(item, column.key),
 												)"
 												:key="tag"
 												variant="secondary"
@@ -551,7 +712,7 @@
 
 									<TableCell
 										class="text-right sticky right-0 z-10 bg-background group-hover:bg-muted/50 data-[state=selected]:bg-muted shadow-[inset_1px_0_0_0_hsl(var(--border))]"
-										:class="variant === 'compact' ? 'p-1' : 'p-2'"
+										:class="cn(variant === 'compact' ? 'p-1' : 'p-2')"
 										@click.stop
 									>
 										<DropdownMenu>
@@ -560,7 +721,9 @@
 													variant="ghost"
 													size="icon"
 													class="opacity-100 transition-opacity"
-													:class="variant === 'compact' ? 'h-5 w-5' : 'h-6 w-6'"
+													:class="
+														cn(variant === 'compact' ? 'h-5 w-5' : 'h-6 w-6')
+													"
 												>
 													<MoreHorizontal class="h-3.5 w-3.5" />
 												</Button>
@@ -602,7 +765,7 @@
 
 		<div
 			class="flex items-center justify-between border-t border-border bg-muted/20"
-			:class="variant === 'compact' ? 'p-1 px-3 min-h-[36px]' : 'p-2 px-4'"
+			:class="cn(variant === 'compact' ? 'p-1 px-3 min-h-[36px]' : 'p-2 px-4')"
 		>
 			<div class="text-xs text-muted-foreground hidden sm:block">
 				{{ selectedItems.length }} selected
@@ -617,7 +780,7 @@
 					>
 						<SelectTrigger
 							class="w-[60px] text-xs"
-							:class="variant === 'compact' ? 'h-6' : 'h-7'"
+							:class="cn(variant === 'compact' ? 'h-6' : 'h-7')"
 						>
 							<SelectValue />
 						</SelectTrigger>
@@ -647,7 +810,7 @@
 					<Button
 						variant="outline"
 						size="icon"
-						:class="variant === 'compact' ? 'h-6 w-6' : 'h-7 w-7'"
+						:class="cn(variant === 'compact' ? 'h-6 w-6' : 'h-7 w-7')"
 						:disabled="props.currentPage >= totalPages"
 						@click="goToPage(props.currentPage + 1)"
 					>
@@ -711,6 +874,7 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
+import { cn } from "@/lib/utils";
 import {
 	Search,
 	RotateCw,
@@ -742,7 +906,7 @@ import HistoryDialog from "@/components/admin/HistoryDialog.vue";
 // Shadcn Components (Assumed Imports based on your setup)
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import SimpleCheckbox from "@/components/ui/SimpleCheckbox.vue";
+import { SimpleCheckbox } from "@/components/ui/simple-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -770,15 +934,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger,
-	SheetFooter,
-} from "@/components/ui/sheet";
 import {
 	Tooltip,
 	TooltipContent,
@@ -818,6 +973,7 @@ const props = defineProps({
 	indentLevel: { type: Number, default: 0 },
 	nameColumnKey: { type: String, default: "" },
 	idKey: { type: String, default: "id" },
+	class: { type: String, default: "" },
 });
 
 const emit = defineEmits([
@@ -848,27 +1004,30 @@ const expandedRows = ref(new Set());
 const showDeleteDialog = ref(false);
 const itemToDelete = ref(null);
 const localSearchQuery = ref(props.searchQuery || "");
+const showFilterBar = ref(false);
 
 // --- Computed Helpers ---
 const filteredData = computed(() => props.data); // Assuming filtered server-side
 const totalItems = computed(
-	() => props.pagination.total || filteredData.value.length
+	() => props.pagination.total || filteredData.value.length,
 );
-const activeFilterCount = computed(
-	() =>
-		Object.values(props.filters).filter((v) => v !== null && v !== "__all__")
-			.length
-);
+const activeFilterCount = computed(() => {
+	return Object.entries(props.filters).filter(([key, v]) => {
+		if (v === null || v === "__all__") return false;
+		if (key === "is_active" && v === "true") return false;
+		return String(v).trim() !== "";
+	}).length;
+});
 const hasActiveFilters = computed(() => activeFilterCount.value > 0);
 const isAllSelected = computed(
 	() =>
 		filteredData.value.length > 0 &&
-		selectedItems.value.length === filteredData.value.length
+		selectedItems.value.length === filteredData.value.length,
 );
 const isIndeterminate = computed(
 	() =>
 		selectedItems.value.length > 0 &&
-		selectedItems.value.length < filteredData.value.length
+		selectedItems.value.length < filteredData.value.length,
 );
 const paginatedData = computed(() => {
 	// Sorting logic for current page view
@@ -917,6 +1076,10 @@ const extractUnique = (key) =>
 const uniqueDomains = computed(() => extractUnique("domain"));
 const uniqueCategories = computed(() => extractUnique("category"));
 const uniqueSubCategories = computed(() => extractUnique("sub_category_id"));
+const uniqueClusters = computed(() => extractUnique("cluster"));
+const uniqueStages = computed(() => extractUnique("stage"));
+const uniqueActionTypes = computed(() => extractUnique("action_type"));
+const uniqueUserIntents = computed(() => extractUnique("user_intent"));
 
 // --- Actions ---
 const getNestedValue = (obj, path) =>
@@ -974,17 +1137,17 @@ const getBadgeColorClass = (val, key) => {
 
 watch(
 	() => props.searchQuery,
-	(v) => (localSearchQuery.value = v || "")
+	(v) => (localSearchQuery.value = v || ""),
 );
 
 watch(
 	() => props.orderBy,
-	(v) => (sortColumn.value = v || "")
+	(v) => (sortColumn.value = v || ""),
 );
 
 watch(
 	() => props.orderDirection,
-	(v) => (sortDirection.value = v || "asc")
+	(v) => (sortDirection.value = v || "asc"),
 );
 const showBulkEdit = ref(false);
 const showBulkDelete = ref(false);
@@ -1029,10 +1192,3 @@ const toggleRowExpansion = (item, event) => {
 	}
 };
 </script>
-
-<style scoped>
-/* Tailwind 4 usually handles this via plugin, but if you need custom scrollbars: */
-.overflow-hidden {
-	scrollbar-width: thin;
-}
-</style>

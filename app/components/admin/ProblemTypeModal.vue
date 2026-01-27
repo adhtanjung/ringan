@@ -1,7 +1,7 @@
 <template>
 	<Dialog :open="isOpen" @update:open="closeModal">
 		<DialogContent
-			class="max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden"
+			class="w-[95vw] sm:max-w-2xl max-h-[92dvh] p-0 flex flex-col overflow-hidden"
 		>
 			<div class="px-6 py-4 border-b">
 				<DialogHeader>
@@ -20,8 +20,11 @@
 
 			<!-- Form -->
 			<TooltipProvider>
-				<form @submit.prevent="saveItem" class="flex-1 flex flex-col min-h-0">
-					<ScrollArea class="flex-1 px-6">
+				<form
+					@submit.prevent="saveItem"
+					class="flex-1 flex flex-col min-h-0 overflow-hidden"
+				>
+					<div class="flex-1 overflow-y-auto min-h-0 px-6">
 						<div class="py-6">
 							<!-- Form Fields -->
 							<div class="grid grid-cols-1 gap-4 sm:gap-6">
@@ -141,7 +144,7 @@
 
 							<!-- Validation Errors -->
 							<Alert
-								v-if="validationErrors.length > 0"
+								v-if="hasTouched && validationErrors.length > 0"
 								variant="destructive"
 								class="mt-6"
 							>
@@ -155,29 +158,18 @@
 									</ul>
 								</AlertDescription>
 							</Alert>
-
-							<!-- Validation Requirement Message -->
-							<Alert
-								v-if="!isValidationComplete"
-								variant="destructive"
-								class="mt-6"
-							>
-								<AlertCircle class="h-4 w-4" />
-								<AlertTitle>Validation Required</AlertTitle>
-								<AlertDescription>
-									Please check for duplicate type name and category ID before
-									saving.
-								</AlertDescription>
-							</Alert>
 						</div>
-					</ScrollArea>
+					</div>
 
 					<!-- Action Buttons -->
 					<div class="px-6 py-4 border-t bg-background">
-						<DialogFooter class="sm:justify-end gap-2">
+						<DialogFooter
+							class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2"
+						>
 							<Button
 								type="button"
 								variant="outline"
+								class="w-full sm:w-auto"
 								@click="closeModal"
 								:disabled="isSaving"
 							>
@@ -185,10 +177,9 @@
 							</Button>
 							<Button
 								type="submit"
+								class="w-full sm:w-auto"
 								:disabled="
-									isSaving ||
-									validationErrors.length > 0 ||
-									!isValidationComplete
+									isSaving || (hasTouched && validationErrors.length > 0)
 								"
 							>
 								<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
@@ -213,7 +204,6 @@ import { generateCategoryId } from "@/utils/categoryIdGenerator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
 	Dialog,
@@ -224,7 +214,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import FormFieldLabel from "@/components/admin/FormFieldLabel.vue";
 
 // Types
@@ -275,40 +264,68 @@ const validationStatus = reactive<{
 });
 
 const isSaving = ref(false);
-const validationErrors = ref<string[]>([]);
+const hasTouched = ref(false);
 const isGeneratingCategoryId = ref(false);
 const originalTypeName = ref("");
 
 // Computed properties
 const isEditing = computed(() => !!props.item);
 
-const isValidationComplete = computed(() => {
-	if (!formData.type_name || !formData.category_id) return false;
+const validationErrors = computed(() => {
+	const errors: string[] = [];
+	console.log("[DEBUG] Re-evaluating validationErrors. formData:", {
+		...formData,
+	});
 
-	// If editing and type_name hasn't changed, skip validation
-	if (isEditing.value && formData.type_name === originalTypeName.value) {
-		return true;
+	if (!formData.type_name) {
+		errors.push("Type Name is required");
+	}
+	if (!formData.category_id) {
+		errors.push("Category ID is required");
+	}
+	if (!formData.description) {
+		errors.push("Description is required");
 	}
 
-	if (!validationStatus.type_name.checked) return false;
-	if (validationStatus.type_name.exists) return false;
-	return true;
+	// Check validation status (only if type_name has changed from original)
+	const typeNameChanged =
+		!isEditing.value || formData.type_name !== originalTypeName.value;
+
+	if (typeNameChanged) {
+		if (!validationStatus.type_name.checked) {
+			errors.push("Please check for duplicate Category Name before saving");
+		} else if (validationStatus.type_name.exists) {
+			errors.push(
+				"Category Name already exists. Please choose a different one.",
+			);
+		}
+	}
+
+	console.log("[DEBUG] Validation errors found:", errors);
+	return errors;
 });
 
 // Methods
-const closeModal = () => {
-	if (!isSaving.value) {
+const closeModal = (force = false) => {
+	console.log(
+		"[DEBUG] closeModal called. isSaving:",
+		isSaving.value,
+		"force:",
+		force,
+	);
+	if (!isSaving.value || force) {
 		resetForm();
 		emit("close");
 	}
 };
 
 const resetForm = () => {
+	console.log("[DEBUG] resetForm called");
 	formData.type_name = "";
 	formData.category_id = "";
 	formData.description = "";
 	formData.is_active = true;
-	validationErrors.value = [];
+	hasTouched.value = false;
 	isSaving.value = false;
 	isGeneratingCategoryId.value = false;
 	validationStatus.type_name = {
@@ -319,8 +336,7 @@ const resetForm = () => {
 };
 
 const initializeForm = async () => {
-	// Reset validation status and errors
-	validationErrors.value = [];
+	// Reset validation status
 	isSaving.value = false;
 	isGeneratingCategoryId.value = false;
 	validationStatus.type_name = {
@@ -416,53 +432,32 @@ const autoGenerateCategoryId = async () => {
 	}
 };
 
-const validateForm = () => {
-	const errors: string[] = [];
-
-	if (!formData.type_name) {
-		errors.push("Type Name is required");
-	}
-	if (!formData.category_id) {
-		errors.push("Category ID is required");
-	}
-	if (!formData.description) {
-		errors.push("Description is required");
-	}
-
-	// Check validation status (only if type_name has changed from original)
-	const typeNameChanged =
-		!isEditing.value || formData.type_name !== originalTypeName.value;
-	if (typeNameChanged) {
-		if (!validationStatus.type_name.checked) {
-			errors.push("Please check for duplicate Type Name before saving");
-		} else if (validationStatus.type_name.exists) {
-			errors.push("Type Name already exists. Please choose a different one.");
-		}
-	}
-
-	validationErrors.value = errors;
-	return errors.length === 0;
-};
-
 const saveItem = async () => {
-	if (!validateForm()) {
+	console.log(
+		"[DEBUG] saveItem initiated. Current errors:",
+		validationErrors.value,
+	);
+	hasTouched.value = true;
+
+	if (validationErrors.value.length > 0) {
+		console.log("[DEBUG] saveItem aborted due to validation errors");
 		return;
 	}
 
 	isSaving.value = true;
 
 	try {
+		console.log("[DEBUG] Emitting save event with data:", { ...formData });
 		// Emit save event
 		emit("save", { ...formData });
 
-		// Close modal after successful save
-		closeModal();
+		console.log("[DEBUG] Save event emitted successfully. Forcing closeModal.");
+		// Close modal after successful save - force it because isSaving is still true
+		closeModal(true);
 	} catch (error) {
-		console.error("Save error:", error);
-		validationErrors.value = [
-			"An error occurred while saving. Please try again.",
-		];
+		console.error("[DEBUG] Save error:", error);
 	} finally {
+		console.log("[DEBUG] saveItem finally block. Setting isSaving to false.");
 		isSaving.value = false;
 	}
 };
@@ -475,7 +470,7 @@ watch(
 			await nextTick();
 			initializeForm();
 		}
-	}
+	},
 );
 
 watch(
@@ -485,7 +480,7 @@ watch(
 			initializeForm();
 		}
 	},
-	{ deep: true }
+	{ deep: true },
 );
 
 // Reset validation when type name changes and auto-generate category ID
@@ -499,6 +494,6 @@ watch(
 		if (!isEditing.value && formData.type_name) {
 			await autoGenerateCategoryId();
 		}
-	}
+	},
 );
 </script>
