@@ -1399,6 +1399,7 @@ const downloadTemplate = async (format) => {
 					suggestions: [
 						{
 							sub_category_id: "P005-7",
+							cluster: "c1",
 							suggestion_text: "Try deep breathing exercises for 5 minutes.",
 							evidence_base: "CBT",
 						},
