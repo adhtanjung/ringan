@@ -118,12 +118,6 @@
 							</p>
 							<div class="mt-4 flex flex-wrap gap-2">
 								<Badge
-									variant="secondary"
-									class="h-6 rounded-full px-2 text-[11px] font-medium"
-								>
-									{{ viewingItem.category_id }}
-								</Badge>
-								<Badge
 									v-if="viewingItem.updated_at"
 									variant="outline"
 									class="h-6 rounded-full px-2 text-[11px] font-medium text-muted-foreground"
@@ -138,17 +132,45 @@
 								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 									Category ID
 								</p>
-								<p class="mt-2 break-all text-sm font-medium text-foreground">
-									{{ viewingItem.category_id }}
-								</p>
+								<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+									<p class="min-w-0 break-all text-sm font-medium text-foreground">
+										{{ viewingItem.category_id || "-" }}
+									</p>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="h-11 w-11 shrink-0"
+										:title="'Copy category ID'"
+										:aria-label="'Copy category ID'"
+										:disabled="!viewingItem.category_id"
+										@click="copyId(viewingItem.category_id, 'Category ID')"
+									>
+										<Copy class="h-4 w-4" />
+									</Button>
+								</div>
 							</div>
 							<div class="rounded-2xl border border-border/70 bg-background p-4">
 								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 									Record ID
 								</p>
-								<p class="mt-2 break-all text-sm font-medium text-foreground">
-									{{ viewingItem.id }}
-								</p>
+								<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+									<p class="min-w-0 break-all text-sm font-medium text-foreground">
+										{{ viewingItem.id || "-" }}
+									</p>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="h-11 w-11 shrink-0"
+										:title="'Copy record ID'"
+										:aria-label="'Copy record ID'"
+										:disabled="!viewingItem.id"
+										@click="copyId(viewingItem.id, 'Record ID')"
+									>
+										<Copy class="h-4 w-4" />
+									</Button>
+								</div>
 							</div>
 						</div>
 
@@ -193,14 +215,6 @@
 												{{ viewingItem.updated_at ? formatDate(viewingItem.updated_at) : "-" }}
 											</dd>
 										</div>
-										<div class="space-y-1 sm:col-span-2">
-											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-												System ID
-											</dt>
-											<dd class="break-all text-foreground">
-												{{ viewingItem.id || "-" }}
-											</dd>
-										</div>
 									</dl>
 								</div>
 							</CollapsibleContent>
@@ -242,7 +256,8 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/toast";
-import { ChevronDown, HelpCircle, Plus } from "lucide-vue-next";
+import { useToast } from "@/components/ui/toast/use-toast";
+import { ChevronDown, HelpCircle, Plus, Copy } from "lucide-vue-next";
 
 import DatasetTable from "@/components/admin/DatasetTable.vue";
 import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
@@ -254,6 +269,7 @@ import { useDatasetManagement } from "@/composables/useDatasetManagement";
 import { useOnboarding } from "@/composables/useOnboarding";
 
 const { startTour } = useOnboarding();
+const { toast } = useToast();
 const {
 	loading,
 	dataType,
@@ -323,6 +339,45 @@ const openEditFromDetail = () => {
 	if (viewingItem.value) {
 		closeDetailSheet();
 		openEditModal(viewingItem.value);
+	}
+};
+
+const copyId = async (value, label) => {
+	if (value === null || value === undefined || value === "") {
+		toast({
+			title: `${label} not available`,
+			description: "Nothing to copy for this record.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	if (
+		typeof navigator === "undefined" ||
+		!navigator.clipboard ||
+		typeof navigator.clipboard.writeText !== "function"
+	) {
+		toast({
+			title: "Copy is not supported",
+			description: "Clipboard access is unavailable in this browser context.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	try {
+		await navigator.clipboard.writeText(String(value));
+		toast({
+			title: `${label} copied`,
+			description: String(value),
+		});
+	} catch (error) {
+		console.error(`Failed to copy ${label}:`, error);
+		toast({
+			title: "Copy failed",
+			description: "Unable to copy to clipboard. Please try again.",
+			variant: "destructive",
+		});
 	}
 };
 

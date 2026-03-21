@@ -113,8 +113,55 @@
 							</p>
 							<div class="mt-4 flex flex-wrap gap-2">
 								<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
-									ID: {{ viewingItem.action_id || "-" }}
+									Action record
 								</Badge>
+							</div>
+						</div>
+
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div class="rounded-2xl border border-border/70 bg-background p-4">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+									Action ID
+								</p>
+								<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+									<p class="min-w-0 break-all text-sm font-medium text-foreground">
+										{{ viewingItem.action_id || "-" }}
+									</p>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="h-11 w-11 shrink-0"
+										:title="'Copy action ID'"
+										:aria-label="'Copy action ID'"
+										:disabled="!viewingItem.action_id"
+										@click="copyId(viewingItem.action_id, 'Action ID')"
+									>
+										<Copy class="h-4 w-4" />
+									</Button>
+								</div>
+							</div>
+							<div class="rounded-2xl border border-border/70 bg-background p-4">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+									Record ID
+								</p>
+								<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+									<p class="min-w-0 break-all text-sm font-medium text-foreground">
+										{{ viewingItem.id || "-" }}
+									</p>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										class="h-11 w-11 shrink-0"
+										:title="'Copy record ID'"
+										:aria-label="'Copy record ID'"
+										:disabled="!viewingItem.id"
+										@click="copyId(viewingItem.id, 'Record ID')"
+									>
+										<Copy class="h-4 w-4" />
+									</Button>
+								</div>
 							</div>
 						</div>
 
@@ -163,8 +210,22 @@
 											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 												System ID
 											</dt>
-											<dd class="break-all text-foreground">
-												{{ viewingItem.id || "-" }}
+											<dd class="flex items-center gap-2">
+												<span class="min-w-0 break-all text-foreground">
+													{{ viewingItem.id || "-" }}
+												</span>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													class="h-11 w-11 shrink-0"
+													:title="'Copy record ID'"
+													:aria-label="'Copy record ID'"
+													:disabled="!viewingItem.id"
+													@click="copyId(viewingItem.id, 'Record ID')"
+												>
+													<Copy class="h-4 w-4" />
+												</Button>
 											</dd>
 										</div>
 									</dl>
@@ -202,11 +263,12 @@ import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
 import DatasetEditModalShadcn from "@/components/admin/DatasetEditModalShadcn.vue";
 import { formatDate } from "@/utils/formatDate";
-import { ChevronDown, HelpCircle, Plus } from "lucide-vue-next";
+import { ChevronDown, HelpCircle, Plus, Copy } from "lucide-vue-next";
 import { useOnboarding } from "@/composables/useOnboarding";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast/use-toast";
 import {
 	Sheet,
 	SheetContent,
@@ -225,6 +287,7 @@ import { Badge } from "@/components/ui/badge";
 
 // Use the shared composables
 const { startTour } = useOnboarding();
+const { toast } = useToast();
 const {
 	loading,
 	dataType,
@@ -288,6 +351,45 @@ const openEditFromDetail = () => {
 		const itemToEdit = { ...viewingItem.value };
 		closeDetailSheet();
 		openEditModal(itemToEdit);
+	}
+};
+
+const copyId = async (value, label) => {
+	if (value === null || value === undefined || value === "") {
+		toast({
+			title: `${label} not available`,
+			description: "Nothing to copy for this record.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	if (
+		typeof navigator === "undefined" ||
+		!navigator.clipboard ||
+		typeof navigator.clipboard.writeText !== "function"
+	) {
+		toast({
+			title: "Copy is not supported",
+			description: "Clipboard access is unavailable in this browser context.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	try {
+		await navigator.clipboard.writeText(String(value));
+		toast({
+			title: `${label} copied`,
+			description: String(value),
+		});
+	} catch (error) {
+		console.error(`Failed to copy ${label}:`, error);
+		toast({
+			title: "Copy failed",
+			description: "Unable to copy to clipboard. Please try again.",
+			variant: "destructive",
+		});
 	}
 };
 

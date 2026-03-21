@@ -145,14 +145,63 @@
 										{{ viewingItem.sub_category_id || "Unassigned subcategory" }}
 									</Badge>
 								</div>
+								<div class="mt-4 grid gap-3 sm:grid-cols-2">
+									<div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+										<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+											Question ID
+										</p>
+										<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+											<p class="min-w-0 break-all text-sm text-foreground">
+												{{ viewingItem.question_id || "-" }}
+											</p>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												class="h-11 w-11 shrink-0"
+												:title="'Copy question ID'"
+												:aria-label="'Copy question ID'"
+												:disabled="!viewingItem.question_id"
+												@click="copyId(viewingItem.question_id, 'Question ID')"
+											>
+												<Copy class="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
+									<div class="rounded-lg border border-border/60 bg-muted/20 p-3">
+										<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+											Subcategory ID
+										</p>
+										<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+											<p class="min-w-0 break-all text-sm text-foreground">
+												{{ viewingItem.sub_category_id || "-" }}
+											</p>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												class="h-11 w-11 shrink-0"
+												:title="'Copy subcategory ID'"
+												:aria-label="'Copy subcategory ID'"
+												:disabled="!viewingItem.sub_category_id"
+												@click="copyId(viewingItem.sub_category_id, 'Subcategory ID')"
+											>
+												<Copy class="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
+								</div>
 								<div class="mt-4 space-y-1">
 									<p class="text-sm font-medium text-muted-foreground">Subcategory</p>
-									<button
+									<Button
+										type="button"
+										variant="outline"
+										class="h-11 w-full justify-between px-4 text-left"
 										@click="openSubCategoryDetail"
-										class="text-sm font-medium text-primary underline decoration-2 underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									>
-										View linked problem details
-									</button>
+										<span class="text-sm font-medium">Open linked problem details</span>
+										<ChevronDown class="h-4 w-4 -rotate-90" />
+									</Button>
 								</div>
 							</div>
 
@@ -185,8 +234,22 @@
 												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 													Question ID
 												</dt>
-												<dd class="break-all text-foreground">
-													{{ viewingItem.question_id || "-" }}
+												<dd class="flex items-center gap-2">
+													<span class="min-w-0 break-all text-foreground">
+														{{ viewingItem.question_id || "-" }}
+													</span>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														class="h-11 w-11 shrink-0"
+														:title="'Copy question ID'"
+														:aria-label="'Copy question ID'"
+														:disabled="!viewingItem.question_id"
+														@click="copyId(viewingItem.question_id, 'Question ID')"
+													>
+														<Copy class="h-4 w-4" />
+													</Button>
 												</dd>
 											</div>
 											<div class="space-y-1">
@@ -224,6 +287,28 @@
 													<p v-if="viewingItem.updated_at">
 														Updated: {{ formatDate(viewingItem.updated_at) }}
 													</p>
+												</dd>
+											</div>
+											<div class="space-y-1 sm:col-span-2">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													System ID
+												</dt>
+												<dd class="flex items-center gap-2">
+													<span class="min-w-0 break-all text-foreground">
+														{{ viewingItem.id || "-" }}
+													</span>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														class="h-11 w-11 shrink-0"
+														:title="'Copy record ID'"
+														:aria-label="'Copy record ID'"
+														:disabled="!viewingItem.id"
+														@click="copyId(viewingItem.id, 'Record ID')"
+													>
+														<Copy class="h-4 w-4" />
+													</Button>
 												</dd>
 											</div>
 										</dl>
@@ -292,7 +377,7 @@
 								</p>
 								<div class="mt-4 flex flex-wrap gap-2">
 									<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
-										{{ viewingSubCategory.category }}
+										{{ viewingSubCategory.category || "Unknown category" }}
 									</Badge>
 									<Badge
 										v-if="viewingSubCategory.severity_level"
@@ -307,6 +392,53 @@
 									<p class="text-sm leading-relaxed text-foreground">
 										{{ viewingSubCategory.description || "No description provided." }}
 									</p>
+								</div>
+							</div>
+
+							<div class="grid gap-3 sm:grid-cols-2">
+								<div class="rounded-2xl border border-border/70 bg-background p-4">
+									<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+										Subcategory ID
+									</p>
+									<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+										<p class="min-w-0 break-all text-sm font-medium text-foreground">
+											{{ viewingSubCategory.sub_category_id || "-" }}
+										</p>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											class="h-11 w-11 shrink-0"
+											:title="'Copy subcategory ID'"
+											:aria-label="'Copy subcategory ID'"
+											:disabled="!viewingSubCategory.sub_category_id"
+											@click="copyId(viewingSubCategory.sub_category_id, 'Subcategory ID')"
+										>
+											<Copy class="h-4 w-4" />
+										</Button>
+									</div>
+								</div>
+								<div class="rounded-2xl border border-border/70 bg-background p-4">
+									<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+										Record ID
+									</p>
+									<div class="mt-2 flex min-w-0 items-center justify-between gap-2">
+										<p class="min-w-0 break-all text-sm font-medium text-foreground">
+											{{ viewingSubCategory.id || "-" }}
+										</p>
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											class="h-11 w-11 shrink-0"
+											:title="'Copy record ID'"
+											:aria-label="'Copy record ID'"
+											:disabled="!viewingSubCategory.id"
+											@click="copyId(viewingSubCategory.id, 'Record ID')"
+										>
+											<Copy class="h-4 w-4" />
+										</Button>
+									</div>
 								</div>
 							</div>
 
@@ -335,14 +467,6 @@
 								<CollapsibleContent class="space-y-2">
 									<div class="rounded-2xl border border-border/70 bg-muted/30 p-4">
 										<dl class="grid gap-4 text-sm sm:grid-cols-2">
-											<div class="space-y-1">
-												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-													Subcategory ID
-												</dt>
-												<dd class="break-all text-foreground">
-													{{ viewingSubCategory.sub_category_id || "-" }}
-												</dd>
-											</div>
 											<div class="space-y-1">
 												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 													Category
@@ -377,6 +501,29 @@
 							<div class="flex items-center gap-2 text-muted-foreground">
 								<Loader2 class="h-4 w-4 animate-spin" />
 								<span class="text-sm">Loading problem details...</span>
+							</div>
+						</div>
+						<div
+							v-else-if="subCategoryLoadError"
+							class="mt-6 rounded-2xl border border-destructive/40 bg-destructive/5 p-4"
+						>
+							<div class="flex items-start gap-3">
+								<AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+								<div class="space-y-2">
+									<p class="text-sm font-medium text-foreground">Couldn’t load linked problem</p>
+									<p class="text-sm text-muted-foreground">
+										{{ subCategoryLoadError }}
+									</p>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										class="h-10"
+										@click="openSubCategoryDetail"
+									>
+										Try again
+									</Button>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -424,6 +571,8 @@ import {
 	Table as TableIcon,
 	HelpCircle,
 	Plus,
+	Copy,
+	AlertCircle,
 } from "lucide-vue-next";
 import { useOnboarding } from "@/composables/useOnboarding";
 import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
@@ -510,27 +659,47 @@ const showSubCategorySheet = ref(false);
 const viewingSubCategory = ref(null);
 const loadingSubCategory = ref(false);
 const showSubCategoryTechnicalDetails = ref(false);
+const subCategoryLoadError = ref("");
 
 const openSubCategoryDetail = async () => {
-	if (!viewingItem.value?.sub_category_id) return;
+	const linkedSubCategoryId = viewingItem.value?.sub_category_id;
+
+	showSubCategoryTechnicalDetails.value = false;
+	subCategoryLoadError.value = "";
+	showSubCategorySheet.value = true;
+	viewingSubCategory.value = null;
+
+	if (!linkedSubCategoryId) {
+		loadingSubCategory.value = false;
+		subCategoryLoadError.value =
+			"This assessment question is not linked to a subcategory yet.";
+		return;
+	}
 
 	loadingSubCategory.value = true;
-	showSubCategoryTechnicalDetails.value = false;
-	showSubCategorySheet.value = true;
 
 	try {
 		const { data: problemData, error: problemError } = await supabaseClient
 			.from("problems")
 			.select("*")
-			.eq("sub_category_id", viewingItem.value.sub_category_id)
-			.single();
+			.eq("sub_category_id", linkedSubCategoryId)
+			.eq("is_active", true)
+			.maybeSingle();
 
 		if (problemError) throw problemError;
+		if (!problemData) {
+			subCategoryLoadError.value =
+				"We couldn't find an active subcategory record for this question.";
+			return;
+		}
 
 		viewingSubCategory.value = problemData;
+		subCategoryLoadError.value = "";
 	} catch (err) {
 		console.error("Error fetching problem:", err);
 		viewingSubCategory.value = null;
+		subCategoryLoadError.value =
+			"We couldn't load linked problem details. Please try again.";
 	} finally {
 		loadingSubCategory.value = false;
 	}
@@ -542,6 +711,7 @@ const closeSubCategorySheet = () => {
 		viewingSubCategory.value = null;
 		loadingSubCategory.value = false;
 		showSubCategoryTechnicalDetails.value = false;
+		subCategoryLoadError.value = "";
 	}, 300);
 };
 
@@ -697,6 +867,45 @@ const handleBatchSave = async (payload) => {
 			variant: "destructive",
 		});
 		throw err;
+	}
+};
+
+const copyId = async (value, label) => {
+	if (value === null || value === undefined || value === "") {
+		toast({
+			title: `${label} not available`,
+			description: "Nothing to copy for this record.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	if (
+		typeof navigator === "undefined" ||
+		!navigator.clipboard ||
+		typeof navigator.clipboard.writeText !== "function"
+	) {
+		toast({
+			title: "Copy is not supported",
+			description: "Clipboard access is unavailable in this browser context.",
+			variant: "destructive",
+		});
+		return;
+	}
+
+	try {
+		await navigator.clipboard.writeText(String(value));
+		toast({
+			title: `${label} copied`,
+			description: String(value),
+		});
+	} catch (error) {
+		console.error(`Failed to copy ${label}:`, error);
+		toast({
+			title: "Copy failed",
+			description: "Unable to copy to clipboard. Please try again.",
+			variant: "destructive",
+		});
 	}
 };
 </script>
