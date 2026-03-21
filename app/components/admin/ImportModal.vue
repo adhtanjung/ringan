@@ -994,17 +994,22 @@ const handleConfirmImport = async (validItems) => {
 	uploadProgress.value = 0;
 
 	try {
-		// Deduplicate items by category and name to avoid "ON CONFLICT" errors in same batch
-		const seenItems = new Set();
-		let items = validItems.filter((item) => {
-			const name = item.problem_name || item.sub_category_name;
-			const compositeKey = `${selectedDataType.value}|${
-				item.category_id || ""
-			}|${name || ""}`;
-			if (seenItems.has(compositeKey)) return false;
-			seenItems.add(compositeKey);
-			return true;
-		});
+		let items = [...validItems];
+
+		// Deduplicate only for problems where category + subcategory name is the unique intent.
+		// Applying this globally can collapse valid rows for other datasets (e.g. suggestions).
+		if (selectedDataType.value === "problems") {
+			const seenItems = new Set();
+			items = validItems.filter((item) => {
+				const name = item.problem_name || item.sub_category_name;
+				const compositeKey = `${selectedDataType.value}|${
+					item.category_id || ""
+				}|${name || ""}`;
+				if (seenItems.has(compositeKey)) return false;
+				seenItems.add(compositeKey);
+				return true;
+			});
+		}
 
 		uploadProgress.value = 30;
 

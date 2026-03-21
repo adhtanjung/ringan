@@ -603,6 +603,25 @@ export function useDatasetManagement(
 				};
 			}
 		} catch (err) {
+			const errCode = (err as any)?.code;
+			if (
+				USE_SUPABASE_FOR.includes(dataType) &&
+				errCode === "PGRST103" &&
+				pagination.value.skip > 0
+			) {
+				// Current page is out of range (e.g. after import/delete shrinks dataset).
+				// Reset to page 1 and retry once.
+				pagination.value.skip = 0;
+				await router.replace({
+					query: {
+						...route.query,
+						page: "1",
+					},
+				});
+				await refreshData();
+				return;
+			}
+
 			console.error(`Error fetching ${dataType}:`, err);
 			error.value = "Failed to load data. Please try again.";
 			data.value = [];
@@ -885,6 +904,15 @@ export function useDatasetManagement(
 				variant: "destructive",
 			});
 		}
+
+		// After import, reset to first page to avoid stale out-of-range offsets.
+		pagination.value.skip = 0;
+		await router.replace({
+			query: {
+				...route.query,
+				page: "1",
+			},
+		});
 
 		// Refresh data after import (whether successful or not)
 		await refreshData();
