@@ -1401,9 +1401,6 @@ const downloadTemplate = async (format) => {
 							sub_category_id: "P005-7",
 							suggestion_text: "Try deep breathing exercises for 5 minutes.",
 							evidence_base: "CBT",
-							difficulty_level: 1,
-							estimated_duration: "5 mins",
-							tags: "breathing, anxiety",
 						},
 					],
 					feedback_prompts: [
