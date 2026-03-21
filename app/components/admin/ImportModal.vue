@@ -1,73 +1,101 @@
-<template>
-	<Sheet :open="isOpen" @update:open="$emit('close')">
+	<template>
+		<Sheet :open="isOpen" @update:open="handleOpenChange">
 		<SheetContent
 			side="right"
-			class="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl h-full overflow-y-auto p-4"
+			class="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl h-full overflow-y-auto p-0"
 		>
-			<SheetHeader class="pb-4">
-				<div class="flex items-center justify-between">
-					<SheetTitle class="text-lg sm:text-xl" id="tour-import-modal-title"
-						>Import Data</SheetTitle
-					>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="gap-1 h-7"
-						@click="startTour('import')"
-					>
-						<HelpCircle class="h-4 w-4" />
-						<span class="text-xs">Help</span>
-					</Button>
-				</div>
-				<SheetDescription class="text-sm sm:text-base">
-					Upload data files to import into the selected dataset
-				</SheetDescription>
-			</SheetHeader>
+			<div class="flex h-full flex-col">
+				<SheetHeader class="border-b bg-background px-6 py-5">
+					<SheetTitle class="text-lg sm:text-xl" id="tour-import-modal-title">
+						Import Data
+					</SheetTitle>
+					<SheetDescription class="text-sm leading-6 text-muted-foreground">
+						Upload a CSV, JSON, or Excel file to add or update records in the
+						selected dataset.
+					</SheetDescription>
+				</SheetHeader>
 
-			<div class="grid gap-4 sm:gap-6 py-4">
-				<!-- File Upload Area -->
-				<div class="mb-4 sm:mb-6" id="tour-import-file">
-					<label
-						class="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3"
-					>
-						Select File
-					</label>
-					<div
-						class="mt-1 flex justify-center px-4 sm:px-6 pt-4 sm:pt-5 pb-4 sm:pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors"
-						:class="{
-							'border-blue-400 bg-blue-50': isDragOver,
-							'border-green-400 bg-green-50': selectedFile,
-						}"
-						@drop="handleDrop"
-						@dragover="handleDragOver"
-						@dragleave="handleDragLeave"
-					>
-						<div class="space-y-4 text-center">
-							<div v-if="!selectedFile">
-								<!-- Document icon -->
-								<svg
-									class="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-									aria-hidden="true"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="1.5"
-										d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-
-								<!-- Primary upload button -->
-								<div class="space-y-2">
-									<label
-										for="file-upload"
-										class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors"
-									>
+				<div class="flex-1 overflow-y-auto bg-muted/10 px-6 py-6">
+					<div class="space-y-4">
+						<div
+							id="tour-import-file"
+							class="space-y-3 rounded-2xl border border-border/70 bg-background px-4 py-4 sm:px-5"
+						>
+							<label class="block text-sm font-semibold text-foreground">
+								Select File
+							</label>
+							<div
+								class="flex justify-center rounded-xl border-2 border-dashed border-border/70 px-4 pb-5 pt-5 transition-colors hover:border-foreground/30"
+								:class="{
+									'border-primary/40 bg-primary/5': isDragOver,
+									'border-emerald-400 bg-emerald-50': selectedFile,
+								}"
+								@drop="handleDrop"
+								@dragover="handleDragOver"
+								@dragleave="handleDragLeave"
+							>
+								<div class="max-w-md space-y-4 text-center">
+									<div v-if="!selectedFile" class="space-y-4">
 										<svg
-											class="w-4 h-4 mr-2"
+											class="mx-auto h-12 w-12 sm:h-14 sm:w-14 text-muted-foreground"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+											aria-hidden="true"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="1.5"
+												d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+											/>
+										</svg>
+
+										<div class="space-y-2">
+											<label
+												for="file-upload"
+												class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+											>
+												<svg
+													class="h-4 w-4"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+													/>
+												</svg>
+												Choose File
+												<input
+													id="file-upload"
+													name="file-upload"
+													type="file"
+													class="sr-only"
+													:accept="acceptedFileTypes"
+													@change="handleFileSelect"
+												/>
+											</label>
+
+											<p class="text-sm text-muted-foreground">
+												or drag and drop here
+											</p>
+											<p class="text-xs text-muted-foreground/80">
+												{{ acceptedFileTypesText }}
+											</p>
+										</div>
+
+										<p class="text-xs leading-5 text-muted-foreground">
+											Upload actual data rows, not blank template files.
+										</p>
+									</div>
+
+									<div v-else class="space-y-2">
+										<svg
+											class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-emerald-600"
 											fill="none"
 											stroke="currentColor"
 											viewBox="0 0 24 24"
@@ -76,254 +104,210 @@
 												stroke-linecap="round"
 												stroke-linejoin="round"
 												stroke-width="2"
-												d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+												d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 											/>
 										</svg>
-										Choose File
-										<input
-											id="file-upload"
-											name="file-upload"
-											type="file"
-											class="sr-only"
-											:accept="acceptedFileTypes"
-											@change="handleFileSelect"
-										/>
-									</label>
-
-									<p class="text-sm text-gray-500">or drag and drop here</p>
-									<p class="text-xs text-gray-400">
-										{{ acceptedFileTypesText }}
-									</p>
-								</div>
-
-								<!-- Compact tip -->
-								<div
-									class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200"
-								>
-									<p class="text-xs text-blue-700">
-										💡 <strong>Tip:</strong> Upload actual data rows, not
-										template files
-									</p>
-								</div>
-							</div>
-							<div v-else class="space-y-2">
-								<svg
-									class="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-green-500"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-									/>
-								</svg>
-								<div
-									class="text-sm text-gray-900 font-medium text-center break-all px-2"
-								>
-									{{ selectedFile.name }}
-								</div>
-								<div class="text-xs text-gray-500 text-center">
-									{{ formatFileSize(selectedFile.size) }}
-								</div>
-								<button
-									@click="removeFile"
-									class="text-red-600 hover:text-red-800 text-sm font-medium"
-								>
-									Remove file
-								</button>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Data Type Selection and Template Downloads -->
-				<div class="mb-4 sm:mb-6 space-y-4">
-					<div v-if="!dataType">
-						<label
-							class="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3"
-						>
-							Data Type
-						</label>
-						<div id="tour-import-type">
-							<Select v-model="selectedDataType">
-								<SelectTrigger>
-									<SelectValue placeholder="Select a data type" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem
-										v-for="dataType in dataTypes"
-										:key="dataType.value"
-										:value="dataType.value"
-									>
-										{{ dataType.label }}
-									</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-
-					<!-- Show selected data type when filtered -->
-					<div v-else>
-						<label
-							class="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3"
-						>
-							Data Type
-						</label>
-						<div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
-							<span class="text-sm sm:text-base text-gray-900">{{
-								dataTypes[0]?.label
-							}}</span>
-						</div>
-					</div>
-
-					<!-- Template and Example Downloads -->
-					<div class="space-y-3" id="tour-import-templates">
-						<div
-							class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-						>
-							<div>
-								<h4 class="text-sm font-medium text-gray-900">
-									Download Template
-								</h4>
-								<p class="text-xs text-gray-600">
-									{{
-										selectedDataType
-											? "Get a template file to fill out with your data"
-											: "Select a data type first"
-									}}
-								</p>
-							</div>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									@click="downloadTemplate('csv')"
-									variant="outline"
-									size="sm"
-									:disabled="!selectedDataType"
-									class="flex-1 sm:flex-none min-w-0"
-								>
-									CSV
-								</Button>
-								<Button
-									@click="downloadTemplate('xlsx')"
-									variant="outline"
-									size="sm"
-									:disabled="!selectedDataType"
-									class="flex-1 sm:flex-none min-w-0"
-								>
-									Excel
-								</Button>
-								<Button
-									@click="downloadTemplate('json')"
-									variant="outline"
-									size="sm"
-									:disabled="!selectedDataType"
-									class="flex-1 sm:flex-none min-w-0"
-								>
-									JSON
-								</Button>
-							</div>
-						</div>
-
-						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-blue-50 rounded-lg gap-3 sm:gap-0"
-						>
-							<div class="flex-1">
-								<h4 class="text-sm font-medium text-blue-900">
-									Download Example
-								</h4>
-								<p class="text-xs text-blue-600">
-									{{
-										selectedDataType
-											? "Get sample data to see the correct format"
-											: "Select a data type first"
-									}}
-								</p>
-							</div>
-							<Button
-								@click="downloadExample"
-								variant="outline"
-								size="sm"
-								class="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-auto"
-								:disabled="!selectedDataType"
-							>
-								Example
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Progress Bar -->
-				<div v-if="isUploading" class="mb-4 sm:mb-6">
-					<div class="flex items-center justify-between mb-2">
-						<span class="text-sm sm:text-base font-medium text-gray-700"
-							>Uploading...</span
-						>
-						<span class="text-sm sm:text-base text-gray-500"
-							>{{ uploadProgress }}%</span
-						>
-					</div>
-					<div class="w-full bg-gray-200 rounded-full h-2">
-						<div
-							class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-							:style="{ width: uploadProgress + '%' }"
-						></div>
-					</div>
-				</div>
-
-				<!-- Error Message -->
-				<div
-					v-if="errorMessage || allErrors.length > 0"
-					class="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md"
-				>
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<svg
-								class="h-5 w-5 text-red-400"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-								/>
-							</svg>
-						</div>
-						<div class="ml-3 flex-1">
-							<h3 class="text-sm sm:text-base font-medium text-red-800">
-								Import Error
-							</h3>
-
-							<!-- Error list display -->
-							<div v-if="allErrors.length > 0" class="mt-3">
-								<div class="space-y-2">
-									<div
-										v-for="(error, index) in showAllErrors
-											? allErrors
-											: allErrors.slice(0, 5)"
-										:key="index"
-										class="flex items-start gap-2 p-2 bg-red-100 rounded border border-red-200"
-									>
-										<span
-											class="text-red-600 font-mono text-xs mt-0.5 flex-shrink-0"
-											>{{ index + 1 }}.</span
+										<div
+											class="break-all px-2 text-center text-sm font-medium text-foreground"
 										>
-										<span class="text-sm text-red-800 flex-1 break-words">{{
-											error
+											{{ selectedFile.name }}
+										</div>
+										<div class="text-center text-xs text-muted-foreground">
+											{{ formatFileSize(selectedFile.size) }}
+										</div>
+										<button
+											@click="removeFile"
+											class="text-sm font-medium text-destructive hover:text-destructive/80"
+										>
+											Remove file
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="space-y-4">
+								<div v-if="!dataType">
+									<label
+										class="mb-2 block text-sm font-semibold text-foreground"
+										for="import-data-type"
+									>
+										Data Type
+									</label>
+									<div id="tour-import-type">
+										<Select v-model="selectedDataType">
+											<SelectTrigger id="import-data-type" class="h-11">
+												<SelectValue placeholder="Select a data type" />
+											</SelectTrigger>
+										<SelectContent>
+											<SelectItem
+												v-for="dataType in dataTypes"
+												:key="dataType.value"
+												:value="dataType.value"
+											>
+												{{ dataType.label }}
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								</div>
+
+								<div v-else>
+									<label class="mb-2 block text-sm font-semibold text-foreground">
+										Data Type
+									</label>
+									<div
+										id="import-data-type"
+										class="rounded-xl border border-border/70 bg-background px-3 py-2.5"
+									>
+										<span class="text-sm text-foreground">{{
+											dataTypes[0]?.label
 										}}</span>
+								</div>
+							</div>
+
+							<div class="space-y-3" id="tour-import-templates">
+								<div
+									class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background p-4 sm:flex-row sm:items-center sm:justify-between"
+								>
+									<div class="space-y-1">
+										<h4 class="text-sm font-semibold text-foreground">
+											Download Template
+										</h4>
+										<p class="text-xs leading-5 text-muted-foreground">
+											{{
+												selectedDataType
+													? "Get a template file to fill out with your data"
+													: "Select a data type first"
+											}}
+										</p>
+									</div>
+									<div class="flex flex-wrap gap-2">
+											<Button
+												@click="downloadTemplate('csv')"
+												variant="outline"
+												:disabled="!selectedDataType"
+												class="flex-1 min-w-0 sm:flex-none"
+											>
+											CSV
+										</Button>
+											<Button
+												@click="downloadTemplate('xlsx')"
+												variant="outline"
+												:disabled="!selectedDataType"
+												class="flex-1 min-w-0 sm:flex-none"
+											>
+											Excel
+										</Button>
+											<Button
+												@click="downloadTemplate('json')"
+												variant="outline"
+												:disabled="!selectedDataType"
+												class="flex-1 min-w-0 sm:flex-none"
+											>
+											JSON
+										</Button>
 									</div>
 								</div>
 
-								<!-- Show more/less toggle -->
-								<div v-if="allErrors.length > 5" class="mt-3">
+								<div
+									class="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background p-4 sm:flex-row sm:items-center sm:justify-between"
+								>
+									<div class="flex-1 space-y-1">
+										<h4 class="text-sm font-semibold text-foreground">
+											Download Example
+										</h4>
+										<p class="text-xs leading-5 text-muted-foreground">
+											{{
+												selectedDataType
+													? "Get sample data to see the correct format"
+													: "Select a data type first"
+											}}
+										</p>
+									</div>
+										<Button
+											@click="downloadExample"
+											variant="outline"
+											class="w-full sm:w-auto"
+											:disabled="!selectedDataType"
+										>
+										Example
+									</Button>
+								</div>
+							</div>
+						</div>
+
+							<div
+								v-if="isUploading"
+								class="space-y-2 rounded-2xl border border-border/70 bg-background px-4 py-4"
+								role="status"
+								aria-live="polite"
+							>
+							<div class="flex items-center justify-between">
+								<span class="text-sm font-medium text-foreground">
+									Uploading...
+								</span>
+								<span class="text-sm text-muted-foreground">{{
+									uploadProgress
+								}}%</span>
+							</div>
+							<div class="h-2 w-full rounded-full bg-muted">
+								<div
+									class="h-2 rounded-full bg-primary transition-all duration-300"
+									:style="{ width: uploadProgress + '%' }"
+								></div>
+							</div>
+						</div>
+
+							<div
+								v-if="errorMessage || allErrors.length > 0"
+								class="space-y-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-4"
+								role="alert"
+								aria-live="assertive"
+							>
+							<div class="flex items-start gap-3">
+								<div class="flex-shrink-0 rounded-full bg-background p-1.5">
+									<svg
+										class="h-4 w-4 text-destructive"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+										/>
+									</svg>
+								</div>
+								<div class="flex-1 space-y-1">
+									<h3 class="text-sm font-semibold text-foreground">
+										Import Error
+									</h3>
+									<p class="text-sm leading-6 text-muted-foreground">
+										{{ errorMessage || "One or more rows could not be imported." }}
+									</p>
+								</div>
+							</div>
+
+							<div v-if="allErrors.length > 0" class="space-y-2">
+								<div
+									v-for="(error, index) in showAllErrors ? allErrors : allErrors.slice(0, 5)"
+									:key="index"
+									class="flex items-start gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+								>
+									<span class="flex-shrink-0 font-mono text-xs text-muted-foreground">
+										{{ index + 1 }}.
+									</span>
+									<span class="min-w-0 flex-1 break-words text-sm text-foreground">
+										{{ error }}
+									</span>
+								</div>
+								<div v-if="allErrors.length > 5">
 									<button
 										@click="showAllErrors = !showAllErrors"
-										class="text-sm font-medium text-red-700 hover:text-red-900 underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2 py-1"
+										class="rounded-md px-2 py-1 text-sm font-medium text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									>
 										{{
 											showAllErrors
@@ -334,117 +318,100 @@
 								</div>
 							</div>
 
-							<!-- Fallback to errorMessage if no allErrors -->
-							<div
-								v-else-if="errorMessage"
-								class="mt-2 text-sm sm:text-base text-red-700 whitespace-pre-line"
-							>
-								{{ errorMessage }}
-							</div>
-
-							<!-- Quick fix tips -->
 							<div
 								v-if="
-									(errorMessage &&
-										errorMessage.includes('validation errors')) ||
+									(errorMessage && errorMessage.includes('validation errors')) ||
 									allErrors.length > 0
 								"
-								class="mt-3 p-3 bg-red-100 rounded border border-red-300"
+								class="space-y-2 rounded-xl border border-border/70 bg-background px-3 py-3"
 							>
-								<h4 class="text-sm font-medium text-red-800 mb-2">
-									💡 Quick Fix Tips:
+								<h4 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+									Quick Fix Tips
 								</h4>
-								<ul class="text-xs text-red-700 space-y-1">
-									<li>
-										• Make sure you're uploading actual data, not a template
-										file
-									</li>
-									<li>
-										• For Excel files: Fill the template with your data before
-										importing
-									</li>
-									<li>
-										• Check that your file has proper headers in the first row
-									</li>
-									<li>
-										• Ensure all required columns are present and have data
-									</li>
-									<li>• Download the template to see the correct format</li>
+								<ul class="space-y-1 text-xs leading-5 text-muted-foreground">
+									<li>Upload actual data rows, not the blank template file.</li>
+									<li>Make sure the first row contains the column headers.</li>
+									<li>Confirm required columns are present and filled in.</li>
 								</ul>
 							</div>
 						</div>
-					</div>
-				</div>
 
-				<!-- Success Message -->
-				<div
-					v-if="successMessage"
-					class="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-md"
-				>
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<svg
-								class="h-5 w-5 text-green-400"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
+							<div
+								v-if="successMessage"
+								class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4"
+								role="status"
+								aria-live="polite"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-								/>
-							</svg>
-						</div>
-						<div class="ml-3">
-							<h3 class="text-sm sm:text-base font-medium text-green-800">
-								Import Successful
-							</h3>
-							<div class="mt-2 text-sm sm:text-base text-green-700">
-								{{ successMessage }}
+							<div class="flex items-start gap-3">
+								<div class="flex-shrink-0 rounded-full bg-background p-1.5">
+									<svg
+										class="h-4 w-4 text-emerald-600"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+										/>
+									</svg>
+								</div>
+								<div class="space-y-1">
+									<h3 class="text-sm font-semibold text-foreground">
+										Import Successful
+									</h3>
+									<p class="text-sm leading-6 text-muted-foreground">
+										{{ successMessage }}
+									</p>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 
-			<SheetFooter class="flex flex-row justify-end gap-3 pt-4">
-				<Button
-					variant="outline"
-					@click="$emit('close')"
-					:disabled="isUploading"
-				>
-					Cancel
-				</Button>
-				<Button
-					@click="startImport"
-					:disabled="!canImport || isUploading"
-					id="tour-import-btn"
-				>
-					<svg
-						v-if="isUploading"
-						class="animate-spin -ml-1 mr-2 h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
-						></circle>
-						<path
-							class="opacity-75"
-							fill="currentColor"
-							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-						></path>
-					</svg>
-					{{ isUploading ? "Importing..." : "Import Data" }}
-				</Button>
-			</SheetFooter>
+				<SheetFooter class="border-t bg-background px-6 py-4">
+					<div class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+							<Button
+								variant="outline"
+								class="w-full sm:w-auto"
+								@click="closeModal"
+								:disabled="isUploading"
+							>
+							Cancel
+						</Button>
+						<Button
+							class="w-full sm:w-auto"
+							@click="startImport"
+							:disabled="!canImport || isUploading"
+							id="tour-import-btn"
+						>
+							<svg
+								v-if="isUploading"
+								class="-ml-1 mr-2 h-4 w-4 animate-spin"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								></circle>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								></path>
+							</svg>
+							{{ isUploading ? "Importing..." : "Import Data" }}
+						</Button>
+					</div>
+				</SheetFooter>
+			</div>
 			<ImportPreviewModal
 				:is-open="showPreviewModal"
 				:data="previewData"
@@ -457,7 +424,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { Button } from "@/components/ui/button";
 import {
 	Sheet,
@@ -478,11 +445,14 @@ import { useSupabase } from "@/composables/useSupabase";
 import { parseCSV } from "@/utils/csvParser";
 import { generateCategoryId } from "@/utils/categoryIdGenerator";
 import { generateSubCategoryId } from "@/utils/subCategoryIdGenerator";
-import { generateQuestionId } from "@/utils/questionIdGenerator";
+import {
+	createActionIdAllocator,
+	createSuggestionIdAllocator,
+	isValidActionId,
+	isValidSuggestionId,
+} from "@/utils/commonIdGenerator";
 import * as XLSX from "xlsx";
 import ImportPreviewModal from "./ImportPreviewModal.vue";
-import { HelpCircle } from "lucide-vue-next";
-import { useOnboarding } from "@/composables/useOnboarding";
 
 // Props
 const props = defineProps({
@@ -514,8 +484,6 @@ const previewData = ref([]);
 const overwriteExisting = ref(true); // Always overwrite when importing
 const validateData = ref(true);
 
-const { startTour } = useOnboarding();
-
 // List of data types migrated to Supabase
 const USE_SUPABASE_FOR = [
 	"problem_types",
@@ -526,6 +494,78 @@ const USE_SUPABASE_FOR = [
 	"next_actions",
 	"training_examples",
 ];
+
+const SUPABASE_TABLE_COLUMNS = {
+	problem_types: ["type_name", "category_id", "description", "is_active"],
+	problems: [
+		"problem_name",
+		"category",
+		"category_id",
+		"sub_category_id",
+		"description",
+		"severity_level",
+		"is_active",
+	],
+	assessments: [
+		"question_id",
+		"sub_category_id",
+		"question_text",
+		"response_type",
+		"scale_min",
+		"scale_max",
+		"scale_labels",
+		"next_step",
+		"clusters",
+		"batch_id",
+		"scale_label_1",
+		"scale_label_2",
+		"scale_label_3",
+		"scale_label_4",
+		"order_number",
+		"is_active",
+	],
+	suggestions: [
+		"suggestion_id",
+		"sub_category_id",
+		"cluster",
+		"suggestion_text",
+		"resource_link",
+		"evidence_base",
+		"difficulty_level",
+		"estimated_duration",
+		"tags",
+		"is_active",
+	],
+	feedback_prompts: ["prompt_id", "prompt_text", "is_active"],
+	next_actions: ["action_id", "action_text", "is_active"],
+	training_examples: [
+		"example_id",
+		"problem",
+		"conversation_id",
+		"user_intent",
+		"prompt",
+		"completion",
+		"context",
+		"quality_score",
+		"tags",
+		"is_active",
+	],
+};
+
+const IMPORT_FIELD_ALIASES = {
+	problems: {
+		subcategory_name: "problem_name",
+		sub_category_name: "problem_name",
+	},
+	next_actions: {
+		action_name: "action_text",
+		description: "action_text",
+	},
+	feedback_prompts: {
+		prompt: "prompt_text",
+		question: "prompt_text",
+	},
+};
 
 // Supabase client
 const { supabase } = useSupabase();
@@ -562,6 +602,120 @@ const canImport = computed(() => {
 	return selectedFile.value && selectedDataType.value;
 });
 
+let legacyProgressInterval = null;
+
+const clearLegacyProgressInterval = () => {
+	if (legacyProgressInterval) {
+		clearInterval(legacyProgressInterval);
+		legacyProgressInterval = null;
+	}
+};
+
+const handleOpenChange = (open) => {
+	if (!open) {
+		closeModal();
+	}
+};
+
+const readFileAsText = (file) =>
+	new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (event) => resolve(String(event?.target?.result || ""));
+		reader.onerror = () => reject(new Error("Failed to read the selected file."));
+		reader.readAsText(file);
+	});
+
+const readFileAsArrayBuffer = (file) =>
+	new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (event) => resolve(event?.target?.result);
+		reader.onerror = () => reject(new Error("Failed to read the selected file."));
+		reader.readAsArrayBuffer(file);
+	});
+
+const parseBoolean = (value, fallback = true) => {
+	if (typeof value === "boolean") return value;
+	if (typeof value === "number") return value !== 0;
+	if (typeof value === "string") {
+		const normalized = value.trim().toLowerCase();
+		if (["true", "1", "yes", "y"].includes(normalized)) return true;
+		if (["false", "0", "no", "n"].includes(normalized)) return false;
+	}
+	return fallback;
+};
+
+const parseTextArray = (value) => {
+	if (Array.isArray(value)) {
+		return value.map((item) => String(item).trim()).filter(Boolean);
+	}
+	if (typeof value !== "string") return [];
+
+	const trimmed = value.trim();
+	if (!trimmed) return [];
+
+	if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				return parsed.map((item) => String(item).trim()).filter(Boolean);
+			}
+		} catch {
+			// Fallback to comma parsing below.
+		}
+	}
+
+	return trimmed
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+};
+
+const normalizeImportedItem = (rawItem, dataType) => {
+	const item = rawItem && typeof rawItem === "object" ? rawItem : {};
+	const aliases = IMPORT_FIELD_ALIASES[dataType] || {};
+	const normalized = {};
+
+	for (const [key, value] of Object.entries(item)) {
+		const canonicalKey = aliases[key] || aliases[String(key).toLowerCase()] || key;
+		normalized[canonicalKey] = value;
+	}
+
+	if (!SUPABASE_TABLE_COLUMNS[dataType]) {
+		return normalized;
+	}
+
+	const cleaned = {};
+	for (const key of SUPABASE_TABLE_COLUMNS[dataType]) {
+		if (normalized[key] !== undefined) {
+			cleaned[key] = normalized[key];
+		}
+	}
+
+	if (Object.prototype.hasOwnProperty.call(cleaned, "is_active")) {
+		cleaned.is_active = parseBoolean(cleaned.is_active, true);
+	}
+
+	if (dataType === "suggestions" || dataType === "training_examples") {
+		if (cleaned.tags !== undefined) {
+			cleaned.tags = parseTextArray(cleaned.tags);
+		}
+	}
+
+	if (dataType === "next_actions" && typeof cleaned.action_text === "string") {
+		cleaned.action_text = cleaned.action_text.trim();
+	}
+
+	if (dataType === "feedback_prompts" && typeof cleaned.prompt_text === "string") {
+		cleaned.prompt_text = cleaned.prompt_text.trim();
+	}
+
+	if (dataType === "problems" && normalized.sub_category_name && !cleaned.problem_name) {
+		cleaned.problem_name = normalized.sub_category_name;
+	}
+
+	return cleaned;
+};
+
 // Methods
 const closeModal = () => {
 	if (!isUploading.value) {
@@ -571,6 +725,7 @@ const closeModal = () => {
 };
 
 const resetForm = () => {
+	clearLegacyProgressInterval();
 	selectedFile.value = null;
 	selectedDataType.value = props.dataType || "";
 	isDragOver.value = false;
@@ -581,6 +736,10 @@ const resetForm = () => {
 	allErrors.value = [];
 	showAllErrors.value = false;
 };
+
+onBeforeUnmount(() => {
+	clearLegacyProgressInterval();
+});
 
 const handleFileSelect = async (event) => {
 	const file = event.target.files[0];
@@ -678,40 +837,30 @@ const startImport = async () => {
 		if (USE_SUPABASE_FOR.includes(selectedDataType.value)) {
 			// Import into Supabase
 			const file = selectedFile.value;
-			const reader = new FileReader();
-
-			const fileData = await new Promise((resolve, reject) => {
-				reader.onload = (e) => resolve(e.target.result);
-				reader.onerror = (e) => reject(e);
-				reader.readAsText(file);
-			});
-
+			const lowerName = String(file.name || "").toLowerCase();
 			let items = [];
 
 			// Parse file based on type
-			if (file.name.endsWith(".json")) {
+			if (lowerName.endsWith(".json")) {
 				try {
+					const fileData = await readFileAsText(file);
 					items = JSON.parse(fileData);
 					if (!Array.isArray(items)) items = [items];
-				} catch (e) {
+				} catch {
 					throw new Error("Invalid JSON format.");
 				}
-			} else if (file.name.endsWith(".csv")) {
+			} else if (lowerName.endsWith(".csv")) {
 				try {
+					const fileData = await readFileAsText(file);
 					const parsed = parseCSV(fileData);
 					items = parsed.data;
 				} catch (e) {
 					throw new Error("Invalid CSV format: " + (e.message || e));
 				}
-			} else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+			} else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
 				try {
-					const data = await new Promise((resolve, reject) => {
-						const reader = new FileReader();
-						reader.onload = (e) => resolve(new Uint8Array(e.target.result));
-						reader.onerror = (e) => reject(e);
-						reader.readAsArrayBuffer(file);
-					});
-					const workbook = XLSX.read(data, { type: "array" });
+					const data = await readFileAsArrayBuffer(file);
+					const workbook = XLSX.read(new Uint8Array(data), { type: "array" });
 					const firstSheetName = workbook.SheetNames[0];
 					const worksheet = workbook.Sheets[firstSheetName];
 					items = XLSX.utils.sheet_to_json(worksheet);
@@ -730,6 +879,14 @@ const startImport = async () => {
 				);
 			}
 
+			items = items.map((item) => normalizeImportedItem(item, selectedDataType.value));
+			const hasValidPayload = items.some((item) => Object.keys(item).length > 0);
+			if (!hasValidPayload) {
+				throw new Error(
+					"The file does not contain recognized columns for this data type. Download the latest template and try again.",
+				);
+			}
+
 			// Instead of importing directly, show preview modal
 			previewData.value = items;
 			showPreviewModal.value = true;
@@ -745,7 +902,8 @@ const startImport = async () => {
 		formData.append("validate", validateData.value);
 
 		// Simulate upload progress
-		const progressInterval = setInterval(() => {
+		clearLegacyProgressInterval();
+		legacyProgressInterval = setInterval(() => {
 			if (uploadProgress.value < 90) {
 				uploadProgress.value += Math.random() * 10;
 			}
@@ -764,7 +922,7 @@ const startImport = async () => {
 			},
 		);
 
-		clearInterval(progressInterval);
+		clearLegacyProgressInterval();
 		uploadProgress.value = 100;
 
 		if (response.success) {
@@ -825,6 +983,7 @@ const startImport = async () => {
 			allErrors.value = [];
 		}
 	} finally {
+		clearLegacyProgressInterval();
 		isUploading.value = false;
 	}
 };
@@ -879,8 +1038,9 @@ const handleConfirmImport = async (validItems) => {
 
 		// Batch insert
 		const cleanedItems = items.map((item) => {
+			const normalizedItem = normalizeImportedItem(item, selectedDataType.value);
 			const { id, _id, created_at, updated_at, category_display, ...rest } =
-				item;
+				normalizedItem;
 
 			// Ensure required fields for problems are never null/undefined
 			if (selectedDataType.value === "problems") {
@@ -888,10 +1048,10 @@ const handleConfirmImport = async (validItems) => {
 				if (!rest.problem_name) rest.problem_name = "Untitled Subcategory";
 			}
 
-			// For assessments, generate question_id if missing
+			// Keep imported inactive rows if explicitly provided; default to active otherwise.
 			const dataToInsert = {
 				...rest,
-				is_active: true, // Ensure imported items are active
+				is_active: parseBoolean(rest.is_active, true),
 				updated_at: new Date().toISOString(),
 			};
 
@@ -999,6 +1159,115 @@ const handleConfirmImport = async (validItems) => {
 			}
 		}
 
+		// Specialized logic for suggestions:
+		// - enforce sub_category_id relation
+		// - preserve existing IDs for same (sub_category_id + suggestion_text)
+		// - auto-generate canonical suggestion_id when missing/invalid
+		if (selectedDataType.value === "suggestions") {
+			const [{ data: existingSuggestions }, { data: existingSubCategories }] =
+				await Promise.all([
+					supabase
+						.from("suggestions")
+						.select("suggestion_id, suggestion_text, sub_category_id"),
+					supabase.from("problems").select("sub_category_id"),
+				]);
+
+			const validSubCategoryIdSet = new Set(
+				(existingSubCategories || [])
+					.map((row) => row.sub_category_id)
+					.filter(Boolean),
+			);
+
+			const existingMap = new Map();
+			for (const suggestion of existingSuggestions || []) {
+				const key = `${
+					suggestion.sub_category_id || ""
+				}|${String(suggestion.suggestion_text || "").trim().toLowerCase()}`;
+				if (suggestion.suggestion_id && key !== "|") {
+					existingMap.set(key, suggestion.suggestion_id);
+				}
+			}
+
+			const nextSuggestionId = await createSuggestionIdAllocator(supabase);
+
+			for (const item of cleanedItems) {
+				if (!item.sub_category_id || !validSubCategoryIdSet.has(item.sub_category_id)) {
+					throw new Error(
+						`Invalid sub_category_id "${item.sub_category_id || ""}" for suggestion import`,
+					);
+				}
+				if (!item.suggestion_text) {
+					throw new Error("Suggestion text is required for suggestion import");
+				}
+
+				const key = `${item.sub_category_id}|${String(item.suggestion_text)
+					.trim()
+					.toLowerCase()}`;
+				const existingId = existingMap.get(key);
+
+				if (existingId) {
+					item.suggestion_id = existingId;
+					continue;
+				}
+
+				if (!item.suggestion_id || !isValidSuggestionId(item.suggestion_id)) {
+					item.suggestion_id = nextSuggestionId();
+				}
+
+				existingMap.set(key, item.suggestion_id);
+			}
+		}
+
+		// Specialized logic for next actions:
+		// - preserve existing IDs for same action_text
+		// - auto-generate canonical action_id when missing/invalid
+		if (selectedDataType.value === "next_actions") {
+			const { data: existingActions } = await supabase
+				.from("next_actions")
+				.select("action_id, action_text");
+
+			const existingMap = new Map();
+			for (const action of existingActions || []) {
+				const key = String(action.action_text || "")
+					.trim()
+					.toLowerCase();
+				if (action.action_id && key) {
+					existingMap.set(key, action.action_id);
+				}
+			}
+
+			const nextActionId = await createActionIdAllocator(supabase);
+
+			for (const item of cleanedItems) {
+				if (!item.action_text) {
+					throw new Error("Action text is required for next actions import");
+				}
+
+				const key = String(item.action_text).trim().toLowerCase();
+				const existingId = existingMap.get(key);
+
+				if (existingId) {
+					item.action_id = existingId;
+					continue;
+				}
+
+				if (!item.action_id || !isValidActionId(item.action_id)) {
+					item.action_id = nextActionId();
+				}
+
+				existingMap.set(key, item.action_id);
+			}
+		}
+
+		// Ensure feedback prompt rows map to the current schema.
+		if (selectedDataType.value === "feedback_prompts") {
+			for (const item of cleanedItems) {
+				if (!item.prompt_text || !String(item.prompt_text).trim()) {
+					throw new Error("Prompt text is required for feedback prompts import");
+				}
+			}
+		}
+
 		// Determine the conflict column based on data type
 		const conflictColumns = {
 			assessments: "question_id",
@@ -1099,22 +1368,20 @@ const downloadTemplate = async (format) => {
 						description: "Fear of being judged by others",
 					},
 				],
-				assessments: [
-					{
-						sub_category_id: "P005-7",
+					assessments: [
+						{
+							sub_category_id: "P005-7",
 						question_text: "How often do you feel nervous or anxious?",
 						response_type: "scale",
 						scale_label_1: "Not at all",
 						scale_label_2: "Several days",
 						scale_label_3: "More than half the days",
-						scale_label_4: "Nearly every day",
-						next_step: "continue",
-						clusters: "c1",
-						next_step: "continue",
-						clusters: "c1",
-						batch_id: "B001",
-						order_number: 1,
-					},
+							scale_label_4: "Nearly every day",
+							next_step: "continue",
+							clusters: "c1",
+							batch_id: "B001",
+							order_number: 1,
+						},
 					{
 						sub_category_id: "P005-7",
 						question_text: "Do you have trouble sleeping at night?",
@@ -1129,37 +1396,29 @@ const downloadTemplate = async (format) => {
 						order_number: 2,
 					},
 				],
-				suggestions: [
-					{
-						suggestion_id: "SUG_001",
-						sub_category_id: "P005-7",
-						suggestion_text: "Try deep breathing exercises for 5 minutes.",
-						category: "Self-care",
-						evidence_base: "CBT",
-						difficulty_level: "Easy",
-						estimated_duration: "5 mins",
-						tags: "breathing, anxiety",
-						is_active: true,
+					suggestions: [
+						{
+							suggestion_id: "S_0001",
+							sub_category_id: "P005-7",
+							suggestion_text: "Try deep breathing exercises for 5 minutes.",
+							evidence_base: "CBT",
+							difficulty_level: 1,
+							estimated_duration: "5 mins",
+							tags: "breathing, anxiety",
+							is_active: true,
 					},
 				],
-				feedback_prompts: [
-					{
-						prompt_id: "FP_001",
-						stage: "initial",
-						prompt_text: "How are you feeling today?",
-						next_action_id: "NA_001",
-						context: "daily_checkin",
-						is_active: true,
-					},
-				],
+					feedback_prompts: [
+						{
+							prompt_id: "FP_001",
+							prompt_text: "How are you feeling today?",
+							is_active: true,
+						},
+					],
 				next_actions: [
 					{
-						action_id: "NA_001",
-						action_type: "message",
-						action_name: "Generic Response",
-						description: "Standard empathetic response",
-						parameters: "{}",
-						conditions: "{}",
+						action_id: "A_0001",
+						action_text: "Standard empathetic response",
 						is_active: true,
 					},
 				],
@@ -1189,17 +1448,20 @@ const downloadTemplate = async (format) => {
 				const headers = Object.keys(template[0]);
 				const csvRows = [headers.join(",")];
 
-				template.forEach((row) => {
-					const values = headers.map((key) => {
-						const v = row[key];
-						if (typeof v === "boolean") return v ? "true" : "false";
-						if (v === null || v === undefined) return "";
-						// Escape commas in strings
-						const s = String(v);
-						return s.includes(",") ? `"${s}"` : s;
+					template.forEach((row) => {
+						const values = headers.map((key) => {
+							const v = row[key];
+							if (typeof v === "boolean") return v ? "true" : "false";
+							if (v === null || v === undefined) return "";
+							// Escape delimiters, quotes, and line breaks.
+							const s = String(v);
+							if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+								return `"${s.replace(/"/g, '""')}"`;
+							}
+							return s;
+						});
+						csvRows.push(values.join(","));
 					});
-					csvRows.push(values.join(","));
-				});
 
 				const csvContent = csvRows.join("\n");
 
