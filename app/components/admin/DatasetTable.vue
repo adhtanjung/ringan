@@ -87,20 +87,20 @@
 									variant="outline"
 									size="icon"
 									class="h-10 w-10"
-									aria-label="Import or export CSV"
+									aria-label="Import or export data"
 								>
 									<Download class="h-4 w-4" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
 							<DropdownMenuItem @click="emit('import')"
-								>Import CSV</DropdownMenuItem
+								>Import Data</DropdownMenuItem
 							>
 							<DropdownMenuItem @click="emit('export')"
-								>Export CSV</DropdownMenuItem
+								>Export Data</DropdownMenuItem
 							>
 						</DropdownMenuContent>
-						</DropdownMenu>
+							</DropdownMenu>
 
 						<Button
 							v-if="showCreateButton"
