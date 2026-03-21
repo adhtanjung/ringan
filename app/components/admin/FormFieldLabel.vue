@@ -20,7 +20,7 @@ defineProps<{
 	<div class="flex items-center gap-1.5 mb-1.5">
 		<Label
 			:for="fieldKey"
-			class="text-xs sm:text-sm font-semibold text-foreground/90 flex items-center gap-1"
+			class="text-sm font-semibold text-foreground/90 flex items-center gap-1"
 		>
 			{{ label }}
 			<span
@@ -35,8 +35,8 @@ defineProps<{
 			<TooltipTrigger as-child>
 				<button
 					type="button"
-					tabindex="-1"
-					class="inline-flex items-center justify-center text-muted-foreground/60 hover:text-primary transition-colors focus:outline-none"
+					:aria-label="hintTitle || `More information about ${label}`"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					<HelpCircle class="h-3.5 w-3.5" />
 				</button>
@@ -49,11 +49,11 @@ defineProps<{
 				<div class="space-y-1">
 					<p
 						v-if="hintTitle"
-						class="text-xs font-bold uppercase tracking-tight text-foreground/70"
+						class="text-sm font-medium text-foreground/70"
 					>
 						{{ hintTitle }}
 					</p>
-					<p class="text-xs leading-relaxed">{{ description }}</p>
+					<p class="text-sm leading-6">{{ description }}</p>
 				</div>
 			</TooltipContent>
 		</Tooltip>

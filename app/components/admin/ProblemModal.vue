@@ -1,210 +1,179 @@
 <template>
 	<Dialog :open="isOpen" @update:open="closeModal">
 		<DialogContent
-			class="w-full max-w-full sm:max-w-2xl h-dvh sm:h-auto sm:max-h-[90vh] p-0 flex flex-col overflow-hidden rounded-none sm:rounded-lg"
+			class="w-[92vw] sm:max-w-xl max-h-[92dvh] p-0 flex flex-col overflow-hidden"
 		>
-			<div class="px-6 py-4 border-b">
+			<div class="px-6 py-5 border-b">
 				<DialogHeader>
 					<DialogTitle>
-						{{ isEditing ? "Edit" : "Create" }} Subcategory
+						{{ isEditing ? "Edit Subcategory" : "Create Subcategory" }}
 					</DialogTitle>
 					<DialogDescription>
 						{{
 							isEditing
-								? "Update the information below"
-								: "Fill in the details to create a new subcategory"
+								? "Update the subcategory name, parent category, and description."
+								: "Name the subcategory, choose its parent category, and add a short description."
 						}}
 					</DialogDescription>
 				</DialogHeader>
 			</div>
 
-			<!-- Form -->
-			<TooltipProvider>
-				<form
-					@submit.prevent="saveItem"
-					class="flex-1 flex flex-col min-h-0 overflow-hidden"
-				>
-					<ScrollArea class="flex-auto w-full flex flex-col min-h-0">
-						<div class="px-6 py-6">
-							<!-- Form Fields -->
-							<div class="grid grid-cols-1 gap-4 sm:gap-6">
-								<!-- Problem Name -->
-								<div>
-									<FormFieldLabel
-										field-key="problem_name"
-										label="Subcategory Name"
-										:required="true"
-										hint-title="Core Entity"
-										description="The common name for this issue (e.g. 'Difficulty Falling Asleep'). Avoid clinical jargon if possible."
-									/>
-									<Input
-										id="problem_name"
-										v-model="formData.problem_name"
-										placeholder="e.g., Work Stress"
-										required
-										class="mt-1"
-									/>
-								</div>
-
-								<!-- Category (from Categories) -->
-								<div>
-									<FormFieldLabel
-										field-key="category"
-										label="Category"
-										:required="true"
-										hint-title="Higher Level Grouping"
-										description="Select the main group this problem belongs to. This helps in high-level reporting."
-									/>
-									<select
-										id="category"
-										v-model="formData.category"
-										@change="handleCategoryChange"
-										required
-										class="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-									>
-										<option value="">Select a category</option>
-										<option
-											v-for="type in problemTypes"
-											:key="type.type_name"
-											:value="type.type_name"
-										>
-											{{ type.type_name }}
-										</option>
-									</select>
-									<p
-										v-if="loadingProblemTypes"
-										class="mt-1 text-xs text-muted-foreground"
-									>
-										Loading categories...
-									</p>
-								</div>
-
-								<!-- Category ID (Auto-filled) -->
-								<div>
-									<FormFieldLabel
-										field-key="category_id"
-										label="Category ID"
-										:required="true"
-										description="Auto-filled from selected category"
-									/>
-									<Input
-										id="category_id"
-										v-model="formData.category_id"
-										placeholder="Will be auto-filled"
-										readonly
-										class="mt-1 bg-muted cursor-not-allowed"
-									/>
-								</div>
-
-								<!-- Subcategory ID (Auto-generated) -->
-								<div>
-									<FormFieldLabel
-										field-key="sub_category_id"
-										label="Subcategory ID"
-										:required="true"
-										:description="
-											isEditing
-												? 'Unique subcategory identifier'
-												: 'Auto-generated from problem name'
-										"
-									/>
-									<div class="mt-1 flex items-center gap-2">
-										<Input
-											id="sub_category_id"
-											v-model="formData.sub_category_id"
-											placeholder="Will be auto-generated"
-											readonly
-											class="flex-1 bg-muted cursor-not-allowed"
-										/>
-										<Loader2
-											v-if="isGeneratingSubCategoryId"
-											class="h-4 w-4 animate-spin text-muted-foreground"
-										/>
-										<CheckCircle
-											v-else-if="formData.sub_category_id"
-											class="h-4 w-4 text-green-600"
-										/>
-									</div>
-								</div>
-
-								<!-- Description -->
-								<div>
-									<FormFieldLabel
-										field-key="description"
-										label="Description"
-										:required="true"
-										hint-title="Internal Context"
-										description="Describe the symptoms or context and how it affects the user. This is mainly for internal data science use."
-									/>
-									<Textarea
-										id="description"
-										v-model="formData.description"
-										rows="3"
-										placeholder="Detailed description of this subcategory"
-										required
-										class="mt-1"
-									/>
-								</div>
-							</div>
-
-							<!-- Validation Errors -->
-							<Alert
-								v-if="validationErrors.length > 0"
-								variant="destructive"
-								class="mt-6"
+			<form
+				@submit.prevent="saveItem"
+				class="flex-1 flex flex-col min-h-0 overflow-hidden"
+			>
+				<div class="flex-1 overflow-y-auto min-h-0 px-6">
+					<div class="py-6 space-y-6">
+						<div>
+							<Label for="problem_name" class="text-sm font-medium text-foreground">
+								Subcategory Name
+								<span class="ml-1 text-destructive">*</span>
+							</Label>
+							<Input
+								id="problem_name"
+								v-model="formData.problem_name"
+								placeholder="e.g., Work Stress"
+								required
+								class="mt-1"
+								@blur="handleProblemNameBlur"
+							/>
+							<p
+								v-if="problemNameError"
+								class="mt-1 text-sm leading-6 text-destructive"
+								aria-live="polite"
 							>
-								<AlertCircle class="h-4 w-4" />
-								<AlertTitle>Validation Errors</AlertTitle>
-								<AlertDescription>
-									<ul class="list-disc pl-5 space-y-1">
-										<li v-for="error in validationErrors" :key="error">
-											{{ error }}
-										</li>
-									</ul>
-								</AlertDescription>
-							</Alert>
+								{{ problemNameError }}
+							</p>
+							<p v-else class="mt-1 text-sm leading-6 text-muted-foreground">
+								{{ problemNameHelperText }}
+							</p>
 						</div>
-					</ScrollArea>
 
-					<!-- Action Buttons -->
-					<div class="px-6 py-4 border-t bg-background">
-						<DialogFooter class="sm:justify-end gap-2">
+						<div>
+							<Label for="category" class="text-sm font-medium text-foreground">
+								Parent Category
+								<span class="ml-1 text-destructive">*</span>
+							</Label>
+							<Select
+								:model-value="formData.category"
+								@update:model-value="handleCategoryChange"
+								:disabled="loadingProblemTypes || !!problemTypesLoadError"
+							>
+								<SelectTrigger id="category" class="mt-1 h-11 w-full">
+									<SelectValue placeholder="Select a parent category" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem
+										v-if="
+											formData.category &&
+											!problemTypes.some((type) => type.type_name === formData.category)
+										"
+										:value="formData.category"
+									>
+										{{ formData.category }}
+									</SelectItem>
+									<SelectItem
+										v-for="type in problemTypes"
+										:key="type.type_name"
+										:value="type.type_name"
+									>
+										{{ type.type_name }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							<p
+								v-if="categoryError"
+								class="mt-1 text-sm leading-6 text-destructive"
+								aria-live="polite"
+							>
+								{{ categoryError }}
+							</p>
+							<p v-else class="mt-1 text-sm leading-6 text-muted-foreground">
+								{{ categoryHelperText }}
+							</p>
 							<Button
+								v-if="problemTypesLoadError"
 								type="button"
-								variant="outline"
-								@click="closeModal"
-								:disabled="isSaving"
+								variant="ghost"
+								class="mt-1 h-9 px-2 text-sm text-foreground"
+								@click="fetchProblemTypes"
 							>
-								Cancel
+								Try again
 							</Button>
-							<Button
-								type="submit"
-								:disabled="isSaving || validationErrors.length > 0"
+						</div>
+
+						<div>
+							<Label for="description" class="text-sm font-medium text-foreground">
+								Description
+								<span class="ml-1 text-destructive">*</span>
+							</Label>
+							<Textarea
+								id="description"
+								v-model="formData.description"
+								rows="4"
+								placeholder="Briefly describe what belongs in this subcategory."
+								required
+								class="mt-1"
+								@blur="markTouched('description')"
+							/>
+							<p
+								v-if="descriptionError"
+								class="mt-1 text-sm leading-6 text-destructive"
+								aria-live="polite"
 							>
-								<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
-								{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
-							</Button>
-						</DialogFooter>
+								{{ descriptionError }}
+							</p>
+							<p v-else class="mt-1 text-sm leading-6 text-muted-foreground">
+								{{ descriptionHelperText }}
+							</p>
+						</div>
 					</div>
-				</form>
-			</TooltipProvider>
+				</div>
+
+				<div class="px-6 py-4 border-t bg-background">
+					<DialogFooter class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							@click="closeModal"
+							:disabled="isSaving"
+							class="w-full sm:w-auto"
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							class="w-full sm:w-auto"
+							:disabled="isSaving || loadingProblemTypes || isGeneratingSubCategoryId"
+						>
+							<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
+							{{ isSaving ? "Saving..." : "Save Subcategory" }}
+						</Button>
+					</DialogFooter>
+				</div>
+			</form>
 		</DialogContent>
 	</Dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive, nextTick, onMounted } from "vue";
-import { AlertCircle, Loader2, CheckCircle } from "lucide-vue-next";
+import { ref, computed, watch, reactive, nextTick } from "vue";
+import { Loader2 } from "lucide-vue-next";
 import { useSupabase } from "@/composables/useSupabase";
-import { useToast } from "@/components/ui/toast/use-toast";
 import { generateSubCategoryId } from "@/utils/subCategoryIdGenerator";
 
 // shadcn-vue components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Dialog,
 	DialogContent,
@@ -213,9 +182,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import FormFieldLabel from "@/components/admin/FormFieldLabel.vue";
 
 // Types
 interface Problem {
@@ -252,7 +218,6 @@ const emit = defineEmits<{
 
 // Composables
 const { supabase } = useSupabase();
-const { toast } = useToast();
 
 // Reactive data
 const formData = reactive<Problem>({
@@ -265,17 +230,146 @@ const formData = reactive<Problem>({
 });
 
 const isSaving = ref(false);
-const validationErrors = ref<string[]>([]);
 const problemTypes = ref<ProblemType[]>([]);
 const loadingProblemTypes = ref(false);
+const problemTypesLoadError = ref("");
 const isGeneratingSubCategoryId = ref(false);
+const subCategoryIdError = ref("");
+const subCategoryIdRequestId = ref(0);
+const hasSubmitted = ref(false);
+const initialFormSnapshot = ref("");
+const fieldTouched = reactive({
+	problem_name: false,
+	category: false,
+	description: false,
+});
 
 // Computed properties
 const isEditing = computed(() => !!props.item);
+const problemNameTrimmed = computed(() => formData.problem_name.trim());
+
+const showProblemNameFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.problem_name,
+);
+const showCategoryFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.category || !!problemTypesLoadError.value,
+);
+const showDescriptionFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.description,
+);
+
+const problemNameError = computed(() => {
+	if (!showProblemNameFeedback.value) {
+		return "";
+	}
+
+	if (!problemNameTrimmed.value) {
+		return "Subcategory name is required.";
+	}
+
+	if (subCategoryIdError.value) {
+		return subCategoryIdError.value;
+	}
+
+	return "";
+});
+
+const problemNameHelperText = computed(() => {
+	if (subCategoryIdError.value) {
+		return "";
+	}
+
+	if (isGeneratingSubCategoryId.value) {
+		return "Generating subcategory ID...";
+	}
+
+	if (isEditing.value) {
+		return "Subcategory ID stays the same while you edit.";
+	}
+
+	return formData.sub_category_id
+		? "Subcategory ID generated automatically."
+		: "Subcategory ID is generated automatically.";
+});
+
+const categoryError = computed(() => {
+	if (!showCategoryFeedback.value) {
+		return "";
+	}
+
+	if (problemTypesLoadError.value) {
+		return problemTypesLoadError.value;
+	}
+
+	if (!formData.category) {
+		return "Parent category is required.";
+	}
+
+	if (!formData.category_id) {
+		return "Please choose a valid parent category.";
+	}
+
+	return "";
+});
+
+const categoryHelperText = computed(() => {
+	if (problemTypesLoadError.value) {
+		return "";
+	}
+
+	if (loadingProblemTypes.value) {
+		return "Loading categories...";
+	}
+
+	if (!formData.category) {
+		return "Choose the parent category for this subcategory.";
+	}
+
+	return `Saved under ${formData.category}.`;
+});
+
+const descriptionError = computed(() => {
+	if (!showDescriptionFeedback.value) {
+		return "";
+	}
+
+	if (!formData.description.trim()) {
+		return "Description is required.";
+	}
+
+	return "";
+});
+
+const descriptionHelperText = computed(
+	() => "Briefly describe what this subcategory covers.",
+);
+
+const createFormSnapshot = () =>
+	JSON.stringify({
+		problem_name: formData.problem_name || "",
+		category: formData.category || "",
+		category_id: formData.category_id || "",
+		sub_category_id: formData.sub_category_id || "",
+		description: formData.description || "",
+		is_active: formData.is_active ?? true,
+	});
+
+const hasUnsavedChanges = computed(
+	() => createFormSnapshot() !== initialFormSnapshot.value,
+);
 
 // Methods
-const closeModal = () => {
-	if (!isSaving.value) {
+const closeModal = (force = false) => {
+	if (!isSaving.value || force) {
+		if (
+			!force &&
+			hasUnsavedChanges.value &&
+			typeof window !== "undefined" &&
+			!window.confirm("Discard unsaved changes?")
+		) {
+			return;
+		}
+
 		resetForm();
 		emit("close");
 	}
@@ -288,19 +382,28 @@ const resetForm = () => {
 	formData.sub_category_id = "";
 	formData.description = "";
 	formData.is_active = true;
-	validationErrors.value = [];
 	isSaving.value = false;
+	loadingProblemTypes.value = false;
+	problemTypesLoadError.value = "";
 	isGeneratingSubCategoryId.value = false;
+	subCategoryIdError.value = "";
+	subCategoryIdRequestId.value += 1;
+	hasSubmitted.value = false;
+	fieldTouched.problem_name = false;
+	fieldTouched.category = false;
+	fieldTouched.description = false;
 };
 
 const initializeForm = async () => {
-	// Reset validation status and errors
-	validationErrors.value = [];
 	isSaving.value = false;
 	isGeneratingSubCategoryId.value = false;
+	subCategoryIdError.value = "";
+	hasSubmitted.value = false;
+	fieldTouched.problem_name = false;
+	fieldTouched.category = false;
+	fieldTouched.description = false;
 
 	if (props.item) {
-		// Edit mode - populate with existing data
 		formData.problem_name = props.item.problem_name || "";
 		formData.category = props.item.category || "";
 		formData.category_id = props.item.category_id || "";
@@ -308,7 +411,6 @@ const initializeForm = async () => {
 		formData.description = props.item.description || "";
 		formData.is_active = props.item.is_active ?? true;
 	} else {
-		// Create mode - set defaults
 		formData.problem_name = "";
 		formData.category = "";
 		formData.category_id = "";
@@ -316,10 +418,14 @@ const initializeForm = async () => {
 		formData.description = "";
 		formData.is_active = true;
 	}
+
+	initialFormSnapshot.value = createFormSnapshot();
 };
 
 const fetchProblemTypes = async () => {
 	loadingProblemTypes.value = true;
+	problemTypesLoadError.value = "";
+
 	try {
 		const { data, error } = await supabase
 			.from("problem_types")
@@ -332,97 +438,116 @@ const fetchProblemTypes = async () => {
 		problemTypes.value = data || [];
 	} catch (error) {
 		console.error("Error fetching categories:", error);
-		toast({
-			title: "Fetch Error",
-			description: "Failed to load categories. Please try again.",
-			variant: "destructive",
-		});
+		problemTypes.value = [];
+		problemTypesLoadError.value = "Unable to load categories. Try again.";
 	} finally {
 		loadingProblemTypes.value = false;
 	}
 };
 
-const handleCategoryChange = () => {
-	// Auto-fill category_id when category is selected
+const handleCategoryChange = (value?: string) => {
+	fieldTouched.category = true;
+	if (typeof value === "string") {
+		formData.category = value;
+	}
+
 	const selectedType = problemTypes.value.find(
 		(type) => type.type_name === formData.category,
 	);
 
-	if (selectedType) {
-		formData.category_id = selectedType.category_id;
-	} else {
-		formData.category_id = "";
-	}
+	formData.category_id = selectedType?.category_id || "";
 };
 
 const autoGenerateSubCategoryId = async () => {
-	// Only auto-generate for new items, not when editing
-	if (isEditing.value || !formData.problem_name) {
-		return;
+	if (isEditing.value || !problemNameTrimmed.value) {
+		return false;
 	}
 
+	const currentRequestId = ++subCategoryIdRequestId.value;
 	isGeneratingSubCategoryId.value = true;
+	subCategoryIdError.value = "";
 
 	try {
 		const subCategoryId = await generateSubCategoryId(
 			supabase,
-			formData.problem_name,
+			problemNameTrimmed.value,
 		);
+
+		if (currentRequestId !== subCategoryIdRequestId.value) {
+			return false;
+		}
+
 		formData.sub_category_id = subCategoryId;
+		return true;
 	} catch (error) {
-		console.error("Error generating subcategory ID:", error);
-		toast({
-			title: "Generation Error",
-			description: "Failed to generate subcategory ID. Please try again.",
-			variant: "destructive",
-		});
-		formData.sub_category_id = "";
+			if (currentRequestId === subCategoryIdRequestId.value) {
+				console.error("Error generating subcategory ID:", error);
+				subCategoryIdError.value =
+					"Unable to generate the subcategory ID. Try a different name.";
+				formData.sub_category_id = "";
+			}
+		return false;
 	} finally {
-		isGeneratingSubCategoryId.value = false;
+		if (currentRequestId === subCategoryIdRequestId.value) {
+			isGeneratingSubCategoryId.value = false;
+		}
 	}
 };
 
-const validateForm = () => {
-	const errors: string[] = [];
+const markTouched = (fieldKey: "problem_name" | "category" | "description") => {
+	fieldTouched[fieldKey] = true;
+};
 
-	if (!formData.problem_name) {
-		errors.push("Problem Name is required");
-	}
-	if (!formData.category) {
-		errors.push("Category is required");
-	}
-	if (!formData.category_id) {
-		errors.push("Category ID is required");
-	}
-	if (!formData.sub_category_id) {
-		errors.push("Subcategory ID is required");
-	}
-	if (!formData.description) {
-		errors.push("Description is required");
+const handleProblemNameBlur = async () => {
+	markTouched("problem_name");
+
+	if (!problemNameTrimmed.value) {
+		return;
 	}
 
-	validationErrors.value = errors;
-	return errors.length === 0;
+	await autoGenerateSubCategoryId();
 };
 
 const saveItem = async () => {
-	if (!validateForm()) {
+	hasSubmitted.value = true;
+	fieldTouched.problem_name = true;
+	fieldTouched.category = true;
+	fieldTouched.description = true;
+
+	if (
+		!problemNameTrimmed.value ||
+		!formData.category ||
+		!formData.description.trim()
+	) {
+		return;
+	}
+
+	if (!formData.category_id) {
+		handleCategoryChange();
+	}
+
+	if (!formData.category_id) {
+		return;
+	}
+
+	if (!isEditing.value && !formData.sub_category_id) {
+		const generated = await autoGenerateSubCategoryId();
+		if (!generated) {
+			return;
+		}
+	}
+
+	if (problemNameError.value || categoryError.value || descriptionError.value) {
 		return;
 	}
 
 	isSaving.value = true;
 
 	try {
-		// Emit save event
 		emit("save", { ...formData });
-
-		// Close modal after successful save
-		closeModal();
+		closeModal(true);
 	} catch (error) {
 		console.error("Save error:", error);
-		validationErrors.value = [
-			"An error occurred while saving. Please try again.",
-		];
 	} finally {
 		isSaving.value = false;
 	}
@@ -435,7 +560,7 @@ watch(
 		if (newValue) {
 			await nextTick();
 			await fetchProblemTypes();
-			initializeForm();
+			await initializeForm();
 		}
 	},
 );
@@ -450,19 +575,24 @@ watch(
 	{ deep: true },
 );
 
-// Watch problem_name changes to auto-generate subcategory ID
 watch(
 	() => formData.problem_name,
-	async () => {
-		// Auto-generate subcategory ID for new items
-		if (!isEditing.value && formData.problem_name) {
-			await autoGenerateSubCategoryId();
+	() => {
+		subCategoryIdRequestId.value += 1;
+		subCategoryIdError.value = "";
+
+		if (!isEditing.value) {
+			formData.sub_category_id = "";
 		}
 	},
 );
 
-// Lifecycle
-onMounted(() => {
-	fetchProblemTypes();
-});
+watch(
+	() => formData.category,
+	() => {
+		if (fieldTouched.category) {
+			handleCategoryChange();
+		}
+	},
+);
 </script>

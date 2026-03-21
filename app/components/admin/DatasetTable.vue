@@ -6,27 +6,28 @@
 	>
 		<header
 			v-if="!hideToolbar"
-			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+			class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between"
 		>
-			<div class="flex items-center gap-2">
+			<div class="min-w-0 flex items-center gap-2">
 				<slot name="header-title">
-					<div>
+					<div class="space-y-1">
 						<h3 class="text-base font-semibold tracking-tight">{{ title }}</h3>
 						<p class="text-xs text-muted-foreground">{{ totalItems }} items</p>
 					</div>
 				</slot>
 			</div>
 
-			<div class="flex flex-1 items-center justify-end gap-2">
-				<div class="relative w-full max-w-[250px]" id="tour-search">
+			<div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+				<div class="relative w-full min-w-[220px] max-w-[340px] flex-1" id="tour-search">
 					<Search
-						class="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground"
+						class="absolute left-3 top-3 h-4 w-4 text-muted-foreground"
 					/>
 					<Input
 						v-model="localSearchQuery"
 						@input="handleSearchInput"
-						placeholder="Search..."
-						class="h-8 w-full pl-8 text-xs bg-muted/50"
+						placeholder="Search records..."
+						aria-label="Search records"
+						class="h-10 w-full pl-9 text-sm bg-muted/40"
 					/>
 				</div>
 
@@ -34,42 +35,44 @@
 					v-if="showFilters"
 					variant="outline"
 					size="sm"
-					class="h-8 gap-2 px-3 text-xs"
+					class="h-10 gap-2 px-4 text-sm font-medium"
 					:class="
 						cn(
-							hasActiveFilters && 'bg-blue-50 border-blue-200 text-blue-700',
-							showFilterBar && 'bg-accent',
+							hasActiveFilters &&
+								'border-primary/20 bg-primary/5 text-foreground',
+							showFilterBar && 'border-primary/20 bg-primary/5',
 						)
 					"
 					@click="showFilterBar = !showFilterBar"
 					id="tour-filter-toggle"
 				>
-					<ListFilter class="h-3.5 w-3.5" />
+					<ListFilter class="h-4 w-4" />
 					Filters
 					<Badge
 						v-if="activeFilterCount > 0"
 						variant="secondary"
-						class="ml-auto h-5 min-w-5 px-1"
+						class="ml-auto h-5 min-w-5 px-1 text-[11px]"
 						>{{ activeFilterCount }}</Badge
 					>
 				</Button>
 
-				<Separator orientation="vertical" class="h-6" />
+				<Separator orientation="vertical" class="hidden h-6 sm:block" />
 
-				<div class="flex items-center gap-1">
+				<div class="flex flex-wrap items-center gap-1">
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger as-child>
 								<Button
 									variant="ghost"
 									size="icon"
-									class="h-8 w-8"
+									class="h-10 w-10"
+									aria-label="Refresh data"
 									@click="emit('refresh')"
 									:disabled="loading"
 									id="tour-refresh"
 								>
 									<RotateCw
-										class="h-3.5 w-3.5"
+										class="h-4 w-4"
 										:class="cn(loading && 'animate-spin')"
 									/>
 								</Button>
@@ -78,13 +81,18 @@
 						</Tooltip>
 					</TooltipProvider>
 
-					<DropdownMenu>
-						<DropdownMenuTrigger as-child id="tour-import-export">
-							<Button variant="outline" size="icon" class="h-8 w-8">
-								<Download class="h-3.5 w-3.5" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
+						<DropdownMenu>
+							<DropdownMenuTrigger as-child id="tour-import-export">
+								<Button
+									variant="outline"
+									size="icon"
+									class="h-10 w-10"
+									aria-label="Import or export CSV"
+								>
+									<Download class="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
 							<DropdownMenuItem @click="emit('import')"
 								>Import CSV</DropdownMenuItem
 							>
@@ -92,18 +100,19 @@
 								>Export CSV</DropdownMenuItem
 							>
 						</DropdownMenuContent>
-					</DropdownMenu>
+						</DropdownMenu>
 
-					<Button
-						size="sm"
-						class="h-8 gap-1 ml-2 text-xs"
-						@click="openCreateModal"
-						id="tour-create-new"
-					>
-						<Plus class="h-3.5 w-3.5" />
-						New
-					</Button>
-				</div>
+						<Button
+							v-if="showCreateButton"
+							size="sm"
+							class="ml-1 h-10 gap-2 px-4 text-sm font-medium"
+							@click="openCreateModal"
+							id="tour-create-new"
+						>
+							<Plus class="h-4 w-4" />
+							New
+						</Button>
+					</div>
 			</div>
 		</header>
 
@@ -111,16 +120,16 @@
 		<div
 			v-if="showFilters && showFilterBar"
 			id="tour-filter-bar"
-			class="border-b border-border bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-top-2 duration-200"
-		>
-			<div class="flex items-center gap-4 flex-wrap flex-1">
-				<template
+				class="animate-in fade-in slide-in-from-top-2 flex flex-wrap items-center gap-6 border-b border-border bg-muted/20 px-4 py-3 duration-200"
+			>
+				<div class="flex items-center gap-4 flex-wrap flex-1">
+					<template
 					v-if="dataType === 'problem_types' || title === 'Problem Categories'"
 				>
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
-						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
-							:class="
+						<div class="flex min-w-[180px] flex-col gap-1.5">
+							<Label
+								class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
+								:class="
 								cn(
 									props.filters.domain
 										? 'text-primary'
@@ -133,29 +142,29 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.domain || '__all__'"
-							@update:model-value="
-								(v) => handleFilterChange('domain', v === '__all__' ? null : v)
-							"
-						>
+							<Select
+								:model-value="props.filters.domain || '__all__'"
+								@update:model-value="
+									(v) => handleFilterChange('domain', v === '__all__' ? null : v)
+								"
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Globe class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Globe class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue placeholder="All domains" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All domains</SelectItem
 								>
 								<SelectItem
 									v-for="d in uniqueDomains"
 									:key="d"
 									:value="d"
-									class="text-xs"
+									class="text-sm"
 									>{{ d }}</SelectItem
 								>
 							</SelectContent>
@@ -164,9 +173,9 @@
 				</template>
 
 				<template v-if="dataType === 'problems' || title === 'Subcategories'">
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.category
@@ -180,39 +189,39 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.category || '__all__'"
-							@update:model-value="
-								(v) =>
-									handleFilterChange('category', v === '__all__' ? null : v)
-							"
-						>
+							<Select
+								:model-value="props.filters.category || '__all__'"
+								@update:model-value="
+									(v) =>
+										handleFilterChange('category', v === '__all__' ? null : v)
+								"
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Tag class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Tag class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue placeholder="All categories" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All categories</SelectItem
 								>
 								<SelectItem
 									v-for="c in uniqueCategories"
 									:key="c"
 									:value="c"
-									class="text-xs"
+									class="text-sm"
 									>{{ c }}</SelectItem
 								>
 							</SelectContent>
 						</Select>
 					</div>
 
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.sub_category_id
@@ -226,21 +235,21 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.sub_category_id || '__all__'"
-							@update:model-value="
+							<Select
+								:model-value="props.filters.sub_category_id || '__all__'"
+								@update:model-value="
 								(v) =>
 									handleFilterChange(
 										'sub_category_id',
 										v === '__all__' ? null : v,
 									)
 							"
-						>
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue
 										placeholder="All subcategories"
 										class="truncate"
@@ -248,14 +257,14 @@
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All subcategories</SelectItem
 								>
 								<SelectItem
 									v-for="sc in uniqueSubCategories"
 									:key="sc.id"
 									:value="sc.id"
-									class="text-xs"
+									class="text-sm"
 									>{{
 										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
 									}}</SelectItem
@@ -266,9 +275,9 @@
 				</template>
 
 				<template v-if="dataType === 'assessments'">
-					<div class="flex flex-col gap-1.5 min-w-[180px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.sub_category_id
@@ -282,21 +291,21 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.sub_category_id || '__all__'"
-							@update:model-value="
+							<Select
+								:model-value="props.filters.sub_category_id || '__all__'"
+								@update:model-value="
 								(v) =>
 									handleFilterChange(
 										'sub_category_id',
 										v === '__all__' ? null : v,
 									)
 							"
-						>
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue
 										placeholder="All subcategories"
 										class="truncate"
@@ -304,14 +313,14 @@
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All subcategories</SelectItem
 								>
 								<SelectItem
 									v-for="sc in uniqueSubCategories"
 									:key="sc.id"
 									:value="sc.id"
-									class="text-xs"
+									class="text-sm"
 									>{{
 										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
 									}}</SelectItem
@@ -322,9 +331,9 @@
 				</template>
 
 				<template v-if="dataType === 'suggestions'">
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.cluster
@@ -338,29 +347,29 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.cluster || '__all__'"
-							@update:model-value="
+							<Select
+								:model-value="props.filters.cluster || '__all__'"
+								@update:model-value="
 								(v) => handleFilterChange('cluster', v === '__all__' ? null : v)
 							"
-						>
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue placeholder="All clusters" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All clusters</SelectItem
 								>
 								<SelectItem
 									v-for="c in uniqueClusters"
 									:key="c"
 									:value="c"
-									class="text-xs"
+									class="text-sm"
 									>{{ c }}</SelectItem
 								>
 							</SelectContent>
@@ -369,9 +378,9 @@
 				</template>
 
 				<template v-if="dataType === 'feedback_prompts'">
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.stage
@@ -385,29 +394,29 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.stage || '__all__'"
-							@update:model-value="
+							<Select
+								:model-value="props.filters.stage || '__all__'"
+								@update:model-value="
 								(v) => handleFilterChange('stage', v === '__all__' ? null : v)
 							"
-						>
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Activity class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue placeholder="All stages" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All stages</SelectItem
 								>
 								<SelectItem
 									v-for="s in uniqueStages"
 									:key="s"
 									:value="s"
-									class="text-xs"
+									class="text-sm"
 									>{{ s }}</SelectItem
 								>
 							</SelectContent>
@@ -415,58 +424,10 @@
 					</div>
 				</template>
 
-				<template v-if="dataType === 'next_actions'">
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
-						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.action_type
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Type
-							<span
-								v-if="props.filters.action_type"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
-						</Label>
-						<Select
-							:model-value="props.filters.action_type || '__all__'"
-							@update:model-value="
-								(v) =>
-									handleFilterChange('action_type', v === '__all__' ? null : v)
-							"
-						>
-							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
-									<SelectValue placeholder="All types" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
-									>All types</SelectItem
-								>
-								<SelectItem
-									v-for="t in uniqueActionTypes"
-									:key="t"
-									:value="t"
-									class="text-xs"
-									>{{ t }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
-					</div>
-				</template>
-
 				<template v-if="dataType === 'training_examples'">
-					<div class="flex flex-col gap-1.5 min-w-[160px]">
+						<div class="flex min-w-[180px] flex-col gap-1.5">
 						<Label
-							class="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 							:class="
 								cn(
 									props.filters.user_intent
@@ -480,53 +441,53 @@
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
-						<Select
-							:model-value="props.filters.user_intent || '__all__'"
-							@update:model-value="
+							<Select
+								:model-value="props.filters.user_intent || '__all__'"
+								@update:model-value="
 								(v) =>
 									handleFilterChange('user_intent', v === '__all__' ? null : v)
 							"
-						>
+							>
 							<SelectTrigger
-								class="bg-background border-input shadow-none h-8 text-xs"
+								class="h-10 border-input bg-background text-sm shadow-none"
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
-									<Activity class="h-3 w-3 text-muted-foreground shrink-0" />
+									<Activity class="h-4 w-4 shrink-0 text-muted-foreground" />
 									<SelectValue placeholder="All intents" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="__all__" class="text-xs"
+								<SelectItem value="__all__" class="text-sm"
 									>All intents</SelectItem
 								>
 								<SelectItem
 									v-for="i in uniqueUserIntents"
 									:key="i"
 									:value="i"
-									class="text-xs"
+									class="text-sm"
 									>{{ i }}</SelectItem
 								>
 							</SelectContent>
 						</Select>
 					</div>
 				</template>
-			</div>
+				</div>
 
-			<div class="flex items-center gap-2 self-end pb-0.5">
+			<div class="flex flex-wrap items-center gap-2 self-end pb-0.5">
 				<Button
 					v-if="hasActiveFilters"
 					variant="ghost"
 					size="sm"
-					class="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+					class="h-9 px-3 text-sm text-muted-foreground hover:text-destructive"
 					@click="handleClearFilters"
 				>
-					<Trash2 class="h-3.5 w-3.5 mr-1" />
+					<Trash2 class="mr-1 h-4 w-4" />
 					Reset
 				</Button>
 				<Button
 					variant="ghost"
 					size="sm"
-					class="h-8 px-2 text-xs"
+					class="h-9 px-3 text-sm"
 					@click="showFilterBar = false"
 				>
 					Close
@@ -538,7 +499,10 @@
 			<ScrollArea class="h-full w-full">
 				<div class="min-w-[800px]">
 					<Table>
-						<TableHeader class="sticky top-0 z-10 bg-muted/40 backdrop-blur-sm">
+						<TableHeader
+							class="sticky top-0 z-10 bg-muted/40 backdrop-blur-sm"
+							id="tour-table-headers"
+						>
 							<TableRow class="hover:bg-transparent border-b border-border/60">
 								<!-- Expansion Toggle Header -->
 								<TableHead
@@ -557,15 +521,15 @@
 								<TableHead
 									v-for="column in columns"
 									:key="column.key"
-									class="h-10 px-3 text-xs font-bold text-foreground/80 uppercase tracking-wide select-none cursor-pointer hover:text-foreground transition-colors"
+									class="h-10 cursor-pointer select-none px-3 text-xs font-bold uppercase tracking-wide text-foreground/80 transition-colors hover:text-foreground"
 									@click="sortBy(column.key)"
-									id="tour-table-headers"
 								>
 									<div class="flex items-center gap-1">
 										{{ column.label }}
-										<ArrowUpDown
-											v-if="sortColumn === column.key"
-											class="h-3 w-3"
+										<component
+											:is="ArrowUpDown"
+											class="h-3 w-3 transition-opacity"
+											:class="sortColumn === column.key ? 'opacity-80' : 'opacity-25'"
 										/>
 									</div>
 								</TableHead>
@@ -619,7 +583,7 @@
 										item,
 										variant,
 									]"
-									class="group border-b border-border hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer transition-colors"
+									class="group cursor-pointer border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-inset"
 									:class="[
 										expandedRows.has(item[props.idKey]) ? 'bg-muted/30' : '',
 										variant === 'compact' ? 'h-8 text-xs' : 'h-10',
@@ -627,7 +591,10 @@
 									:data-state="
 										selectedItems.includes(item[props.idKey]) ? 'selected' : ''
 									"
+									tabindex="0"
 									@click="emit('view', item)"
+									@keydown.enter="emit('view', item)"
+									@keydown.space.prevent="emit('view', item)"
 								>
 									<TableCell
 										v-if="enableExpansion"
@@ -639,7 +606,7 @@
 											variant="ghost"
 											size="icon"
 											class="h-5 w-5 p-0 hover:bg-muted"
-											@click="(e) => toggleRowExpansion(item, e)"
+											@click="(e: MouseEvent) => toggleRowExpansion(item, e)"
 										>
 											<component
 												:is="expandedRows.has(item[props.idKey]) ? Minus : Plus"
@@ -716,13 +683,17 @@
 												class="h-5 px-1.5 text-[10px]"
 												:class="
 													getNestedValue(item, column.key)
-														? 'bg-green-50 text-green-700 border-green-200'
-														: 'bg-red-50 text-red-700 border-red-200'
+														? 'bg-primary/10 text-primary border-primary/20'
+														: 'bg-destructive/10 text-destructive border-destructive/20'
 												"
 											>
 												{{ getNestedValue(item, column.key) ? "Yes" : "No" }}
 											</Badge>
 										</div>
+
+										<span v-else-if="column.type === 'date'">{{
+											formatDate(getNestedValue(item, column.key))
+										}}</span>
 
 										<span v-else>{{
 											getNestedValue(item, column.key) || "-"
@@ -757,7 +728,7 @@
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
 													@click="confirmDelete(item)"
-													class="text-red-600 focus:text-red-600"
+													class="text-destructive focus:text-destructive"
 												>
 													Delete
 												</DropdownMenuItem>
@@ -795,7 +766,7 @@
 					<span class="text-xs text-muted-foreground">Rows per page</span>
 					<Select
 						:model-value="props.pagination.limit.toString()"
-						@update:model-value="(v) => emit('page-size-change', parseInt(v))"
+						@update:model-value="(v) => emit('page-size-change', parseInt(String(v ?? '10')))"
 					>
 						<SelectTrigger
 							class="w-[60px] text-xs"
@@ -845,7 +816,6 @@
 			@clear="selectedItems = []"
 			@delete="showBulkDelete = true"
 			@edit="showBulkEdit = true"
-			@status-change="handleBulkStatusChange"
 		/>
 
 		<BulkDeleteDialog
@@ -859,7 +829,7 @@
 		<BulkEditDialog
 			:is-open="showBulkEdit"
 			:count="selectedItems.length"
-			:columns="columns"
+			:columns="(columns as any)"
 			:is-saving="loading"
 			@close="showBulkEdit = false"
 			@confirm="confirmBulkEdit"
@@ -875,8 +845,8 @@
 		<Dialog :open="showDeleteDialog" @update:open="showDeleteDialog = $event">
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Delete item?</DialogTitle>
-					<DialogDescription>This action cannot be undone.</DialogDescription>
+					<DialogTitle>Delete "{{ itemToDeleteLabel }}"?</DialogTitle>
+					<DialogDescription>This will permanently remove this record. This action cannot be undone.</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<Button variant="outline" @click="showDeleteDialog = false"
@@ -891,7 +861,7 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { cn } from "@/lib/utils";
 import {
@@ -901,7 +871,6 @@ import {
 	ListFilter,
 	ChevronLeft,
 	ChevronRight,
-	ChevronDown,
 	ArrowUpDown,
 	MoreHorizontal,
 	Inbox,
@@ -967,34 +936,72 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { formatDate } from "@/utils/formatDate";
 
-// --- Props & Emits (Kept mostly same as original to ensure logic compatibility) ---
-const props = defineProps({
-	title: { type: String, required: true },
-	data: { type: Array, default: () => [] },
-	columns: { type: Array, required: true },
-	loading: { type: Boolean, default: false },
-	pageSize: { type: Number, default: 20 },
-	pagination: {
-		type: Object,
-		default: () => ({ skip: 0, limit: 10, total: 0 }),
-	},
-	currentPage: { type: Number, default: 1 },
-	totalPages: { type: Number, default: 1 },
-	searchQuery: { type: String, default: "" },
-	filters: { type: Object, default: () => ({}) },
-	dataType: { type: String, default: "" },
-	orderBy: { type: String, default: "" },
-	orderDirection: { type: String, default: "asc" },
-	enableExpansion: { type: Boolean, default: false },
-	variant: { type: String, default: "default" }, // 'default' | 'compact'
-	hideToolbar: { type: Boolean, default: false },
-	indentLevel: { type: Number, default: 0 },
-	nameColumnKey: { type: String, default: "" },
-	idKey: { type: String, default: "id" },
-	class: { type: String, default: "" },
-	categories: { type: Array, default: () => [] },
-	subCategories: { type: Array, default: () => [] },
+// --- Types ---
+interface TableColumn {
+	key: string;
+	label: string;
+	type?: 'text' | 'badge' | 'boolean' | string;
+}
+interface SubCategory {
+	id: string;
+	name: string;
+}
+interface Pagination {
+	skip: number;
+	limit: number;
+	total: number;
+}
+
+// --- Props ---
+const props = withDefaults(defineProps<{
+	title: string;
+	data: any[];
+	columns: TableColumn[];
+	loading?: boolean;
+	pageSize?: number;
+	pagination?: Pagination;
+	currentPage?: number;
+	totalPages?: number;
+	searchQuery?: string;
+	filters?: Record<string, any>;
+	dataType?: string;
+	orderBy?: string;
+	orderDirection?: string;
+	enableExpansion?: boolean;
+	variant?: 'default' | 'compact';
+	hideToolbar?: boolean;
+	showCreateButton?: boolean;
+	indentLevel?: number;
+	nameColumnKey?: string;
+	idKey?: string;
+	class?: string;
+	categories?: any[];
+	subCategories?: SubCategory[];
+	allSelectableIds?: Array<string | number>;
+}>(), {
+	loading: false,
+	pageSize: 20,
+	pagination: () => ({ skip: 0, limit: 10, total: 0 }),
+	currentPage: 1,
+	totalPages: 1,
+	searchQuery: '',
+	filters: () => ({}),
+	dataType: '',
+	orderBy: '',
+	orderDirection: 'asc',
+	enableExpansion: false,
+	variant: 'default',
+	hideToolbar: false,
+	showCreateButton: true,
+	indentLevel: 0,
+	nameColumnKey: '',
+	idKey: 'id',
+	class: '',
+	categories: () => [],
+	subCategories: () => [],
+	allSelectableIds: () => [],
 });
 
 const emit = defineEmits([
@@ -1018,15 +1025,29 @@ const emit = defineEmits([
 ]);
 
 // --- State ---
-const selectedItems = ref([]);
+const selectedItems = ref<any[]>([]);
 const selectedItemsSet = computed(() => new Set(selectedItems.value));
 const sortColumn = ref(props.orderBy || "");
 const sortDirection = ref(props.orderDirection || "asc");
 const expandedRows = ref(new Set());
 const showDeleteDialog = ref(false);
-const itemToDelete = ref(null);
-const localSearchQuery = ref(props.searchQuery || "");
+const itemToDelete = ref<any>(null);
+const localSearchQuery = ref(props.searchQuery || '');
 const showFilterBar = ref(false);
+const showBulkEdit = ref(false);
+const showBulkDelete = ref(false);
+
+// Label shown in delete confirmation dialog
+const itemToDeleteLabel = computed(() => {
+	if (!itemToDelete.value) return 'this item';
+	if (props.nameColumnKey) {
+		const val = getNestedValue(itemToDelete.value, props.nameColumnKey);
+		if (val) return String(val).slice(0, 60);
+	}
+	return itemToDelete.value[props.idKey]
+		? `#${String(itemToDelete.value[props.idKey]).slice(0, 20)}`
+		: 'this item';
+});
 
 // --- Computed Helpers ---
 const filteredData = computed(() => props.data); // Assuming filtered server-side
@@ -1045,12 +1066,17 @@ const hasActiveFilters = computed(() => activeFilterCount.value > 0);
 const isAllSelected = computed(
 	() =>
 		filteredData.value.length > 0 &&
-		selectedItems.value.length === filteredData.value.length,
+		filteredData.value.every((item: any) =>
+			selectedItemsSet.value.has(item[props.idKey]),
+		),
 );
 const isIndeterminate = computed(
-	() =>
-		selectedItems.value.length > 0 &&
-		selectedItems.value.length < filteredData.value.length,
+	() => {
+		const currentPageHasSelection = filteredData.value.some((item: any) =>
+			selectedItemsSet.value.has(item[props.idKey]),
+		);
+		return currentPageHasSelection && !isAllSelected.value;
+	},
 );
 const paginatedData = computed(() => {
 	// Sorting logic for current page view
@@ -1068,32 +1094,20 @@ const paginatedData = computed(() => {
 
 // Logic to show filters based on title (Copied from logic)
 const showFilters = computed(() => {
-	const filterableTitles = [
-		"Problem Categories",
-		"Therapeutic Suggestions",
-		"Assessment Questions",
-		"Feedback Prompts",
-		"Next Actions",
-		"Fine-tuning Examples",
-		"Subcategories", // New label for problems
-	];
 	const filterableTypes = [
-		"problem_types",
-		"problems",
-		"assessments",
-		"suggestions",
-		"feedback_prompts",
-		"next_actions",
-		"training_examples",
+		'problem_types',
+		'problems',
+		'assessments',
+		'suggestions',
+		'feedback_prompts',
+		'next_actions',
+		'training_examples',
 	];
-	return (
-		filterableTitles.includes(props.title) ||
-		filterableTypes.includes(props.dataType)
-	);
+	return filterableTypes.includes(props.dataType);
 });
 
 // Unique value extractors (Simplified for brevity)
-const extractUnique = (key) =>
+const extractUnique = (key: string): any[] =>
 	[
 		...new Set(props.data.map((i) => getNestedValue(i, key)).filter(Boolean)),
 	].sort();
@@ -1113,29 +1127,34 @@ const uniqueSubCategories = computed(() => {
 });
 const uniqueClusters = computed(() => extractUnique("cluster"));
 const uniqueStages = computed(() => extractUnique("stage"));
-const uniqueActionTypes = computed(() => extractUnique("action_type"));
 const uniqueUserIntents = computed(() => extractUnique("user_intent"));
 
 // --- Actions ---
-const getNestedValue = (obj, path) =>
-	path.split(".").reduce((curr, key) => curr?.[key], obj);
-const normalizeArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+const getNestedValue = (obj: any, path: string): any =>
+	path.split('.').reduce((curr: any, key: string) => curr?.[key], obj);
+const normalizeArray = (val: any): any[] => (Array.isArray(val) ? val : val ? [val] : []);
+const handleSearchInput = () => emit('search-change', localSearchQuery.value);
+const handleFilterChange = (k: string, v: any) => emit('filter-change', k, v);
+const handleClearFilters = () => emit('clear-filters');
 
-const handleSearchInput = () => emit("search-change", localSearchQuery.value);
-const handleFilterChange = (k, v) => emit("filter-change", k, v);
-const handleClearFilters = () => emit("clear-filters");
-
-const toggleSelectAll = (checked) => {
-	selectedItems.value = checked
-		? filteredData.value.map((i) => i[props.idKey])
-		: [];
+const toggleSelectAll = (checked: boolean | 'indeterminate') => {
+	if (checked && checked !== 'indeterminate') {
+		const ids = props.allSelectableIds.length
+			? props.allSelectableIds
+			: filteredData.value.map((i: any) => i[props.idKey]);
+		selectedItems.value = Array.from(new Set(ids.filter(Boolean)));
+	} else {
+		selectedItems.value = [];
+	}
 };
-const handleRowSelect = (id, checked) => {
-	if (checked) selectedItems.value.push(id);
-	else selectedItems.value = selectedItems.value.filter((i) => i !== id);
+const handleRowSelect = (id: any, checked: boolean) => {
+	if (checked) {
+		if (!selectedItemsSet.value.has(id)) selectedItems.value.push(id);
+	}
+	else selectedItems.value = selectedItems.value.filter((i: any) => i !== id);
 };
 
-const sortBy = (key) => {
+const sortBy = (key: string) => {
 	if (sortColumn.value === key)
 		sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
 	else {
@@ -1145,29 +1164,23 @@ const sortBy = (key) => {
 	emit("sort", { column: sortColumn.value, direction: sortDirection.value });
 };
 
-const editItem = (item) => emit("edit", item);
-const confirmDelete = (item) => {
+const editItem = (item: any) => emit('edit', item);
+const confirmDelete = (item: any) => {
 	itemToDelete.value = item;
 	showDeleteDialog.value = true;
 };
 const handleDeleteConfirm = () => {
+	if (!itemToDelete.value) return;
 	emit("delete", itemToDelete.value);
 	showDeleteDialog.value = false;
+	itemToDelete.value = null;
 };
-const openCreateModal = () => emit("create");
-const goToPage = (page) => emit("page-change", page);
-const previousPage = () => {
-	if (props.currentPage > 1) emit("prev-page");
-};
-const nextPage = () => {
-	if (props.currentPage < props.totalPages) emit("next-page");
-};
+const openCreateModal = () => emit('create');
+const goToPage = (page: number) => emit('page-change', page);
 
 // Style helper for Badges
-const getBadgeColorClass = (val, key) => {
-	// You can map specific classes here if needed, or stick to default Shadcn variants
-	// For 'dense' UI, subtle backgrounds are better than bright ones
-	return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
+const getBadgeColorClass = (val: any, key: string) => {
+	return 'bg-secondary text-secondary-foreground hover:bg-secondary/80';
 };
 
 watch(
@@ -1184,17 +1197,6 @@ watch(
 	() => props.orderDirection,
 	(v) => (sortDirection.value = v || "asc"),
 );
-const showBulkEdit = ref(false);
-const showBulkDelete = ref(false);
-
-const handleBulkStatusChange = async (active) => {
-	emit("bulk-update", {
-		ids: selectedItems.value,
-		field: "is_active",
-		value: active,
-	});
-	selectedItems.value = [];
-};
 
 const confirmBulkDelete = () => {
 	emit("bulk-delete", selectedItems.value);
@@ -1202,7 +1204,7 @@ const confirmBulkDelete = () => {
 	selectedItems.value = [];
 };
 
-const confirmBulkEdit = (data) => {
+const confirmBulkEdit = (data: any) => {
 	emit("bulk-update", { ids: selectedItems.value, ...data });
 	showBulkEdit.value = false;
 	selectedItems.value = [];
@@ -1211,13 +1213,13 @@ const confirmBulkEdit = (data) => {
 const showHistory = ref(false);
 const historyRecordId = ref("");
 
-const openHistory = (item) => {
+const openHistory = (item: any) => {
 	historyRecordId.value = item[props.idKey];
 	showHistory.value = true;
 };
 
 // Expansion Logic
-const toggleRowExpansion = (item, event) => {
+const toggleRowExpansion = (item: any, event: Event) => {
 	event.stopPropagation();
 	const id = item[props.idKey];
 	if (expandedRows.value.has(id)) {

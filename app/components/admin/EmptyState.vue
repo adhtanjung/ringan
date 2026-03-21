@@ -31,6 +31,7 @@ const config = computed(() => {
 			description:
 				"We couldn't find any items matching your current filters or search query.",
 			primaryAction: "Clear Filters",
+			actionLabel: "Clear Filters",
 			action: () => emit("clear-search"),
 			tips: [
 				"Check for typos in your search query",
@@ -45,35 +46,52 @@ const config = computed(() => {
 		title: "Your dataset is empty",
 		description:
 			"Start building your knowledge base by importing data or creating your first entry.",
+		primaryAction: "",
+		actionLabel: "New Entry",
 		tips: [
 			"Download our template to see the required format",
 			"Import from CSV or JSON for bulk setup",
 		],
-		primaryAction: "",
 		action: () => {},
 	};
 
 	switch (props.datasetType) {
-		case "problems":
+		case "problem_types":
 			return {
 				...base,
 				icon: AlertCircle,
-				title: "No Problem Categories yet",
+				title: "No problem categories yet",
 				description:
-					"Problem categories are the foundation of your assessment engine. They group issues for better analysis.",
+					"Create your first category to group related subcategories and keep the assessment structure easy to manage.",
+				actionLabel: "Create Category",
 				tips: [
-					"Group related symptoms together (e.g., 'Anxiety', 'Sleep')",
-					"Assign unique category IDs for better tracking",
-					"Include a clear description for each category",
+					"Use broad themes like anxiety, sleep, or mood",
+					"Write descriptions that help future editors stay consistent",
+					"Keep category IDs stable so subcategories stay linked correctly",
+				],
+			};
+		case "problems":
+			return {
+				...base,
+				icon: Inbox,
+				title: "No subcategories yet",
+				description:
+					"Add subcategories so you can organize assessments and suggestions around specific issues.",
+				actionLabel: "Create Subcategory",
+				tips: [
+					"Give each subcategory a clear, human-readable name",
+					"Link it to the correct category before creating assessments",
+					"Use the description to capture enough context for future editors",
 				],
 			};
 		case "assessments":
 			return {
 				...base,
 				icon: HelpCircle,
-				title: "No Assessment Questions",
+				title: "No assessment questions yet",
 				description:
-					"Questions are what users interact with. Define your query structure to start collecting data.",
+					"Create the questions users will answer during an assessment flow.",
+				actionLabel: "Create Question",
 				tips: [
 					"Choose between Scale (1-4) or Free Text responses",
 					"Connect questions to relevant problem categories",
@@ -84,9 +102,10 @@ const config = computed(() => {
 			return {
 				...base,
 				icon: BrainCircuit,
-				title: "No Therapeutic Suggestions",
+				title: "No suggestions yet",
 				description:
-					"Suggestions are the 'advice' given back to users based on their assessment results.",
+					"Add the guidance that users will receive after their assessment or check-in.",
+				actionLabel: "Create Suggestion",
 				tips: [
 					"Tailor suggestions to specific categories",
 					"Keep advice actionable and supportive",
@@ -97,9 +116,10 @@ const config = computed(() => {
 			return {
 				...base,
 				icon: FileJson,
-				title: "No Training Examples",
+				title: "No training examples yet",
 				description:
-					"Help fine-tune your backend models by providing high-quality training pairs.",
+					"Add training examples so your model has better labeled data to learn from.",
+				actionLabel: "Create Example",
 				tips: [
 					"Map actual user inputs to desired classifications",
 					"Consistency is key for model performance",
@@ -110,9 +130,10 @@ const config = computed(() => {
 			return {
 				...base,
 				icon: MessageSquare,
-				title: "No Feedback Prompts",
+				title: "No feedback prompts yet",
 				description:
-					"Collect user thoughts at specific points in their journey.",
+					"Create prompts that ask for feedback at the right step in the journey.",
+				actionLabel: "Create Prompt",
 				tips: [
 					"Use prompts to measure satisfaction or feature usage",
 					"Keep prompts short and non-intrusive",
@@ -120,6 +141,21 @@ const config = computed(() => {
 				],
 			};
 		default:
+			if (props.datasetType === "next_actions") {
+				return {
+					...base,
+					icon: Inbox,
+					title: "No next actions yet",
+					description:
+						"Add the follow-up actions that move a user to the next step in the flow.",
+					actionLabel: "Create Action",
+					tips: [
+						"Use short action names that read well in dropdowns and tables",
+						"Keep action types consistent so the flow is easier to scan",
+						"Add context in the description when the action is not obvious",
+					],
+				};
+			}
 			return base;
 	}
 });
@@ -145,20 +181,20 @@ const config = computed(() => {
 		</p>
 
 		<!-- Initial state actions -->
-		<div
-			v-if="!hasFilters"
-			class="flex flex-col sm:flex-row items-center gap-3"
+	<div
+		v-if="!hasFilters"
+		class="flex flex-col sm:flex-row items-center gap-3"
+	>
+		<Button
+			variant="default"
+			@click="emit('create')"
+			class="w-full sm:w-auto px-8 group"
 		>
-			<Button
-				variant="default"
-				@click="emit('create')"
-				class="w-full sm:w-auto px-8 group"
-			>
-				<Plus class="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" />
-				New Entry
-			</Button>
-			<Button
-				variant="outline"
+			<Plus class="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" />
+			{{ config.actionLabel || "New Entry" }}
+		</Button>
+		<Button
+			variant="outline"
 				@click="emit('import')"
 				class="w-full sm:w-auto px-8"
 			>
@@ -167,12 +203,12 @@ const config = computed(() => {
 			</Button>
 		</div>
 
-		<!-- Filter state actions -->
-		<div v-else>
-			<Button variant="outline" @click="config.action" class="px-8">
-				{{ config.primaryAction }}
-			</Button>
-		</div>
+	<!-- Filter state actions -->
+	<div v-else>
+		<Button variant="outline" @click="config.action" class="px-8">
+			{{ config.primaryAction || config.actionLabel || "Clear Filters" }}
+		</Button>
+	</div>
 
 		<!-- Onboarding Tips -->
 		<Card class="mt-12 w-full max-w-lg border-dashed bg-muted/30">

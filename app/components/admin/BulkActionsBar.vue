@@ -3,20 +3,16 @@ import {
 	Trash2,
 	Edit3,
 	X,
-	CheckCircle,
-	MinusCircle,
 	Download,
 	MoreHorizontal,
 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 const props = defineProps<{
@@ -29,7 +25,6 @@ const emit = defineEmits([
 	"delete",
 	"edit",
 	"export",
-	"status-change",
 ]);
 </script>
 
@@ -78,24 +73,9 @@ const emit = defineEmits([
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" class="w-48">
-						<DropdownMenuItem
-							@click="emit('status-change', true)"
-							class="gap-2"
-						>
-							<CheckCircle class="h-4 w-4 text-green-500" />
-							Mark as Active
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							@click="emit('status-change', false)"
-							class="gap-2"
-						>
-							<MinusCircle class="h-4 w-4 text-muted-foreground" />
-							Mark as Inactive
-						</DropdownMenuItem>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem @click="emit('export')" class="gap-2">
-							<Download class="h-4 w-4 text-blue-500" />
-							Export Selection
+					<DropdownMenuItem @click="emit('export')" class="gap-2">
+						<Download class="h-4 w-4 text-blue-500" />
+						Export Selection
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

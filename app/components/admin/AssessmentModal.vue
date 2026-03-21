@@ -1,268 +1,251 @@
 <template>
 	<Dialog :open="isOpen" @update:open="handleOpenChange">
 		<DialogContent
-			class="w-[75vw] sm:max-w-none max-h-[90vh] p-0 flex flex-col overflow-hidden"
+			class="w-[92vw] sm:max-w-2xl max-h-[92dvh] p-0 flex flex-col overflow-hidden"
 		>
-			<div class="px-6 py-4 border-b bg-background z-10">
-				<DialogHeader>
-					<DialogTitle class="text-xl">
-						{{ isEditing ? "Edit" : "Create" }} Assessment Question
-					</DialogTitle>
-					<DialogDescription>
-						Configure the question content and its classification settings.
-					</DialogDescription>
-				</DialogHeader>
-			</div>
+			<div class="border-b bg-background px-6 py-5">
+					<DialogHeader class="space-y-1">
+						<DialogTitle class="text-xl font-semibold">
+							{{ isEditing ? "Edit" : "Create" }} Assessment Question
+						</DialogTitle>
+						<DialogDescription class="text-sm leading-6">
+							Write a clear question, choose the answer format, then link it to the
+							right subcategory.
+						</DialogDescription>
+					</DialogHeader>
+				</div>
 
-			<form @submit.prevent="saveItem" class="flex-1 flex flex-col min-h-0">
+			<form @submit.prevent="saveItem" class="flex flex-1 min-h-0 flex-col">
 				<div class="flex-1 overflow-y-auto bg-muted/10">
-					<div class="p-6">
-						<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-							<div class="lg:col-span-8 flex flex-col gap-6">
-								<div
-									class="bg-background border rounded-lg p-4 shadow-sm space-y-4"
+					<div class="space-y-6 px-6 py-6">
+						<section class="space-y-2">
+							<Label for="question_text" class="text-sm font-semibold">
+								Question Text
+							</Label>
+							<Textarea
+								id="question_text"
+								v-model="formData.question_text"
+								rows="4"
+								placeholder="e.g., Over the last 2 weeks, how often have you been bothered by feeling nervous?"
+								required
+								class="min-h-[120px] resize-y"
+								@blur="handleQuestionTextBlur"
+							/>
+							<p class="text-sm leading-6 text-muted-foreground">
+								This is the exact question people will see.
+							</p>
+							<div
+								class="flex flex-wrap items-center gap-2 text-xs leading-5"
+								aria-live="polite"
+							>
+								<Loader2
+									v-if="isGeneratingQuestionId"
+									class="h-3.5 w-3.5 animate-spin text-muted-foreground"
+									aria-hidden="true"
+								/>
+								<span v-if="questionIdError" class="text-destructive">
+									{{ questionIdError }}
+								</span>
+								<template v-else>
+									<span class="text-muted-foreground">
+										{{ questionIdHelperText }}
+									</span>
+									<span
+										v-if="formData.question_id"
+										class="rounded-full border border-border/70 bg-background px-2.5 py-1 font-mono text-[11px] text-foreground/80"
+									>
+										{{ formData.question_id }}
+									</span>
+								</template>
+							</div>
+							<p
+								v-if="questionTextError"
+								class="text-sm leading-6 text-destructive"
+								aria-live="polite"
+							>
+								{{ questionTextError }}
+							</p>
+						</section>
+
+						<section class="grid gap-5 md:grid-cols-2">
+							<div class="space-y-2">
+								<Label for="response_type" class="text-sm font-semibold">
+									Response Type
+								</Label>
+								<Select
+									:model-value="formData.response_type"
+									@update:model-value="handleResponseTypeChange"
 								>
-									<div>
-										<FormFieldLabel
-											field-key="question_text"
-											label="Question Text"
-											:required="true"
-											hint-title="User-Facing Content"
-											description="This is the exact question text users will see in the app. Keep it clear, concise, and trauma-informed."
-										/>
-										<Textarea
-											id="question_text"
-											v-model="formData.question_text"
-											rows="3"
-											placeholder="e.g., Over the last 2 weeks, how often have you been bothered by feeling nervous?"
-											required
-											class="mt-2 text-base resize-none"
-										/>
-									</div>
+									<SelectTrigger id="response_type" class="h-11 w-full">
+										<SelectValue placeholder="Select how users answer" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="scale">Scale (1-4 Rating)</SelectItem>
+										<SelectItem value="text">Free Text</SelectItem>
+									</SelectContent>
+								</Select>
+								<p class="text-sm leading-6 text-muted-foreground">
+									Scale shows fixed answer choices. Text lets people type their
+									own response.
+								</p>
+								<p
+									v-if="responseTypeError"
+									class="text-sm leading-6 text-destructive"
+									aria-live="polite"
+								>
+									{{ responseTypeError }}
+								</p>
+							</div>
+
+							<div class="space-y-2">
+								<Label for="sub_category_id" class="text-sm font-semibold">
+									Linked Subcategory
+								</Label>
+								<AsyncSearchSelect
+									:model-value="formData.sub_category_id"
+									@update:model-value="handleSubCategoryChange"
+									input-id="sub_category_id"
+									table-name="problems"
+									:search-fields="['problem_name', 'sub_category_id']"
+									value-field="sub_category_id"
+									:display-fields="['sub_category_id', 'problem_name']"
+									placeholder="Search by subcategory ID or name"
+								/>
+								<p class="text-sm leading-6 text-muted-foreground">
+									Choose the subcategory this question belongs to.
+								</p>
+								<p
+									v-if="subCategoryError"
+									class="text-sm leading-6 text-destructive"
+									aria-live="polite"
+								>
+									{{ subCategoryError }}
+								</p>
+							</div>
+						</section>
+
+						<section
+							v-if="formData.response_type === 'scale'"
+							class="space-y-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+						>
+							<div class="flex items-start justify-between gap-4">
+								<div class="space-y-1">
+									<h3 class="text-sm font-semibold text-foreground">
+										Scale Labels
+									</h3>
+									<p class="text-sm leading-6 text-muted-foreground">
+										Keep the labels short and easy to scan.
+									</p>
 								</div>
 
-								<div
-									class="bg-background border rounded-lg p-4 shadow-sm space-y-4"
-								>
-									<div class="flex items-center justify-between">
-										<h3 class="text-sm font-semibold text-foreground">
-											Response Configuration
-										</h3>
-									</div>
-
-									<div>
-										<FormFieldLabel
-											field-key="response_type"
-											label="Response Type"
-											:required="true"
-											hint-title="Data Structure"
-											description="Scale: Users choose from 1-4. Free Text: Users type their own response. Choose based on how you plan to analyze the data."
-										/>
-										<select
-											id="response_type"
-											v-model="formData.response_type"
-											required
-											class="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-										>
-											<option value="" disabled>Select Type...</option>
-											<option value="scale">Scale (1-4 Rating)</option>
-											<option value="text">Free Text</option>
-										</select>
-									</div>
-
-									<template v-if="formData.response_type === 'scale'">
-										<div class="mt-4 pt-4 border-t">
-											<div class="grid grid-cols-2 gap-4 mb-4">
-												<div class="bg-muted/30 p-3 rounded-md">
-													<span
-														class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-														>Min Value</span
-													>
-													<div class="text-lg font-bold">1</div>
-												</div>
-												<div class="bg-muted/30 p-3 rounded-md">
-													<span
-														class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-														>Max Value</span
-													>
-													<div class="text-lg font-bold">4</div>
-												</div>
-											</div>
-
-											<div class="space-y-3">
-												<h4 class="text-xs font-medium text-muted-foreground">
-													Define Scale Labels
-												</h4>
-												<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-													<div v-for="i in 4" :key="i" class="relative">
-														<div
-															class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold"
-														>
-															{{ i }}
-														</div>
-														<Input
-															:id="`scale_label_${i}`"
-															:model-value="(formData[`scale_label_${i}` as keyof Assessment] as string) ?? undefined"
-															@update:model-value="(v) => ((formData as any)[`scale_label_${i}`] = v)"
-															:placeholder="getPlaceholder(i)"
-															class="pl-10"
-														/>
-													</div>
-												</div>
-											</div>
-										</div>
-									</template>
-
-									<div
-										v-if="formData.response_type === 'text'"
-										class="mt-4 pt-4 border-t text-sm text-muted-foreground italic flex items-center gap-2"
-									>
-										<CheckCircle class="h-4 w-4" />
-										User will be provided a text box. No further configuration
-										needed.
-									</div>
+								<div class="rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+									Scale range: 1-4
 								</div>
 							</div>
 
-							<div class="lg:col-span-4 flex flex-col gap-4">
-								<div
-									class="bg-background border rounded-lg p-4 shadow-sm space-y-4 h-full"
-								>
-									<h3
-										class="text-sm font-semibold text-foreground border-b pb-2 mb-2"
+							<div class="grid gap-3 sm:grid-cols-2">
+								<div v-for="i in 4" :key="i" class="space-y-2">
+									<Label
+										:for="`scale_label_${i}`"
+										class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
 									>
-										Metadata
-									</h3>
+										Choice {{ i }}
+									</Label>
+									<Input
+										:id="`scale_label_${i}`"
+										:model-value="getScaleLabel(i)"
+										@update:model-value="(value) => setScaleLabel(i, value)"
+										:placeholder="getPlaceholder(i)"
+										class="h-11"
+									/>
+								</div>
+							</div>
+						</section>
 
-									<div>
-										<FormFieldLabel
-											field-key="question_id"
-											label="Question ID"
-											:required="true"
-										/>
-										<div class="mt-1 relative">
-											<Input
-												id="question_id"
-												v-model="formData.question_id"
-												placeholder="Auto-generated..."
-												readonly
-												class="bg-muted text-muted-foreground text-xs font-mono"
-											/>
-											<div
-												v-if="isGeneratingQuestionId"
-												class="absolute right-3 top-2"
-											>
-												<Loader2 class="h-4 w-4 animate-spin text-primary" />
-											</div>
-										</div>
-										<p class="text-[10px] text-muted-foreground mt-1">
-											Generated from Question Text
-										</p>
-									</div>
+						<section class="space-y-3">
+							<button
+								type="button"
+								class="flex w-full items-center justify-between rounded-xl border border-border/70 bg-background px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								:aria-expanded="showAdvancedDetails"
+								aria-controls="assessment-advanced-details"
+								@click="showAdvancedDetails = !showAdvancedDetails"
+							>
+									<span>Optional details</span>
+								<ChevronDown
+									class="h-4 w-4 transition-transform duration-200"
+									:class="showAdvancedDetails ? 'rotate-180' : ''"
+									aria-hidden="true"
+								/>
+							</button>
 
-									<div>
-										<FormFieldLabel
-											field-key="sub_category_id"
-											label="Subcategory"
-											:required="true"
-											hint-title="Classification"
-											description="Link this question to a specific mental health category for scoring and reporting."
-										/>
-										<AsyncSearchSelect
-											id="sub_category_id"
-											v-model="formData.sub_category_id"
-											table-name="problems"
-											:search-fields="['problem_name', 'sub_category_id']"
-											value-field="sub_category_id"
-											:display-fields="['problem_name']"
-											placeholder="Select Category..."
-											class="mt-1"
-										/>
-									</div>
-
-									<div>
-										<FormFieldLabel field-key="batch_id" label="Batch Group" />
+							<div
+								v-if="showAdvancedDetails"
+								id="assessment-advanced-details"
+								class="space-y-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+							>
+								<div class="grid gap-4 sm:grid-cols-2">
+									<div class="space-y-2">
+										<Label for="batch_id" class="text-sm font-semibold">
+											Batch Group
+										</Label>
 										<Input
 											id="batch_id"
-											:model-value="formData.batch_id ?? undefined"
-											@update:model-value="(v) => (formData.batch_id = v as string)"
+											v-model="formData.batch_id"
 											placeholder="e.g. BATCH_A"
-											class="mt-1"
+											class="h-11"
 										/>
 									</div>
 
-									<div>
-										<FormFieldLabel field-key="clusters" label="Cluster" />
+									<div class="space-y-2">
+										<Label for="clusters" class="text-sm font-semibold">
+											Cluster
+										</Label>
 										<Input
 											id="clusters"
-											:model-value="formData.clusters ?? undefined"
-											@update:model-value="(v) => (formData.clusters = v as string)"
+											v-model="formData.clusters"
 											placeholder="e.g. c1"
-											class="mt-1"
-										/>
-									</div>
-
-									<div>
-										<FormFieldLabel
-											field-key="order_number"
-											label="Order Number"
-										/>
-										<Input
-											id="order_number"
-											type="number"
-											:model-value="formData.order_number ?? undefined"
-											@update:model-value="
-												(v) => (formData.order_number = v ? Number(v) : null)
-											"
-											placeholder="e.g. 1"
-											class="mt-1"
+											class="h-11"
 										/>
 									</div>
 								</div>
-							</div>
-						</div>
 
-						<Alert
-							v-if="validationErrors.length > 0"
-							variant="destructive"
-							class="mt-6"
-						>
-							<AlertCircle class="h-4 w-4" />
-							<AlertTitle>Please check the following:</AlertTitle>
-							<AlertDescription>
-								<ul class="list-disc pl-5 text-xs space-y-1 mt-1">
-									<li v-for="error in validationErrors" :key="error">
-										{{ error }}
-									</li>
-								</ul>
-							</AlertDescription>
-						</Alert>
+								<div class="space-y-2">
+									<Label for="order_number" class="text-sm font-semibold">
+										Order Number
+									</Label>
+									<Input
+										id="order_number"
+										type="number"
+										:min="1"
+										v-model.number="formData.order_number"
+										placeholder="e.g. 1"
+										class="h-11"
+									/>
+								</div>
+							</div>
+						</section>
 					</div>
 				</div>
 
-				<div class="px-6 py-4 border-t bg-background">
-					<DialogFooter class="flex-col sm:flex-row gap-2 sm:justify-end">
+				<div class="border-t bg-background px-6 py-4">
+					<DialogFooter class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 						<Button
 							type="button"
-							variant="ghost"
-							@click="handleOpenChange(false)"
+							variant="outline"
+							class="w-full sm:w-auto"
+							@click="closeModal"
 							:disabled="isSaving"
 						>
 							Cancel
 						</Button>
 						<Button
 							type="submit"
-							class="min-w-[120px]"
+							class="w-full sm:w-auto"
 							:disabled="isSaving || isGeneratingQuestionId"
+							id="tour-edit-save-btn"
 						>
 							<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
-							{{
-								isSaving
-									? "Saving..."
-									: isEditing
-									? "Save Changes"
-									: "Create Question"
-							}}
+							{{ isSaving ? "Saving..." : isEditing ? "Save Changes" : "Create Question" }}
 						</Button>
 					</DialogFooter>
 				</div>
@@ -272,20 +255,16 @@
 </template>
 
 <script setup lang="ts">
-// ... Exact same script logic as before ...
-// Just copy the script block from the previous answer
-import { ref, computed, watch, reactive } from "vue";
+import { computed, reactive, ref, watch } from "vue";
+import { ChevronDown, Loader2 } from "lucide-vue-next";
 import { useDebounceFn } from "@vueuse/core";
-import { AlertCircle, Loader2, CheckCircle } from "lucide-vue-next";
 import { useSupabase } from "@/composables/useSupabase";
-import { useToast } from "@/components/ui/toast/use-toast";
 import { generateQuestionId } from "@/utils/questionIdGenerator";
 
-// Components imports
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
 	Dialog,
 	DialogContent,
@@ -294,11 +273,15 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import FormFieldLabel from "@/components/admin/FormFieldLabel.vue";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import AsyncSearchSelect from "@/components/admin/AsyncSearchSelect.vue";
 
-// Types
 interface Assessment {
 	id?: string;
 	question_text: string;
@@ -339,10 +322,10 @@ const getInitialState = (): Assessment => ({
 	response_type: "",
 	scale_min: 1,
 	scale_max: 4,
-	scale_label_1: null,
-	scale_label_2: null,
-	scale_label_3: null,
-	scale_label_4: null,
+	scale_label_1: "Not at all",
+	scale_label_2: "A little",
+	scale_label_3: "Quite a bit",
+	scale_label_4: "Very much",
 	batch_id: null,
 	clusters: null,
 	order_number: null,
@@ -351,82 +334,353 @@ const getInitialState = (): Assessment => ({
 
 const formData = reactive<Assessment>(getInitialState());
 const isSaving = ref(false);
-const validationErrors = ref<string[]>([]);
 const isGeneratingQuestionId = ref(false);
+const questionIdError = ref("");
+const questionIdRequestId = ref(0);
+const hasSubmitted = ref(false);
+const showAdvancedDetails = ref(false);
+const initialFormSnapshot = ref("");
+
+const fieldTouched = reactive({
+	question_text: false,
+	response_type: false,
+	sub_category_id: false,
+});
 
 const isEditing = computed(() => !!props.item);
+const questionTextTrimmed = computed(() => formData.question_text.trim());
 
-const getPlaceholder = (i: number) => {
-	const examples = ["Not at all", "A little", "Quite a bit", "Very much"];
-	return `e.g., ${examples[i - 1]}`;
+const showQuestionTextFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.question_text,
+);
+const showResponseTypeFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.response_type,
+);
+const showSubCategoryFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.sub_category_id,
+);
+
+const questionTextError = computed(() => {
+	if (!showQuestionTextFeedback.value) {
+		return "";
+	}
+
+	if (!questionTextTrimmed.value) {
+		return "Question text is required.";
+	}
+
+	return "";
+});
+
+const responseTypeError = computed(() => {
+	if (!showResponseTypeFeedback.value) {
+		return "";
+	}
+
+	if (!formData.response_type) {
+		return "Choose how users will respond.";
+	}
+
+	return "";
+});
+
+const subCategoryError = computed(() => {
+	if (!showSubCategoryFeedback.value) {
+		return "";
+	}
+
+	if (!formData.sub_category_id) {
+		return "Choose a subcategory.";
+	}
+
+	return "";
+});
+
+const questionIdHelperText = computed(() => {
+	if (isGeneratingQuestionId.value) {
+		return "Generating question ID...";
+	}
+
+	if (formData.question_id) {
+		return isEditing.value
+			? "Question ID stays the same while you edit."
+			: "Question ID is generated automatically.";
+	}
+
+	return isEditing.value
+		? "Question ID is preserved for this question."
+		: "Question ID will be generated automatically.";
+});
+
+const createFormSnapshot = () =>
+	JSON.stringify({
+		question_text: formData.question_text || "",
+		question_id: formData.question_id || "",
+		sub_category_id: formData.sub_category_id || "",
+		response_type: formData.response_type || "",
+		scale_min: formData.scale_min ?? null,
+		scale_max: formData.scale_max ?? null,
+		scale_label_1: formData.scale_label_1 ?? null,
+		scale_label_2: formData.scale_label_2 ?? null,
+		scale_label_3: formData.scale_label_3 ?? null,
+		scale_label_4: formData.scale_label_4 ?? null,
+		batch_id: formData.batch_id ?? null,
+		clusters: formData.clusters ?? null,
+		order_number: formData.order_number ?? null,
+		is_active: formData.is_active ?? true,
+		showAdvancedDetails: showAdvancedDetails.value,
+	});
+
+const hasUnsavedChanges = computed(
+	() => createFormSnapshot() !== initialFormSnapshot.value,
+);
+
+const resetFieldState = () => {
+	hasSubmitted.value = false;
+	questionIdError.value = "";
+	isGeneratingQuestionId.value = false;
+	showAdvancedDetails.value = false;
+	questionIdRequestId.value += 1;
+	fieldTouched.question_text = false;
+	fieldTouched.response_type = false;
+	fieldTouched.sub_category_id = false;
+};
+
+const resetForm = () => {
+	Object.assign(formData, getInitialState());
+	resetFieldState();
+};
+
+const applyScaleDefaults = () => {
+	formData.scale_min = 1;
+	formData.scale_max = 4;
+
+	if (!formData.scale_label_1) formData.scale_label_1 = "Not at all";
+	if (!formData.scale_label_2) formData.scale_label_2 = "A little";
+	if (!formData.scale_label_3) formData.scale_label_3 = "Quite a bit";
+	if (!formData.scale_label_4) formData.scale_label_4 = "Very much";
+};
+
+const clearScaleLabels = () => {
+	formData.scale_label_1 = null;
+	formData.scale_label_2 = null;
+	formData.scale_label_3 = null;
+	formData.scale_label_4 = null;
+};
+
+const getScaleLabel = (index: number) => {
+	switch (index) {
+		case 1:
+			return formData.scale_label_1 ?? "";
+		case 2:
+			return formData.scale_label_2 ?? "";
+		case 3:
+			return formData.scale_label_3 ?? "";
+		case 4:
+			return formData.scale_label_4 ?? "";
+		default:
+			return "";
+	}
+};
+
+const setScaleLabel = (index: number, value: unknown) => {
+	const normalized = typeof value === "string" ? value : String(value ?? "");
+
+	switch (index) {
+		case 1:
+			formData.scale_label_1 = normalized;
+			break;
+		case 2:
+			formData.scale_label_2 = normalized;
+			break;
+		case 3:
+			formData.scale_label_3 = normalized;
+			break;
+		case 4:
+			formData.scale_label_4 = normalized;
+			break;
+	}
+};
+
+const populateForm = () => {
+	resetForm();
+
+	if (props.item) {
+		Object.assign(formData, {
+			...getInitialState(),
+			...props.item,
+		});
+	}
+
+	if (formData.response_type === "scale") {
+		applyScaleDefaults();
+	}
+
+	initialFormSnapshot.value = createFormSnapshot();
+};
+
+const closeModal = (force = false) => {
+	if (isSaving.value && !force) {
+		return;
+	}
+
+	if (
+		!force &&
+		hasUnsavedChanges.value &&
+		typeof window !== "undefined" &&
+		!window.confirm("Discard unsaved changes?")
+	) {
+		return;
+	}
+
+	resetForm();
+	emit("close");
 };
 
 const handleOpenChange = (open: boolean) => {
-	if (!open && !isSaving.value) {
-		Object.assign(formData, getInitialState());
-		validationErrors.value = [];
-		emit("close");
+	if (!open) {
+		closeModal();
 	}
 };
+
+const handleQuestionTextBlur = async () => {
+	fieldTouched.question_text = true;
+
+	if (isEditing.value) {
+		return;
+	}
+
+	if (questionTextTrimmed.value && !formData.question_id) {
+		await ensureQuestionId();
+	}
+};
+
+const handleResponseTypeChange = (value: string) => {
+	formData.response_type = value;
+	fieldTouched.response_type = true;
+
+	if (value === "scale") {
+		applyScaleDefaults();
+	} else {
+		clearScaleLabels();
+	}
+};
+
+const handleSubCategoryChange = (value: string) => {
+	formData.sub_category_id = value;
+	fieldTouched.sub_category_id = true;
+};
+
+const getPlaceholder = (index: number) => {
+	const placeholders = ["Not at all", "A little", "Quite a bit", "Very much"];
+	return placeholders[index - 1] || "";
+};
+
+const ensureQuestionId = async () => {
+	if (!questionTextTrimmed.value) {
+		return false;
+	}
+
+	const requestId = ++questionIdRequestId.value;
+	isGeneratingQuestionId.value = true;
+	questionIdError.value = "";
+
+	try {
+		const id = await generateQuestionId(supabase, questionTextTrimmed.value);
+
+		if (requestId !== questionIdRequestId.value) {
+			return false;
+		}
+
+		formData.question_id = id;
+		return true;
+	} catch (error) {
+		if (requestId === questionIdRequestId.value) {
+			questionIdError.value =
+				"Question ID could not be generated. Please try again.";
+		}
+		return false;
+	} finally {
+		if (requestId === questionIdRequestId.value) {
+			isGeneratingQuestionId.value = false;
+		}
+	}
+};
+
+const debouncedGenerateQuestionId = useDebounceFn(async () => {
+	if (isEditing.value || !questionTextTrimmed.value) {
+		return;
+	}
+
+	if (!formData.question_id) {
+		await ensureQuestionId();
+	}
+}, 400);
 
 watch(
 	() => props.isOpen,
 	(isOpen) => {
 		if (isOpen) {
-			validationErrors.value = [];
-			if (props.item) {
-				Object.assign(formData, { ...props.item });
-			} else {
-				Object.assign(formData, getInitialState());
-			}
+			populateForm();
+		} else {
+			resetForm();
 		}
-	}
+	},
 );
 
-const debouncedGenerateId = useDebounceFn(async (text: string) => {
-	if (isEditing.value || !text) return;
-
-	isGeneratingQuestionId.value = true;
-	try {
-		const id = await generateQuestionId(supabase, text);
-		if (formData.question_text === text) {
-			formData.question_id = id;
+watch(
+	() => props.item,
+	() => {
+		if (props.isOpen) {
+			populateForm();
 		}
-	} catch (e) {
-		console.error(e);
-	} finally {
-		isGeneratingQuestionId.value = false;
-	}
-}, 500);
+	},
+);
 
 watch(
 	() => formData.question_text,
-	(newText) => {
-		if (!isEditing.value) {
-			formData.question_id = "";
-			debouncedGenerateId(newText);
+	(newValue, oldValue) => {
+		if (isEditing.value) {
+			return;
 		}
-	}
+
+		if (newValue !== oldValue) {
+			formData.question_id = "";
+			questionIdError.value = "";
+		}
+
+		if (questionTextTrimmed.value) {
+			debouncedGenerateQuestionId();
+		}
+	},
 );
 
 const saveItem = async () => {
-	validationErrors.value = [];
-	if (!formData.question_text)
-		validationErrors.value.push("Question text is required");
-	if (!formData.sub_category_id)
-		validationErrors.value.push("Subcategory is required");
-	if (!formData.question_id)
-		validationErrors.value.push("Question ID is generating or missing");
+	hasSubmitted.value = true;
+	fieldTouched.question_text = true;
+	fieldTouched.response_type = true;
+	fieldTouched.sub_category_id = true;
 
-	if (validationErrors.value.length > 0) return;
+	if (questionTextError.value || responseTypeError.value || subCategoryError.value) {
+		return;
+	}
+
+	if (!formData.question_id) {
+		const generated = await ensureQuestionId();
+		if (!generated || !formData.question_id) {
+			return;
+		}
+	}
+
+	if (formData.response_type === "scale") {
+		applyScaleDefaults();
+	}
 
 	isSaving.value = true;
 
 	try {
 		emit("save", { ...formData });
-		handleOpenChange(false);
-	} catch (error) {
-		console.error("Save error:", error);
+		closeModal(true);
 	} finally {
 		isSaving.value = false;
 	}

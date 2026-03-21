@@ -125,7 +125,7 @@ const handleConfirm = () => {
 					>
 						<Switch v-model="newValue" />
 						<span class="text-sm font-medium">{{
-							newValue ? "Active / Enabled" : "Inactive / Disabled"
+							newValue ? "Yes" : "No"
 						}}</span>
 					</div>
 

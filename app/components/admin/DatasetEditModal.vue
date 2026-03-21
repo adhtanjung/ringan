@@ -1,30 +1,22 @@
 <template>
 	<Dialog :open="isOpen" @update:open="$emit('close')">
 		<DialogContent
-			class="w-[95vw] sm:max-w-2xl max-h-[92dvh] flex flex-col p-0 overflow-hidden"
+			class="w-[92vw] sm:max-w-3xl max-h-[92dvh] flex flex-col p-0 overflow-hidden"
 		>
-			<DialogHeader class="px-6 py-4 border-b">
-				<div class="flex items-center justify-between">
-					<DialogTitle class="text-xl font-semibold" id="tour-edit-modal-title">
-						{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
-					</DialogTitle>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="gap-1 h-7"
-						@click="startTour('edit_general')"
-					>
-						<HelpCircle class="h-4 w-4" />
-						<span class="text-xs">Help</span>
-					</Button>
-				</div>
+			<DialogHeader class="border-b bg-background px-6 py-5">
+				<DialogTitle class="text-xl font-semibold" id="tour-edit-modal-title">
+					{{ isEditing ? "Edit" : "Create" }} {{ dataTypeLabel }}
+				</DialogTitle>
+				<DialogDescription class="text-sm leading-6 text-muted-foreground">
+					Fill in the fields below. Required fields are marked with an asterisk.
+				</DialogDescription>
 			</DialogHeader>
 
-			<div class="flex-1 overflow-y-auto min-h-0 p-6 pt-2">
+			<div class="flex-1 overflow-y-auto min-h-0 bg-muted/10">
 				<form
 					id="dataset-edit-form"
 					@submit.prevent="saveItem"
-					class="space-y-6"
+					class="space-y-6 px-6 py-6"
 				>
 					<!-- Dynamic Form Fields -->
 					<div v-for="field in formFields" :key="field.key" class="space-y-1.5">
@@ -212,23 +204,16 @@
 					<!-- Validation Errors -->
 					<div
 						v-if="hasTouched && validationErrors.length > 0"
-						class="bg-destructive/10 border border-destructive/20 rounded-lg p-4"
+						class="space-y-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3"
 					>
-						<div class="flex gap-3">
-							<AlertCircle class="h-5 w-5 text-destructive" />
-							<div class="grid gap-1">
-								<h3 class="text-sm font-semibold text-destructive">
-									Validation Errors
-								</h3>
-								<ul
-									class="text-xs text-destructive/90 list-disc pl-4 space-y-0.5"
-								>
-									<li v-for="error in validationErrors" :key="error">
-										{{ error }}
-									</li>
-								</ul>
-							</div>
-						</div>
+						<p class="text-sm font-medium text-destructive">
+							Please review the fields below before saving.
+						</p>
+						<ul class="list-disc space-y-0.5 pl-4 text-xs text-destructive/90">
+							<li v-for="error in validationErrors" :key="error">
+								{{ error }}
+							</li>
+						</ul>
 					</div>
 				</form>
 			</div>
@@ -264,12 +249,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, reactive } from "vue";
-import { cn } from "@/lib/utils";
-import { X, Loader2, AlertCircle, HelpCircle } from "lucide-vue-next";
-import { useOnboarding } from "@/composables/useOnboarding";
+import { X, Loader2, AlertCircle } from "lucide-vue-next";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogFooter,
@@ -318,8 +302,6 @@ const jsonErrors = reactive<Record<string, string>>({});
 const newTag = reactive<Record<string, string>>({});
 const isSaving = ref(false);
 const hasTouched = ref(false);
-
-const { startTour } = useOnboarding();
 
 // Computed properties
 const isEditing = computed(() => !!props.item);

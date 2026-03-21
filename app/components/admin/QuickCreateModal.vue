@@ -1,222 +1,140 @@
 <template>
 	<BaseModal :modelValue="isOpen" @update:modelValue="closeModal">
-		<div class="w-full max-w-md">
-			<!-- Header -->
-			<div class="flex items-center justify-between mb-4 pb-3 border-b">
-				<h3 class="text-lg font-semibold text-gray-900">
-					Create New {{ typeLabel }}
-				</h3>
-				<Button
-					variant="ghost"
-					size="icon"
-					@click="closeModal"
-					class="text-gray-400 hover:text-gray-600"
-				>
-					<X class="h-4 w-4" />
-				</Button>
+		<div class="w-full max-w-lg">
+			<div class="mb-5 border-b pb-4">
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<h3 class="text-lg font-semibold text-foreground">
+							Create New {{ typeLabel }}
+						</h3>
+						<p class="mt-1 text-sm leading-6 text-muted-foreground">
+							Fill in the details below. Availability is checked automatically.
+						</p>
+					</div>
+					<Button
+						variant="ghost"
+						size="icon"
+						@click="closeModal"
+						class="text-muted-foreground hover:text-foreground"
+					>
+						<X class="h-4 w-4" />
+					</Button>
+				</div>
 			</div>
 
-			<!-- Form -->
-			<form @submit.prevent="saveItem" class="space-y-4">
-				<!-- Domain Name (for domain type) -->
-				<div v-if="type === 'domain'">
-					<Label for="domain_name" class="text-sm font-medium">
-						Domain Name
-						<span class="text-red-500 ml-1">*</span>
-					</Label>
-					<Input
-						id="domain_name"
-						v-model="formData.domain_name"
-						placeholder="e.g., Stress Management"
-						required
-						class="mt-1"
-					/>
-				</div>
+			<form @submit.prevent="saveItem" class="space-y-5">
+				<div v-if="type === 'domain'" class="space-y-5">
+					<div>
+						<Label for="domain_name" class="text-sm font-medium text-foreground">
+							Domain Name
+							<span class="ml-1 text-destructive">*</span>
+						</Label>
+						<Input
+							id="domain_name"
+							v-model="formData.domain_name"
+							placeholder="e.g., Stress Management"
+							required
+							class="mt-1"
+							@blur="markTouched('domain_name')"
+						/>
+						<p
+							v-if="getRequiredError('domain_name', 'Domain name')"
+							class="mt-1 text-sm leading-6 text-destructive"
+							aria-live="polite"
+						>
+							{{ getRequiredError("domain_name", "Domain name") }}
+						</p>
+					</div>
 
-				<!-- Domain Code (for domain type) -->
-				<div v-if="type === 'domain'">
-					<Label for="domain_code" class="text-sm font-medium">
-						Domain Code
-						<span class="text-red-500 ml-1">*</span>
-					</Label>
-					<div class="mt-1 flex gap-2">
+					<div>
+						<Label for="domain_code" class="text-sm font-medium text-foreground">
+							Domain Code
+							<span class="ml-1 text-destructive">*</span>
+						</Label>
 						<Input
 							id="domain_code"
 							v-model="formData.domain_code"
 							placeholder="e.g., STR, ANX, TRA"
 							required
-							class="flex-1"
+							class="mt-1"
+							@blur="handleDuplicateFieldBlur"
 						/>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							@click="checkForDuplicate('domain_code')"
-							:disabled="
-								!formData.domain_code || validationStatus.domain_code.loading
-							"
-							class="whitespace-nowrap flex-shrink-0"
+						<p
+							class="mt-2 text-sm leading-6"
+							:class="duplicateHelperTone"
+							aria-live="polite"
 						>
-							<Loader2
-								v-if="validationStatus.domain_code.loading"
-								class="h-4 w-4 animate-spin mr-1"
-							/>
-							<CheckCircle
-								v-else-if="
-									validationStatus.domain_code.checked &&
-									!validationStatus.domain_code.exists
-								"
-								class="h-4 w-4 text-green-600 mr-1"
-							/>
-							<XCircle
-								v-else-if="
-									validationStatus.domain_code.checked &&
-									validationStatus.domain_code.exists
-								"
-								class="h-4 w-4 text-red-600 mr-1"
-							/>
-							<span class="hidden sm:inline">Check</span>
-							<span class="sm:hidden">✓</span>
-						</Button>
-					</div>
-					<!-- Validation status message -->
-					<div class="mt-1 text-xs">
-						<span
-							v-if="
-								validationStatus.domain_code.checked &&
-								!validationStatus.domain_code.exists
-							"
-							class="text-green-600"
+							{{ duplicateHelperText }}
+						</p>
+						<p
+							v-if="duplicateFieldError"
+							class="mt-1 text-sm leading-6 text-destructive"
+							aria-live="polite"
 						>
-							✓ Available
-						</span>
-						<span
-							v-else-if="
-								validationStatus.domain_code.checked &&
-								validationStatus.domain_code.exists
-							"
-							class="text-red-600"
-						>
-							✗ Already exists
-						</span>
+							{{ duplicateFieldError }}
+						</p>
 					</div>
 				</div>
 
-				<!-- Type Name (for problem_type) -->
-				<div v-if="type === 'problem_type'">
-					<Label for="type_name" class="text-sm font-medium">
-						Category Name
-						<span class="text-red-500 ml-1">*</span>
-					</Label>
-					<div class="mt-1 flex gap-2">
+				<div v-else class="space-y-5">
+					<div>
+						<Label for="type_name" class="text-sm font-medium text-foreground">
+							Category Name
+							<span class="ml-1 text-destructive">*</span>
+						</Label>
 						<Input
 							id="type_name"
 							v-model="formData.type_name"
 							placeholder="e.g., Work Stress, Social Anxiety"
 							required
-							class="flex-1"
+							class="mt-1"
+							@blur="handleDuplicateFieldBlur"
 						/>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							@click="checkForDuplicate('type_name')"
-							:disabled="
-								!formData.type_name || validationStatus.type_name.loading
-							"
-							class="whitespace-nowrap flex-shrink-0"
+						<p
+							class="mt-2 text-sm leading-6"
+							:class="duplicateHelperTone"
+							aria-live="polite"
 						>
-							<Loader2
-								v-if="validationStatus.type_name.loading"
-								class="h-4 w-4 animate-spin mr-1"
-							/>
-							<CheckCircle
-								v-else-if="
-									validationStatus.type_name.checked &&
-									!validationStatus.type_name.exists
-								"
-								class="h-4 w-4 text-green-600 mr-1"
-							/>
-							<XCircle
-								v-else-if="
-									validationStatus.type_name.checked &&
-									validationStatus.type_name.exists
-								"
-								class="h-4 w-4 text-red-600 mr-1"
-							/>
-							<span class="hidden sm:inline">Check</span>
-							<span class="sm:hidden">✓</span>
-						</Button>
-					</div>
-					<!-- Validation status message -->
-					<div class="mt-1 text-xs">
-						<span
-							v-if="
-								validationStatus.type_name.checked &&
-								!validationStatus.type_name.exists
-							"
-							class="text-green-600"
+							{{ duplicateHelperText }}
+						</p>
+						<p
+							v-if="duplicateFieldError"
+							class="mt-1 text-sm leading-6 text-destructive"
+							aria-live="polite"
 						>
-							✓ Available
-						</span>
-						<span
-							v-else-if="
-								validationStatus.type_name.checked &&
-								validationStatus.type_name.exists
-							"
-							class="text-red-600"
-						>
-							✗ Already exists
-						</span>
+							{{ duplicateFieldError }}
+						</p>
 					</div>
 				</div>
 
-				<!-- Description -->
 				<div>
-					<Label for="description" class="text-sm font-medium">
+					<Label for="description" class="text-sm font-medium text-foreground">
 						Description
-						<span class="text-red-500 ml-1">*</span>
+						<span class="ml-1 text-destructive">*</span>
 					</Label>
 					<Textarea
 						id="description"
 						v-model="formData.description"
 						:placeholder="
 							type === 'domain'
-								? 'Detailed description of this domain'
-								: 'Detailed description of this problem type'
+								? 'Briefly describe what belongs in this domain.'
+								: 'Briefly describe what belongs in this category.'
 						"
-						rows="3"
+						rows="4"
 						required
 						class="mt-1"
+						@blur="markTouched('description')"
 					/>
+					<p
+						v-if="getRequiredError('description', 'Description')"
+						class="mt-1 text-sm leading-6 text-destructive"
+						aria-live="polite"
+					>
+						{{ getRequiredError("description", "Description") }}
+					</p>
 				</div>
 
-				<!-- Validation Errors -->
-				<div
-					v-if="validationErrors.length > 0"
-					class="bg-red-50 border border-red-200 rounded-lg p-3"
-				>
-					<div class="flex">
-						<div class="flex-shrink-0">
-							<AlertCircle class="h-5 w-5 text-red-400" />
-						</div>
-						<div class="ml-3">
-							<h3 class="text-sm font-medium text-red-800">
-								Validation Errors
-							</h3>
-							<div class="mt-2 text-sm text-red-700">
-								<ul class="list-disc pl-5 space-y-1">
-									<li v-for="error in validationErrors" :key="error">
-										{{ error }}
-									</li>
-								</ul>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Action Buttons -->
-				<div class="flex items-center justify-end gap-3 pt-4 border-t">
+				<div class="flex items-center justify-end gap-3 border-t pt-4">
 					<Button
 						type="button"
 						variant="outline"
@@ -227,12 +145,10 @@
 					</Button>
 					<Button
 						type="submit"
-						:disabled="
-							isSaving || validationErrors.length > 0 || !isValidationComplete
-						"
+						:disabled="isSaving || duplicateStatus.loading"
 					>
 						<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
-						{{ isSaving ? "Creating..." : "Create" }}
+						{{ isSaving ? "Creating..." : `Create ${typeLabel}` }}
 					</Button>
 				</div>
 			</form>
@@ -242,18 +158,17 @@
 
 <script setup>
 import { ref, computed, reactive, watch } from "vue";
-import { X, AlertCircle, Loader2, CheckCircle, XCircle } from "lucide-vue-next";
+import { X, Loader2 } from "lucide-vue-next";
 import { useSupabase } from "@/composables/useSupabase";
+import { useToast } from "@/components/ui/toast/use-toast";
 
 // shadcn-vue components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/toast/use-toast";
 import BaseModal from "@/components/BaseModal.vue";
 
-// Props
 const props = defineProps({
 	isOpen: {
 		type: Boolean,
@@ -266,13 +181,11 @@ const props = defineProps({
 	},
 });
 
-// Supabase client
 const { supabase } = useSupabase();
+const { toast } = useToast();
 
-// Emits
 const emit = defineEmits(["close", "created"]);
 
-// Reactive data
 const formData = reactive({
 	domain_name: "",
 	domain_code: "",
@@ -286,35 +199,132 @@ const validationStatus = reactive({
 	type_name: { checked: false, exists: false, loading: false },
 });
 
+const requestIds = reactive({
+	domain_code: 0,
+	type_name: 0,
+});
+
+const fieldTouched = reactive({
+	domain_name: false,
+	domain_code: false,
+	type_name: false,
+	description: false,
+});
+
 const isSaving = ref(false);
-const validationErrors = ref([]);
+const hasSubmitted = ref(false);
+const duplicateCheckError = ref("");
 
-// Computed properties
-const typeLabel = computed(() => {
-	return props.type === "domain" ? "Domain" : "Problem Type";
-});
+const typeLabel = computed(() =>
+	props.type === "domain" ? "Domain" : "Problem Type",
+);
 
-const isValidationComplete = computed(() => {
-	if (props.type === "domain") {
-		if (!formData.domain_code) return false;
-		if (!validationStatus.domain_code.checked) return false;
-		if (validationStatus.domain_code.exists) return false;
-		return true;
+const duplicateFieldKey = computed(() =>
+	props.type === "domain" ? "domain_code" : "type_name",
+);
+
+const duplicateFieldLabel = computed(() =>
+	props.type === "domain" ? "Domain code" : "Category name",
+);
+
+const duplicateFieldValue = computed(() => formData[duplicateFieldKey.value]);
+
+const duplicateStatus = computed(
+	() => validationStatus[duplicateFieldKey.value],
+);
+
+const showDuplicateFeedback = computed(
+	() => hasSubmitted.value || fieldTouched[duplicateFieldKey.value],
+);
+
+const duplicateFieldError = computed(() => {
+	if (!showDuplicateFeedback.value) {
+		return "";
 	}
 
-	if (props.type === "problem_type") {
-		if (!formData.type_name) return false;
-		if (!validationStatus.type_name.checked) return false;
-		if (validationStatus.type_name.exists) return false;
-		return true;
+	const label = duplicateFieldLabel.value;
+	const value = String(duplicateFieldValue.value || "").trim();
+
+	if (!value) {
+		return `${label} is required.`;
 	}
 
-	return true;
+	if (duplicateCheckError.value) {
+		return duplicateCheckError.value;
+	}
+
+	if (duplicateStatus.value.checked && duplicateStatus.value.exists) {
+		return `${label} already exists.`;
+	}
+
+	return "";
 });
 
-// Methods
-const closeModal = () => {
-	if (!isSaving.value) {
+const duplicateHelperText = computed(() => {
+	if (duplicateCheckError.value) {
+		return duplicateCheckError.value;
+	}
+
+	if (!duplicateFieldValue.value) {
+		return "Availability is checked automatically.";
+	}
+
+	if (duplicateStatus.value.loading) {
+		return "Checking availability...";
+	}
+
+	if (duplicateStatus.value.checked && !duplicateStatus.value.exists) {
+		return "Available.";
+	}
+
+	if (duplicateStatus.value.checked && duplicateStatus.value.exists) {
+		return "Already exists.";
+	}
+
+	return "Will be checked when you leave the field.";
+});
+
+const duplicateHelperTone = computed(() => {
+	if (duplicateCheckError.value || duplicateStatus.value.exists) {
+		return "text-destructive";
+	}
+
+	if (duplicateStatus.value.checked && !duplicateStatus.value.exists) {
+		return "text-emerald-600";
+	}
+
+	return "text-muted-foreground";
+});
+
+const resetDuplicateState = () => {
+	const key = duplicateFieldKey.value;
+	requestIds[key] += 1;
+	validationStatus[key].checked = false;
+	validationStatus[key].exists = false;
+	validationStatus[key].loading = false;
+	duplicateCheckError.value = "";
+};
+
+const markTouched = (fieldKey) => {
+	fieldTouched[fieldKey] = true;
+};
+
+const getRequiredError = (fieldKey, label) => {
+	const value = String(formData[fieldKey] || "").trim();
+
+	if (!hasSubmitted.value && !fieldTouched[fieldKey]) {
+		return "";
+	}
+
+	if (!value) {
+		return `${label} is required.`;
+	}
+
+	return "";
+};
+
+const closeModal = (force = false) => {
+	if (!isSaving.value || force) {
 		resetForm();
 		emit("close");
 	}
@@ -338,100 +348,109 @@ const resetForm = () => {
 		loading: false,
 	};
 
-	validationErrors.value = [];
+	requestIds.domain_code = 0;
+	requestIds.type_name = 0;
+
+	fieldTouched.domain_name = false;
+	fieldTouched.domain_code = false;
+	fieldTouched.type_name = false;
+	fieldTouched.description = false;
+
+	duplicateCheckError.value = "";
+	hasSubmitted.value = false;
 	isSaving.value = false;
 };
 
-const checkForDuplicate = async (fieldKey) => {
+const checkForDuplicate = async () => {
+	const fieldKey = duplicateFieldKey.value;
+	const value = String(duplicateFieldValue.value || "").trim();
+
+	resetDuplicateState();
+
+	if (!value) {
+		return false;
+	}
+
+	const currentRequestId = ++requestIds[fieldKey];
 	validationStatus[fieldKey].loading = true;
 
 	try {
-		// Migration: Use Supabase for duplicate check
 		const tableName =
 			props.type === "domain" ? "domain_types" : "problem_types";
-		const value = formData[fieldKey];
-
-		if (!value) {
-			validationStatus[fieldKey].loading = false;
-			return;
-		}
-
 		const { count, error } = await supabase
 			.from(tableName)
 			.select("id", { count: "exact" })
 			.eq(fieldKey, value);
 
 		if (error) throw error;
+		if (currentRequestId !== requestIds[fieldKey]) {
+			return false;
+		}
 
 		validationStatus[fieldKey].checked = true;
 		validationStatus[fieldKey].exists = (count || 0) > 0;
 
-		const { toast } = useToast();
-		if ((count || 0) > 0) {
-			toast({
-				title: "Duplicate Found",
-				description: `${
-					fieldKey === "domain_code" ? "Domain code" : "Type name"
-				} already exists`,
-				variant: "destructive",
-			});
-		} else {
-			toast({
-				title: "Validation Passed",
-				description: `${
-					fieldKey === "domain_code" ? "Domain code" : "Type name"
-				} is available`,
-				variant: "default",
-			});
-		}
-		return;
-
-		// Legacy logic (never reached if Supabase is used)
+		return !validationStatus[fieldKey].exists;
 	} catch (error) {
+		if (currentRequestId === requestIds[fieldKey]) {
+			duplicateCheckError.value =
+				"Unable to check availability right now. Please try again.";
+		}
+
 		console.error("Validation error:", error);
-		const { toast } = useToast();
-		toast({
-			title: "Validation Error",
-			description: "Failed to check for duplicates. Please try again.",
-			variant: "destructive",
-		});
+		return false;
 	} finally {
-		validationStatus[fieldKey].loading = false;
+		if (currentRequestId === requestIds[fieldKey]) {
+			validationStatus[fieldKey].loading = false;
+		}
 	}
 };
 
-const validateForm = () => {
-	const errors = [];
+const handleDuplicateFieldBlur = async () => {
+	const fieldKey = duplicateFieldKey.value;
+	fieldTouched[fieldKey] = true;
+
+	if (!String(duplicateFieldValue.value || "").trim()) {
+		resetDuplicateState();
+		return;
+	}
+
+	await checkForDuplicate();
+};
+
+const validateForm = async () => {
+	hasSubmitted.value = true;
 
 	if (props.type === "domain") {
-		if (!formData.domain_name) errors.push("Domain name is required");
-		if (!formData.domain_code) errors.push("Domain code is required");
-		if (!formData.description) errors.push("Description is required");
+		fieldTouched.domain_name = true;
+		fieldTouched.domain_code = true;
+	} else {
+		fieldTouched.type_name = true;
+	}
+	fieldTouched.description = true;
 
-		if (!validationStatus.domain_code.checked) {
-			errors.push("Please check for duplicate domain code before creating");
-		} else if (validationStatus.domain_code.exists) {
-			errors.push("Domain code already exists. Please choose a different one.");
-		}
+	if (props.type === "domain") {
+		if (!String(formData.domain_name || "").trim()) return false;
+		if (!String(formData.domain_code || "").trim()) return false;
+	} else if (!String(formData.type_name || "").trim()) {
+		return false;
 	}
 
-	if (props.type === "problem_type") {
-		if (!formData.type_name) errors.push("Type name is required");
-		if (!formData.description) errors.push("Description is required");
+	if (!String(formData.description || "").trim()) return false;
 
-		if (!validationStatus.type_name.checked) {
-			errors.push("Please check for duplicate type name before creating");
-		} else if (validationStatus.type_name.exists) {
-			errors.push("Type name already exists. Please choose a different one.");
-		}
+	if (
+		!duplicateStatus.value.checked ||
+		duplicateStatus.value.exists ||
+		duplicateStatus.value.loading
+	) {
+		return await checkForDuplicate();
 	}
 
-	validationErrors.value = errors;
-	return errors.length === 0;
+	return true;
 };
 
 const saveItem = async () => {
-	if (!validateForm()) {
+	if (!(await validateForm())) {
 		return;
 	}
 
@@ -446,7 +465,6 @@ const saveItem = async () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		// Remove individual fields if they don't apply
 		if (props.type === "domain") {
 			delete payload.type_name;
 		} else {
@@ -462,21 +480,16 @@ const saveItem = async () => {
 
 		if (error) throw error;
 
-		const { toast } = useToast();
 		toast({
 			title: "Success",
 			description: `${typeLabel.value} created successfully`,
 			variant: "default",
 		});
 
-		// Emit the created item
 		emit("created", data);
-
-		// Close modal
-		closeModal();
+		closeModal(true);
 	} catch (error) {
 		console.error("Create error:", error);
-		const { toast } = useToast();
 		toast({
 			title: "Error",
 			description: "Failed to create item. Please try again.",
@@ -486,4 +499,24 @@ const saveItem = async () => {
 		isSaving.value = false;
 	}
 };
+
+watch(
+	() => props.isOpen,
+	(newValue) => {
+		if (newValue) {
+			resetForm();
+		}
+	},
+);
+
+watch(
+	() => props.type,
+	() => {
+		resetForm();
+	},
+);
+
+watch(duplicateFieldValue, () => {
+	resetDuplicateState();
+});
 </script>

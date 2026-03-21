@@ -1,230 +1,128 @@
 <template>
 	<Dialog :open="isOpen" @update:open="closeModal">
 		<DialogContent
-			class="w-[95vw] sm:max-w-2xl max-h-[92dvh] p-0 flex flex-col overflow-hidden"
+			class="w-[92vw] sm:max-w-xl max-h-[92dvh] p-0 flex flex-col overflow-hidden"
 		>
-			<div class="px-6 py-4 border-b">
+			<div class="px-6 py-5 border-b">
 				<DialogHeader>
-					<div class="flex items-center justify-between">
-						<DialogTitle id="tour-pt-modal-title">
-							{{ isEditing ? "Edit" : "Create" }} Category
-						</DialogTitle>
-						<Button
-							variant="ghost"
-							size="sm"
-							class="gap-1 h-7"
-							@click="startTour('edit_problem_type')"
-						>
-							<HelpCircle class="h-4 w-4" />
-							<span class="text-xs">Help</span>
-						</Button>
-					</div>
+					<DialogTitle id="tour-pt-modal-title">
+						{{ isEditing ? "Edit Category" : "Create Category" }}
+					</DialogTitle>
 					<DialogDescription>
 						{{
 							isEditing
-								? "Update the information below"
-								: "Fill in the details to create a new category"
+								? "Update the category name and description."
+								: "Add a category name and short description."
 						}}
 					</DialogDescription>
 				</DialogHeader>
 			</div>
 
-			<!-- Form -->
-			<TooltipProvider>
-				<form
-					@submit.prevent="saveItem"
-					class="flex-1 flex flex-col min-h-0 overflow-hidden"
-				>
-					<div class="flex-1 overflow-y-auto min-h-0 px-6">
-						<div class="py-6">
-							<!-- Form Fields -->
-							<div class="grid grid-cols-1 gap-4 sm:gap-6">
-								<!-- Type Name -->
-								<div>
-									<FormFieldLabel
-										field-key="type_name"
-										label="Category Name"
-										:required="true"
-										description="Category name"
-									/>
-									<div class="mt-1 flex flex-col sm:flex-row gap-2">
-										<Input
-											id="type_name"
-											v-model="formData.type_name"
-											placeholder="e.g., Work Stress, Social Anxiety"
-											required
-											class="flex-1"
-										/>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											@click="checkDuplicateTypeName"
-											:disabled="
-												!formData.type_name ||
-												validationStatus.type_name.loading ||
-												(isEditing && formData.type_name === originalTypeName)
-											"
-											class="whitespace-nowrap shrink-0"
-											id="tour-pt-check-btn"
-										>
-											<Loader2
-												v-if="validationStatus.type_name.loading"
-												class="h-4 w-4 animate-spin mr-1"
-											/>
-											<CheckCircle
-												v-else-if="
-													validationStatus.type_name.checked &&
-													!validationStatus.type_name.exists
-												"
-												class="h-4 w-4 text-green-600 mr-1"
-											/>
-											<XCircle
-												v-else-if="
-													validationStatus.type_name.checked &&
-													validationStatus.type_name.exists
-												"
-												class="h-4 w-4 text-red-600 mr-1"
-											/>
-											<span class="hidden sm:inline">Check</span>
-											<span class="sm:hidden">✓</span>
-										</Button>
-									</div>
-									<div
-										v-if="validationStatus.type_name.checked"
-										class="mt-1 text-xs"
-									>
-										<span
-											v-if="!validationStatus.type_name.exists"
-											class="text-green-600"
-										>
-											✓ Available
-										</span>
-										<span v-else class="text-red-600"> ✗ Already exists </span>
-									</div>
-								</div>
-
-								<!-- Category ID (Auto-generated) -->
-								<div>
-									<FormFieldLabel
-										field-key="category_id"
-										label="Category ID"
-										:required="true"
-										:description="
-											isEditing
-												? 'Unique category identifier'
-												: 'Auto-generated from type name'
-										"
-									/>
-									<div class="mt-1 flex items-center gap-2">
-										<Input
-											id="category_id"
-											v-model="formData.category_id"
-											placeholder="Will be auto-generated"
-											readonly
-											class="flex-1 bg-muted cursor-not-allowed"
-										/>
-										<Loader2
-											v-if="isGeneratingCategoryId"
-											class="h-4 w-4 animate-spin text-muted-foreground"
-										/>
-										<CheckCircle
-											v-else-if="formData.category_id"
-											class="h-4 w-4 text-green-600"
-										/>
-									</div>
-								</div>
-
-								<!-- Description -->
-								<div>
-									<FormFieldLabel
-										field-key="description"
-										label="Description"
-										:required="true"
-										description="Detailed description of this category"
-									/>
-									<Textarea
-										id="description"
-										v-model="formData.description"
-										rows="3"
-										placeholder="Detailed description of this category"
-										required
-										class="mt-1"
-									/>
-								</div>
+			<form
+				@submit.prevent="saveItem"
+				class="flex-1 flex flex-col min-h-0 overflow-hidden"
+			>
+				<div class="flex-1 overflow-y-auto min-h-0 px-6">
+					<div class="py-6">
+						<div class="grid grid-cols-1 gap-6">
+							<div>
+								<FormFieldLabel
+									field-key="type_name"
+									label="Category Name"
+									:required="true"
+								/>
+								<Input
+									id="type_name"
+									v-model="formData.type_name"
+									placeholder="e.g., Work Stress, Social Anxiety"
+									required
+									class="mt-1"
+									@blur="handleTypeNameBlur"
+								/>
+								<p
+									class="mt-2 text-sm leading-6"
+									:class="nameHelperTone"
+									aria-live="polite"
+								>
+									{{ nameHelperText }}
+								</p>
+								<p
+									v-if="nameErrorText"
+									class="mt-1 text-sm leading-6 text-destructive"
+									aria-live="polite"
+								>
+									{{ nameErrorText }}
+								</p>
 							</div>
 
-							<!-- Validation Errors -->
-							<Alert
-								v-if="hasTouched && validationErrors.length > 0"
-								variant="destructive"
-								class="mt-6"
-							>
-								<AlertCircle class="h-4 w-4" />
-								<AlertTitle>Validation Errors</AlertTitle>
-								<AlertDescription>
-									<ul class="list-disc pl-5 space-y-1">
-										<li v-for="error in validationErrors" :key="error">
-											{{ error }}
-										</li>
-									</ul>
-								</AlertDescription>
-							</Alert>
+							<div>
+								<FormFieldLabel
+									field-key="description"
+									label="Description"
+									:required="true"
+								/>
+								<Textarea
+									id="description"
+									v-model="formData.description"
+									rows="4"
+									placeholder="Briefly describe what belongs in this category."
+									required
+									class="mt-1"
+									@blur="fieldTouched.description = true"
+								/>
+								<p
+									v-if="descriptionErrorText"
+									class="mt-1 text-sm leading-6 text-destructive"
+									aria-live="polite"
+								>
+									{{ descriptionErrorText }}
+								</p>
+							</div>
 						</div>
 					</div>
+				</div>
 
-					<!-- Action Buttons -->
-					<div class="px-6 py-4 border-t bg-background">
-						<DialogFooter
-							class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2"
+				<div class="px-6 py-4 border-t bg-background">
+					<DialogFooter
+						class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2"
+					>
+						<Button
+							type="button"
+							variant="outline"
+							class="w-full sm:w-auto"
+							@click="closeModal"
+							:disabled="isSaving"
 						>
-							<Button
-								type="button"
-								variant="outline"
-								class="w-full sm:w-auto"
-								@click="closeModal"
-								:disabled="isSaving"
-							>
-								Cancel
-							</Button>
-							<Button
-								type="submit"
-								class="w-full sm:w-auto"
-								:disabled="
-									isSaving || (hasTouched && validationErrors.length > 0)
-								"
-								id="tour-pt-save-btn"
-							>
-								<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
-								{{ isSaving ? "Saving..." : isEditing ? "Update" : "Create" }}
-							</Button>
-						</DialogFooter>
-					</div>
-				</form>
-			</TooltipProvider>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							class="w-full sm:w-auto"
+							:disabled="
+								isSaving || validationStatus.type_name.loading || isGeneratingCategoryId
+							"
+							id="tour-pt-save-btn"
+						>
+							<Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
+							{{ isSaving ? "Saving..." : "Save Category" }}
+						</Button>
+					</DialogFooter>
+				</div>
+			</form>
 		</DialogContent>
 	</Dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, reactive, nextTick } from "vue";
-import {
-	AlertCircle,
-	Loader2,
-	CheckCircle,
-	XCircle,
-	HelpCircle,
-} from "lucide-vue-next";
+import { Loader2 } from "lucide-vue-next";
 import { useSupabase } from "@/composables/useSupabase";
-import { useToast } from "@/components/ui/toast/use-toast";
 import { generateCategoryId } from "@/utils/categoryIdGenerator";
-import { useOnboarding } from "@/composables/useOnboarding";
 
 // shadcn-vue components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import {
 	Dialog,
 	DialogContent,
@@ -233,7 +131,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import FormFieldLabel from "@/components/admin/FormFieldLabel.vue";
 
 // Types
@@ -267,8 +164,6 @@ const emit = defineEmits<{
 
 // Composables
 const { supabase } = useSupabase();
-const { toast } = useToast();
-const { startTour } = useOnboarding();
 
 // Reactive data
 const formData = reactive<ProblemType>({
@@ -285,70 +180,161 @@ const validationStatus = reactive<{
 });
 
 const isSaving = ref(false);
-const hasTouched = ref(false);
+const hasSubmitted = ref(false);
+const initialFormSnapshot = ref("");
+const fieldTouched = reactive({
+	type_name: false,
+	description: false,
+});
 const isGeneratingCategoryId = ref(false);
+const duplicateCheckError = ref("");
+const categoryIdError = ref("");
+const duplicateCheckRequestId = ref(0);
+const categoryIdRequestId = ref(0);
 const originalTypeName = ref("");
 
 // Computed properties
 const isEditing = computed(() => !!props.item);
 
-const validationErrors = computed(() => {
-	const errors: string[] = [];
-	console.log("[DEBUG] Re-evaluating validationErrors. formData:", {
-		...formData,
-	});
+const typeNameTrimmed = computed(() => formData.type_name.trim());
+const originalTypeNameTrimmed = computed(() => originalTypeName.value.trim());
+const typeNameChanged = computed(
+	() => !isEditing.value || typeNameTrimmed.value !== originalTypeNameTrimmed.value,
+);
+const showNameFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.type_name,
+);
+const showDescriptionFeedback = computed(
+	() => hasSubmitted.value || fieldTouched.description,
+);
+const nameErrorText = computed(() => {
+	if (!showNameFeedback.value) {
+		return "";
+	}
+
+	if (!typeNameTrimmed.value) {
+		return "Category name is required.";
+	}
+
+	if (duplicateCheckError.value) {
+		return duplicateCheckError.value;
+	}
+
+	if (
+		typeNameChanged.value &&
+		validationStatus.type_name.checked &&
+		validationStatus.type_name.exists
+	) {
+		return "This category name already exists.";
+	}
+
+	return "";
+});
+const descriptionErrorText = computed(() => {
+	if (!showDescriptionFeedback.value) {
+		return "";
+	}
+
+	if (!formData.description.trim()) {
+		return "Description is required.";
+	}
+
+	return "";
+});
+const nameHelperText = computed(() => {
+	if (categoryIdError.value) {
+		return categoryIdError.value;
+	}
+
+	if (validationStatus.type_name.loading) {
+		return "Checking availability...";
+	}
 
 	if (!formData.type_name) {
-		errors.push("Type Name is required");
-	}
-	if (!formData.category_id) {
-		errors.push("Category ID is required");
-	}
-	if (!formData.description) {
-		errors.push("Description is required");
+		return isEditing.value
+			? "Category ID stays the same while you edit."
+			: "Category ID is generated automatically.";
 	}
 
-	// Check validation status (only if type_name has changed from original)
-	const typeNameChanged =
-		!isEditing.value || formData.type_name !== originalTypeName.value;
-
-	if (typeNameChanged) {
-		if (!validationStatus.type_name.checked) {
-			errors.push("Please check for duplicate Category Name before saving");
-		} else if (validationStatus.type_name.exists) {
-			errors.push(
-				"Category Name already exists. Please choose a different one.",
-			);
-		}
+	if (typeNameChanged.value && validationStatus.type_name.checked) {
+		return validationStatus.type_name.exists
+			? "This category name is already in use."
+			: "Available.";
 	}
 
-	console.log("[DEBUG] Validation errors found:", errors);
-	return errors;
+	if (isGeneratingCategoryId.value) {
+		return "Generating category ID...";
+	}
+
+	if (isEditing.value && !typeNameChanged.value) {
+		return "Name unchanged.";
+	}
+
+	if (!isEditing.value && formData.category_id) {
+		return "Category ID is generated automatically.";
+	}
+
+	return "Category ID is generated automatically.";
 });
+const nameHelperTone = computed(() => {
+	if (categoryIdError.value || nameErrorText.value) {
+		return "text-destructive";
+	}
+
+	if (
+		typeNameChanged.value &&
+		validationStatus.type_name.checked &&
+		!validationStatus.type_name.exists
+	) {
+		return "text-emerald-600";
+	}
+
+	return "text-muted-foreground";
+});
+
+const createFormSnapshot = () =>
+	JSON.stringify({
+		type_name: formData.type_name || "",
+		category_id: formData.category_id || "",
+		description: formData.description || "",
+		is_active: formData.is_active ?? true,
+	});
+
+const hasUnsavedChanges = computed(
+	() => createFormSnapshot() !== initialFormSnapshot.value,
+);
 
 // Methods
 const closeModal = (force = false) => {
-	console.log(
-		"[DEBUG] closeModal called. isSaving:",
-		isSaving.value,
-		"force:",
-		force,
-	);
 	if (!isSaving.value || force) {
+		if (
+			!force &&
+			hasUnsavedChanges.value &&
+			typeof window !== "undefined" &&
+			!window.confirm("Discard unsaved changes?")
+		) {
+			return;
+		}
+
 		resetForm();
 		emit("close");
 	}
 };
 
 const resetForm = () => {
-	console.log("[DEBUG] resetForm called");
+	duplicateCheckRequestId.value += 1;
+	categoryIdRequestId.value += 1;
 	formData.type_name = "";
 	formData.category_id = "";
 	formData.description = "";
 	formData.is_active = true;
-	hasTouched.value = false;
+	hasSubmitted.value = false;
+	fieldTouched.type_name = false;
+	fieldTouched.description = false;
 	isSaving.value = false;
 	isGeneratingCategoryId.value = false;
+	duplicateCheckError.value = "";
+	categoryIdError.value = "";
 	validationStatus.type_name = {
 		checked: false,
 		exists: false,
@@ -360,6 +346,11 @@ const initializeForm = async () => {
 	// Reset validation status
 	isSaving.value = false;
 	isGeneratingCategoryId.value = false;
+	hasSubmitted.value = false;
+	fieldTouched.type_name = false;
+	fieldTouched.description = false;
+	duplicateCheckError.value = "";
+	categoryIdError.value = "";
 	validationStatus.type_name = {
 		checked: false,
 		exists: false,
@@ -381,18 +372,30 @@ const initializeForm = async () => {
 		formData.is_active = true;
 		originalTypeName.value = "";
 	}
+
+	initialFormSnapshot.value = createFormSnapshot();
 };
 
 const checkDuplicateTypeName = async () => {
+	const value = typeNameTrimmed.value;
+	const currentRequestId = ++duplicateCheckRequestId.value;
+	duplicateCheckError.value = "";
+
+	if (!value) {
+		validationStatus.type_name.checked = false;
+		validationStatus.type_name.exists = false;
+		return false;
+	}
+
+	if (isEditing.value && value === originalTypeNameTrimmed.value) {
+		validationStatus.type_name.checked = true;
+		validationStatus.type_name.exists = false;
+		return true;
+	}
+
 	validationStatus.type_name.loading = true;
 
 	try {
-		const value = formData.type_name;
-		if (!value) {
-			validationStatus.type_name.loading = false;
-			return;
-		}
-
 		let query = supabase
 			.from("problem_types")
 			.select("id", { count: "exact" })
@@ -405,80 +408,108 @@ const checkDuplicateTypeName = async () => {
 		const { count, error } = await query;
 		if (error) throw error;
 
+		if (currentRequestId !== duplicateCheckRequestId.value) {
+			return false;
+		}
+
 		validationStatus.type_name.checked = true;
 		validationStatus.type_name.exists = (count || 0) > 0;
 
-		toast({
-			title: validationStatus.type_name.exists
-				? "Duplicate Found"
-				: "Validation Passed",
-			description: `Type name ${
-				validationStatus.type_name.exists ? "already exists" : "is available"
-			}`,
-			variant: validationStatus.type_name.exists ? "destructive" : "default",
-		});
+		return !validationStatus.type_name.exists;
 	} catch (error) {
-		console.error("Validation error:", error);
-		toast({
-			title: "Validation Error",
-			description: "Failed to check for duplicates. Please try again.",
-			variant: "destructive",
-		});
+		if (currentRequestId === duplicateCheckRequestId.value) {
+			validationStatus.type_name.checked = false;
+			validationStatus.type_name.exists = false;
+			duplicateCheckError.value =
+				"Unable to check category name right now. Please try again.";
+		}
+
+		return false;
 	} finally {
-		validationStatus.type_name.loading = false;
+		if (currentRequestId === duplicateCheckRequestId.value) {
+			validationStatus.type_name.loading = false;
+		}
 	}
 };
 
 const autoGenerateCategoryId = async () => {
 	// Only auto-generate for new items, not when editing
-	if (isEditing.value || !formData.type_name) {
+	if (isEditing.value || !typeNameTrimmed.value) {
 		return;
 	}
 
 	isGeneratingCategoryId.value = true;
+	categoryIdError.value = "";
+	const currentRequestId = ++categoryIdRequestId.value;
 
 	try {
-		const categoryId = await generateCategoryId(supabase, formData.type_name);
+		const categoryId = await generateCategoryId(supabase, typeNameTrimmed.value);
+		if (currentRequestId !== categoryIdRequestId.value) {
+			return false;
+		}
 		formData.category_id = categoryId;
+		return true;
 	} catch (error) {
-		console.error("Error generating category ID:", error);
-		toast({
-			title: "Generation Error",
-			description: "Failed to generate category ID. Please try again.",
-			variant: "destructive",
-		});
+		if (currentRequestId === categoryIdRequestId.value) {
+			categoryIdError.value =
+				"Unable to generate the category ID. Please try a different name.";
+		}
 		formData.category_id = "";
+		return false;
 	} finally {
-		isGeneratingCategoryId.value = false;
+		if (currentRequestId === categoryIdRequestId.value) {
+			isGeneratingCategoryId.value = false;
+		}
+	}
+};
+
+const handleTypeNameBlur = async () => {
+	fieldTouched.type_name = true;
+
+	if (!typeNameTrimmed.value) {
+		return;
+	}
+
+	const isUnique = await checkDuplicateTypeName();
+
+	if (!isEditing.value && isUnique) {
+		await autoGenerateCategoryId();
 	}
 };
 
 const saveItem = async () => {
-	console.log(
-		"[DEBUG] saveItem initiated. Current errors:",
-		validationErrors.value,
-	);
-	hasTouched.value = true;
+	hasSubmitted.value = true;
+	fieldTouched.type_name = true;
+	fieldTouched.description = true;
 
-	if (validationErrors.value.length > 0) {
-		console.log("[DEBUG] saveItem aborted due to validation errors");
+	if (!typeNameTrimmed.value || !formData.description.trim()) {
 		return;
+	}
+
+	if (typeNameChanged.value) {
+		const isUnique = await checkDuplicateTypeName();
+		if (!isUnique) {
+			return;
+		}
+	}
+
+	if (!isEditing.value && !formData.category_id) {
+		const generated = await autoGenerateCategoryId();
+		if (!generated) {
+			return;
+		}
 	}
 
 	isSaving.value = true;
 
 	try {
-		console.log("[DEBUG] Emitting save event with data:", { ...formData });
-		// Emit save event
 		emit("save", { ...formData });
 
-		console.log("[DEBUG] Save event emitted successfully. Forcing closeModal.");
 		// Close modal after successful save - force it because isSaving is still true
 		closeModal(true);
 	} catch (error) {
-		console.error("[DEBUG] Save error:", error);
+		console.error("Save error:", error);
 	} finally {
-		console.log("[DEBUG] saveItem finally block. Setting isSaving to false.");
 		isSaving.value = false;
 	}
 };
@@ -507,13 +538,20 @@ watch(
 // Reset validation when type name changes and auto-generate category ID
 watch(
 	() => formData.type_name,
-	async () => {
+	() => {
+		duplicateCheckRequestId.value += 1;
+		categoryIdRequestId.value += 1;
 		validationStatus.type_name.checked = false;
 		validationStatus.type_name.exists = false;
+		validationStatus.type_name.loading = false;
+		duplicateCheckError.value = "";
+		categoryIdError.value = "";
 
-		// Auto-generate category ID for new items
-		if (!isEditing.value && formData.type_name) {
-			await autoGenerateCategoryId();
+		if (!isEditing.value) {
+			formData.category_id = "";
+			if (!formData.type_name) {
+				isGeneratingCategoryId.value = false;
+			}
 		}
 	},
 );

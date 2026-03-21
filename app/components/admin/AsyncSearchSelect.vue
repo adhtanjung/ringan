@@ -1,62 +1,110 @@
 <template>
 	<div class="w-full">
-		<div class="relative">
-			<Input
-				:placeholder="placeholder"
-				v-model="searchTerm"
-				class="pr-10"
-				@focus="open = true"
-			/>
-			<div class="absolute inset-y-0 right-0 flex items-center pr-3">
-				<Loader2 v-if="loading" class="h-4 w-4 animate-spin text-gray-400" />
-			</div>
-		</div>
-		<div
-			v-if="open"
-			class="mt-1 max-h-60 overflow-auto rounded-md border bg-white shadow"
+		<Command
+			v-model="selectedValue"
+			v-model:open="open"
+			:open-on-focus="true"
+			:open-on-click="true"
+			:ignore-filter="true"
+			:reset-search-term-on-select="true"
+			class="w-full"
 		>
-			<div
-				v-if="results.length === 0 && !loading"
-				class="p-3 text-sm text-gray-500"
-			>
-				No results
+			<div class="relative">
+				<CommandInput
+					:id="inputId"
+					v-model="searchTerm"
+					:placeholder="placeholder"
+					:display-value="displayValueForSelection"
+					:auto-focus="false"
+					class="pr-10"
+				/>
+				<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+					<Loader2
+						v-if="loading"
+						class="h-4 w-4 animate-spin text-muted-foreground"
+						aria-hidden="true"
+					/>
+				</div>
 			</div>
-			<button
-				v-for="item in results"
-				:key="valueExtractor(item)"
-				type="button"
-				class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
-				@click="selectItem(item)"
-			>
-				{{ labelExtractor(item) }}
-			</button>
-			<div v-if="hasMore" class="p-2">
-				<Button
-					variant="outline"
-					size="sm"
-					class="w-full"
-					@click="loadMore"
-					:disabled="loading"
+
+			<CommandList class="mt-2 max-h-72 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+				<div
+					v-if="loading && !results.length"
+					role="status"
+					aria-live="polite"
+					class="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground"
 				>
-					<Loader2 v-if="loading" class="h-4 w-4 animate-spin mr-2" /> Load more
-				</Button>
-			</div>
-		</div>
-		<div v-if="selectedLabel" class="mt-1 text-xs text-gray-600">
-			Selected: {{ selectedLabel }}
-		</div>
+					<Loader2 class="h-4 w-4 animate-spin" aria-hidden="true" />
+					<span>Searching...</span>
+				</div>
+
+				<template v-else>
+					<CommandEmpty>
+						{{ searchTerm ? "No matching results." : "Type to search." }}
+					</CommandEmpty>
+
+					<CommandGroup v-if="results.length" heading="Results">
+						<CommandItem
+							v-for="item in results"
+							:key="valueForItem(item)"
+							:value="valueForItem(item)"
+							class="py-3"
+							@select="selectItem(item)"
+						>
+							<div class="flex min-w-0 flex-col">
+								<span class="truncate">{{ labelForItem(item) }}</span>
+								<span
+									v-if="summaryForItem(item)"
+									class="truncate text-xs text-muted-foreground"
+								>
+									{{ summaryForItem(item) }}
+								</span>
+							</div>
+						</CommandItem>
+					</CommandGroup>
+
+					<div v-if="hasMore" class="border-t p-2">
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							class="h-11 w-full"
+							@click="loadMore"
+							:disabled="loading"
+						>
+							<Loader2
+								v-if="loading"
+								class="mr-2 h-4 w-4 animate-spin"
+								aria-hidden="true"
+							/>
+							Load more
+						</Button>
+					</div>
+				</template>
+			</CommandList>
+		</Command>
 	</div>
 </template>
 
-<script setup>
-import { ref, watch, computed } from "vue";
+<script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { Loader2 } from "lucide-vue-next";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
 import { useSupabase } from "@/composables/useSupabase";
+
+type OptionRecord = Record<string, any>;
 
 const props = defineProps({
 	modelValue: { type: String, default: "" },
+	inputId: { type: String, default: "" },
 	placeholder: { type: String, default: "Type to search..." },
 	fetchUrl: { type: String, default: "" },
 	tableName: { type: String, default: "" },
@@ -65,50 +113,35 @@ const props = defineProps({
 	displayFields: { type: Array, default: () => [] },
 	labelExtractor: {
 		type: Function,
-		default: (item) => item.label ?? String(item),
+		default: (item: OptionRecord) =>
+			item.label ??
+			item.name ??
+			item.title ??
+			item.problem_name ??
+			item.sub_category_id ??
+			item.category_id ??
+			item.id ??
+			"",
 	},
 	valueExtractor: {
 		type: Function,
-		default: (item) => item.value ?? String(item),
+		default: (item: OptionRecord) =>
+			item.value ??
+			item.id ??
+			item.sub_category_id ??
+			item.category_id ??
+			item.question_id ??
+			item.prompt_id ??
+			item.action_id ??
+			item.suggestion_id ??
+			"",
 	},
 });
 
 const emit = defineEmits(["update:modelValue", "select"]);
 
-// Helper functions for label and value extraction
-const labelExtractor = (item) => {
-	if (props.displayFields && props.displayFields.length > 0) {
-		// Use displayFields to format label
-		return props.displayFields
-			.map((field) => item[field])
-			.filter(Boolean)
-			.join(" - ");
-	}
-	return props.labelExtractor(item);
-};
-
-const valueExtractor = (item) => {
-	if (props.valueField) {
-		return item[props.valueField];
-	}
-	return props.valueExtractor(item);
-};
-
-const searchTerm = ref("");
-const open = ref(false);
-const loading = ref(false);
-const results = ref([]);
-const page = ref(1);
-const hasMore = ref(false);
-const selectedLabel = computed(() => {
-	const found = results.value.find(
-		(r) => props.modelValue && props.modelValue === valueExtractor(r)
-	);
-	return found ? labelExtractor(found) : "";
-});
-
-// Supabase
 const { supabase } = useSupabase();
+
 const USE_SUPABASE_FOR = [
 	"problem_types",
 	"problems",
@@ -119,61 +152,191 @@ const USE_SUPABASE_FOR = [
 	"training_examples",
 ];
 
-let debounceTimer;
-watch(searchTerm, (val) => {
+const open = ref(false);
+const searchTerm = ref("");
+const loading = ref(false);
+const results = ref<OptionRecord[]>([]);
+const page = ref(1);
+const hasMore = ref(false);
+const selectedRecord = ref<OptionRecord | null>(null);
+const cachedOptions = ref(new Map<string, OptionRecord>());
+
+const normalizeModelValue = (value: unknown): string => {
+	if (typeof value === "string" || typeof value === "number") {
+		return String(value);
+	}
+
+	if (value && typeof value === "object") {
+		const record = value as OptionRecord;
+		if (record.value !== undefined && record.value !== null) {
+			return String(record.value);
+		}
+		if (record.id !== undefined && record.id !== null) {
+			return String(record.id);
+		}
+		if (
+			record.sub_category_id !== undefined &&
+			record.sub_category_id !== null
+		) {
+			return String(record.sub_category_id);
+		}
+	}
+
+	return "";
+};
+
+const selectedValue = computed({
+	get: () => normalizeModelValue(props.modelValue),
+	set: (value) => {
+		const normalizedValue = normalizeModelValue(value);
+		if (normalizedValue !== props.modelValue) {
+			emit("update:modelValue", normalizedValue);
+		}
+	},
+});
+
+const valueForItem = (item: OptionRecord) => {
+	if (props.valueField) return String(item[props.valueField]);
+	return String(props.valueExtractor(item));
+};
+
+const labelForItem = (item: OptionRecord) => {
+	if (props.displayFields && props.displayFields.length > 0) {
+		return props.displayFields
+			.map((field: string) => item[field])
+			.filter(Boolean)
+			.join(" - ");
+	}
+	return String(props.labelExtractor(item));
+};
+
+const summaryForItem = (item: OptionRecord) => {
+	if (!props.displayFields || props.displayFields.length < 2) return "";
+	return props.displayFields
+		.slice(1)
+		.map((field: string) => item[field])
+		.filter(Boolean)
+		.join(" • ");
+};
+
+const cacheItems = (items: OptionRecord[]) => {
+	items.forEach((item) => {
+		cachedOptions.value.set(valueForItem(item), item);
+	});
+};
+
+const selectedLabelForValue = (value: string) => {
+	const cached = cachedOptions.value.get(value) || selectedRecord.value;
+	if (cached && valueForItem(cached) === value) return labelForItem(cached);
+	return value;
+};
+
+const displayValueForSelection = (value: string) =>
+	selectedLabelForValue(normalizeModelValue(value));
+
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(searchTerm, () => {
 	if (debounceTimer) clearTimeout(debounceTimer);
+	if (!open.value) return;
+
 	debounceTimer = setTimeout(() => {
 		page.value = 1;
 		results.value = [];
-		fetchResults();
-	}, 300);
+		void fetchResults();
+	}, 250);
 });
+
+watch(
+	() => props.modelValue,
+	async (value) => {
+		if (!value) {
+			selectedRecord.value = null;
+			return;
+		}
+
+		const key = String(value);
+		const cached = cachedOptions.value.get(key);
+		if (cached) {
+			selectedRecord.value = cached;
+			return;
+		}
+
+		if (props.tableName) {
+			await hydrateSelectedRecord(key);
+		}
+	},
+	{ immediate: true },
+);
+
+const hydrateSelectedRecord = async (value: string) => {
+	try {
+		const lookupField = props.valueField || "id";
+		const { data, error } = await supabase
+			.from(props.tableName)
+			.select("*")
+			.eq(lookupField, value)
+			.maybeSingle();
+
+		if (error) throw error;
+		if (!data) return;
+
+		selectedRecord.value = data;
+		cacheItems([data]);
+	} catch (error) {
+		console.error("AsyncSearchSelect hydrate error:", error);
+	}
+};
 
 const fetchResults = async () => {
 	try {
 		loading.value = true;
 
-		// Determine which table to use (tableName prop takes priority)
 		const targetTable =
 			props.tableName ||
 			(props.fetchUrl
-				? USE_SUPABASE_FOR.find((t) => props.fetchUrl.includes(t))
+				? USE_SUPABASE_FOR.find((table) => props.fetchUrl.includes(table))
 				: null);
 
 		if (targetTable) {
-			// Use Supabase
 			let query = supabase.from(targetTable).select("*", { count: "exact" });
 
 			const search = searchTerm.value.trim();
 			if (search) {
 				if (targetTable === "problems") {
 					query = query.or(
-						`problem_name.ilike.%${search}%,description.ilike.%${search}%,sub_category_id.ilike.%${search}%`
+						`problem_name.ilike.%${search}%,description.ilike.%${search}%,sub_category_id.ilike.%${search}%`,
 					);
 				} else if (targetTable === "problem_types") {
-					query = query.or(
-						`type_name.ilike.%${search}%,description.ilike.%${search}%`
-					);
+					query = query.or(`type_name.ilike.%${search}%,description.ilike.%${search}%`);
 				}
 			}
 
 			const limit = 20;
 			const from = (page.value - 1) * limit;
 			const to = from + limit - 1;
+			const orderBy =
+				targetTable === "problem_types"
+					? "type_name"
+					: targetTable === "problems"
+						? "problem_name"
+						: "created_at";
 
-			query = query.range(from, to);
+			query = query.order(orderBy, { ascending: true }).range(from, to);
 
 			const { data, count, error } = await query;
 			if (error) throw error;
 
-			if (page.value === 1) results.value = data || [];
-			else results.value = [...results.value, ...(data || [])];
+			const items = (data || []) as OptionRecord[];
+			cacheItems(items);
 
-			hasMore.value = from + (data?.length || 0) < (count || 0);
+			if (page.value === 1) results.value = items;
+			else results.value = [...results.value, ...items];
+
+			hasMore.value = from + items.length < (count || 0);
 			return;
 		}
 
-		// Legacy API (only if fetchUrl is provided)
 		if (props.fetchUrl) {
 			const config = useRuntimeConfig();
 			const adminApiUrl =
@@ -184,15 +347,16 @@ const fetchResults = async () => {
 			params.set("page", String(page.value));
 			const url = `${adminApiUrl}${props.fetchUrl}?${params.toString()}`;
 			const resp = await $fetch(url);
-			const items = resp?.data?.items ?? [];
-			const more = resp?.data?.has_more ?? false;
+			const items = (resp?.data?.items ?? []) as OptionRecord[];
+			const more = Boolean(resp?.data?.has_more ?? false);
+
+			cacheItems(items);
 			if (page.value === 1) results.value = items;
 			else results.value = [...results.value, ...items];
 			hasMore.value = more;
 		}
-	} catch (e) {
-		// noop or toast in parent
-		console.error("AsyncSearchSelect error:", e);
+	} catch (error) {
+		console.error("AsyncSearchSelect error:", error);
 	} finally {
 		loading.value = false;
 	}
@@ -201,12 +365,14 @@ const fetchResults = async () => {
 const loadMore = () => {
 	if (loading.value || !hasMore.value) return;
 	page.value += 1;
-	fetchResults();
+	void fetchResults();
 };
 
-const selectItem = (item) => {
-	const val = valueExtractor(item);
-	emit("update:modelValue", val);
+const selectItem = (item: OptionRecord) => {
+	const value = valueForItem(item);
+	selectedRecord.value = item;
+	cacheItems([item]);
+	emit("update:modelValue", value);
 	emit("select", item);
 	open.value = false;
 };
