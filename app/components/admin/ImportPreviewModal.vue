@@ -249,6 +249,18 @@ const columns = computed(() => {
 		);
 	}
 
+	// For suggestions import preview, show required foreign key and hide auto-generated ID.
+	if (props.dataType === "suggestions") {
+		cols = cols.filter((col: any) => col.key !== "suggestion_id");
+		if (!cols.find((c: any) => c.key === "sub_category_id")) {
+			cols.unshift({
+				key: "sub_category_id",
+				label: "Subcategory ID",
+				type: "text",
+			});
+		}
+	}
+
 	return cols;
 });
 
