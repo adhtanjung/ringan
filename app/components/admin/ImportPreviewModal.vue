@@ -125,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from "vue";
+import { computed, ref, watch } from "vue";
 import { CheckCircle, AlertCircle, Info } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
@@ -155,6 +155,10 @@ import {
 	datasetLabels,
 } from "@/composables/useDatasetManagement";
 import { useSupabase } from "@/composables/useSupabase";
+import {
+	isValidActionId,
+	isValidSuggestionId,
+} from "@/utils/commonIdGenerator";
 const props = defineProps<{
 	isOpen: boolean;
 	data: any[];
@@ -194,6 +198,7 @@ const fetchValidationData = async () => {
 				.map((c: any) => c.category_id)
 				.filter(Boolean);
 		}
+
 	} catch (err) {
 		console.error("Error fetching validation data:", err);
 	} finally {
@@ -224,7 +229,7 @@ const EXCLUDED_FIELDS = [
 ];
 const columns = computed(() => {
 	const allCols = (columnConfigs as any)[props.dataType] || [];
-	const cols = allCols.filter((col: any) => !EXCLUDED_FIELDS.includes(col.key));
+	let cols = allCols.filter((col: any) => !EXCLUDED_FIELDS.includes(col.key));
 
 	// Ensure category_id is included for problems, even if removed from main table config
 	if (props.dataType === "problems") {
@@ -235,6 +240,13 @@ const columns = computed(() => {
 				type: "text",
 			});
 		}
+	}
+
+	// Keep preview aligned with the actual DB schema.
+	if (props.dataType === "feedback_prompts") {
+		cols = cols.filter((col: any) =>
+			["prompt_id", "prompt_text"].includes(col.key),
+		);
 	}
 
 	return cols;
@@ -332,44 +344,85 @@ const validationResults = computed(() => {
 					}
 				});
 			}
-		} else if (props.dataType === "problems") {
-			if (!item.problem_name) {
-				errors.push("Subcategory Name is required");
-				fieldErrors.problem_name = true;
+			} else if (props.dataType === "problems") {
+				if (!item.problem_name) {
+					errors.push("Subcategory Name is required");
+					fieldErrors.problem_name = true;
+				}
+				if (!item.category_id) {
+					errors.push("Category ID is required");
+					fieldErrors.category_id = true;
+				} else if (
+					!isLoadingValidationData.value &&
+					!validCategoryIds.value.includes(item.category_id)
+				) {
+					errors.push(
+						`Category ID "${item.category_id}" does not exist in the database`,
+					);
+					fieldErrors.category_id = true;
+				}
+			} else if (props.dataType === "problem_types") {
+				if (!item.type_name) {
+					errors.push("Type name is required");
+					fieldErrors.type_name = true;
+				}
+				if (!item.category_id) {
+					errors.push("Category ID is required");
+					fieldErrors.category_id = true;
+				}
+				if (item.category_id && !/^[a-z0-9_]+$/i.test(item.category_id)) {
+					errors.push(
+						"Category ID must contain only letters, numbers, and underscores",
+					);
+					fieldErrors.category_id = true;
+				}
+				if (!item.description) {
+					errors.push("Description is required");
+					fieldErrors.description = true;
+				}
+			} else if (props.dataType === "suggestions") {
+				if (!item.sub_category_id) {
+					errors.push("Subcategory ID is required");
+					fieldErrors.sub_category_id = true;
+				} else if (
+					!isLoadingValidationData.value &&
+					!validSubCategoryIds.value.includes(item.sub_category_id)
+				) {
+					errors.push(
+						`Subcategory ID "${item.sub_category_id}" does not exist in the database`,
+					);
+					fieldErrors.sub_category_id = true;
+				}
+
+				if (!item.suggestion_text) {
+					errors.push("Suggestion text is required");
+					fieldErrors.suggestion_text = true;
+				}
+
+				if (item.suggestion_id && !isValidSuggestionId(item.suggestion_id)) {
+					errors.push(
+						"Suggestion ID format is invalid. Use S_0001 or leave blank for auto-generation.",
+					);
+					fieldErrors.suggestion_id = true;
+				}
+			} else if (props.dataType === "next_actions") {
+				if (!item.action_text) {
+					errors.push("Action text is required");
+					fieldErrors.action_text = true;
+				}
+
+				if (item.action_id && !isValidActionId(item.action_id)) {
+					errors.push(
+						"Action ID format is invalid. Use A_0001 or leave blank for auto-generation.",
+					);
+					fieldErrors.action_id = true;
+				}
+			} else if (props.dataType === "feedback_prompts") {
+				if (!item.prompt_text) {
+					errors.push("Prompt text is required");
+					fieldErrors.prompt_text = true;
+				}
 			}
-			if (!item.category_id) {
-				errors.push("Category ID is required");
-				fieldErrors.category_id = true;
-			} else if (
-				!isLoadingValidationData.value &&
-				!validCategoryIds.value.includes(item.category_id)
-			) {
-				errors.push(
-					`Category ID "${item.category_id}" does not exist in the database`,
-				);
-				fieldErrors.category_id = true;
-			}
-		} else if (props.dataType === "problem_types") {
-			if (!item.type_name) {
-				errors.push("Type name is required");
-				fieldErrors.type_name = true;
-			}
-			if (!item.category_id) {
-				errors.push("Category ID is required");
-				fieldErrors.category_id = true;
-			}
-			// Check for valid alphanumeric/underscore format for category_id
-			if (item.category_id && !/^[a-z0-9_]+$/i.test(item.category_id)) {
-				errors.push(
-					"Category ID must contain only letters, numbers, and underscores",
-				);
-				fieldErrors.category_id = true;
-			}
-			if (!item.description) {
-				errors.push("Description is required");
-				fieldErrors.description = true;
-			}
-		}
 
 		return {
 			data: item,
