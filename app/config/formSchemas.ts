@@ -222,12 +222,12 @@ export const FORM_SCHEMAS: Record<string, FormFieldConfig[]> = {
 			rows: 4,
 			fullWidth: true,
 		},
-		{
-			key: "resource_link",
-			label: "Resource URL (Optional)",
-			type: "text",
-			placeholder: "https://example.com",
-		},
+			{
+				key: "evidence_base",
+				label: "Evidence Base (Optional)",
+				type: "text",
+				placeholder: "e.g., CBT, DBT, ACT",
+			},
 		{
 			key: "is_active",
 			label: "Active",

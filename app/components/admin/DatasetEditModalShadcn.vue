@@ -710,7 +710,7 @@ const fieldDescriptions: Record<string, Record<string, string>> = {
 			"Choose the subcategory this guidance belongs to.",
 		cluster: "Optional grouping label for reporting or segmentation.",
 		suggestion_text: "The therapeutic guidance text shown to users.",
-		resource_link: "Optional URL for additional support material.",
+		evidence_base: "Optional therapeutic model or evidence basis for this suggestion.",
 		is_active: "Turn off to hide this suggestion from live workflows.",
 	},
 	next_actions: {
@@ -725,7 +725,7 @@ const getFieldDescription = (fieldKey: string) =>
 
 const isOptionalField = (field: { key: string; type: string }) => {
 	if (props.dataType === "suggestions") {
-		return field.key === "cluster" || field.key === "resource_link";
+		return field.key === "cluster" || field.key === "evidence_base";
 	}
 
 	return false;
@@ -1005,11 +1005,11 @@ const initializeForm = async () => {
 			formData.scale_label_4 = props.item.scale_labels["4"] || "Very much";
 		}
 
-		if (props.dataType === "suggestions") {
-			optionalSectionsOpen.optional = Boolean(
-				props.item.cluster || props.item.resource_link,
-			);
-		}
+	if (props.dataType === "suggestions") {
+		optionalSectionsOpen.optional = Boolean(
+			props.item.cluster || props.item.evidence_base,
+		);
+	}
 	} else {
 		// Create mode - set defaults
 		formFields.value.forEach((field) => {

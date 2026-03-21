@@ -176,13 +176,13 @@ export const columnConfigs = {
 			description:
 				"The actual therapeutic advice or intervention text provided to users",
 		},
-		{
-			key: "resource_link",
-			label: "Resource Link",
-			type: "text",
-			description:
-				"URL or reference to additional resources related to this suggestion",
-		},
+			{
+				key: "evidence_base",
+				label: "Evidence Base",
+				type: "text",
+				description:
+					"Reference for the therapeutic approach supporting this suggestion",
+			},
 		{
 			key: "created_at",
 			label: "Created",
