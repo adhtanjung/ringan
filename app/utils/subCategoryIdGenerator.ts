@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * - "Social Anxiety" => "SA"
  * - "Depression" => "DEP"
  */
-export function generatePrefix(name: string): string {
+export function generateSubCategoryPrefix(name: string): string {
 	if (!name) return "";
 
 	// Remove special characters and extra spaces
@@ -91,7 +91,7 @@ export async function generateSubCategoryId(
 	supabase: SupabaseClient,
 	problemName: string
 ): Promise<string> {
-	const prefix = generatePrefix(problemName);
+	const prefix = generateSubCategoryPrefix(problemName);
 	if (!prefix) {
 		throw new Error("Cannot generate subcategory ID: invalid problem name");
 	}

@@ -33,11 +33,16 @@ export const columnConfigs = {
 				"Detailed explanation of the problem, its symptoms, and characteristics",
 		},
 		{
-			key: "is_active",
-			label: "Status",
-			type: "badge",
-			description:
-				"Whether this subcategory is currently active and selectable",
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this subcategory was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp for this subcategory",
 		},
 	],
 	assessments: [
@@ -179,33 +184,6 @@ export const columnConfigs = {
 				"URL or reference to additional resources related to this suggestion",
 		},
 		{
-			key: "evidence_base",
-			label: "Evidence Base",
-			type: "text",
-			description:
-				"Research or clinical evidence supporting this therapeutic approach",
-		},
-		{
-			key: "difficulty_level",
-			label: "Difficulty Level",
-			type: "badge",
-			description:
-				"How challenging this suggestion is to implement (beginner, intermediate, advanced)",
-		},
-		{
-			key: "estimated_duration",
-			label: "Duration",
-			type: "text",
-			description: "Expected time commitment for implementing this suggestion",
-		},
-		{
-			key: "tags",
-			label: "Tags",
-			type: "badge",
-			description:
-				"Keywords and labels for categorizing and searching suggestions",
-		},
-		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -276,36 +254,11 @@ export const columnConfigs = {
 				"Business identifier used to reference this action in the system",
 		},
 		{
-			key: "action_type",
-			label: "Type",
-			type: "badge",
-			description:
-				"Category of action (continue_same, show_problem_menu, end_session, escalate, schedule_followup)",
-		},
-		{
-			key: "action_name",
-			label: "Action Name",
+			key: "action_text",
+			label: "Action Text",
 			type: "text",
-			description: "Human-readable name of the action",
-		},
-		{
-			key: "description",
-			label: "Description",
-			type: "text",
-			description: "Detailed description of the action to be taken",
-		},
-		{
-			key: "parameters",
-			label: "Parameters",
-			type: "badge",
-			description: "Action parameters and configuration options",
-		},
-		{
-			key: "conditions",
-			label: "Conditions",
-			type: "badge",
 			description:
-				"Conditions that must be met for this action to be triggered",
+				"Human-readable text shown when this action is used",
 		},
 		{
 			key: "created_at",
@@ -411,12 +364,6 @@ export const columnConfigs = {
 			description: "Detailed description of this problem type",
 		},
 		{
-			key: "is_active",
-			label: "Status",
-			type: "badge",
-			description: "Whether this category is currently active",
-		},
-		{
 			key: "created_at",
 			label: "Created",
 			type: "date",
@@ -472,6 +419,7 @@ export function useDatasetManagement(
 	const loading = ref(false);
 	const error = ref<string | null>(null);
 	const data = ref<any[]>([]);
+	const allMatchingIds = ref<any[]>([]);
 	const actionLoading = ref(false);
 	const showImportModal = ref(false);
 	const showExportModal = ref(false);
@@ -516,68 +464,79 @@ export function useDatasetManagement(
 		try {
 			if (USE_SUPABASE_FOR.includes(dataType)) {
 				// Use Supabase
-				let query = supabase.from(dataType).select("*", { count: "exact" });
+				const buildQuery = (selectClause: string) => {
+					let query = supabase.from(dataType).select(selectClause, {
+						count: "exact",
+					});
 
-				// Pagination
-				const from = pagination.value.skip;
-				const to = from + pagination.value.limit - 1;
-				query = query.range(from, to);
-
-				// Search logic
-				if (searchQuery.value.trim()) {
-					const search = searchQuery.value.trim();
-					if (dataType === "assessments") {
-						query = query.ilike("question_text", `%${search}%`);
-					} else if (dataType === "problems") {
-						query = query.or(
-							`problem_name.ilike.%${search}%,description.ilike.%${search}%`,
-						);
-					} else if (dataType === "suggestions") {
-						query = query.ilike("suggestion_text", `%${search}%`);
-					} else if (dataType === "feedback_prompts") {
-						query = query.ilike("prompt_text", `%${search}%`);
-					} else if (dataType === "next_actions") {
-						query = query.or(
-							`action_name.ilike.%${search}%,description.ilike.%${search}%`,
-						);
-					} else if (dataType === "training_examples") {
-						query = query.or(
-							`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`,
-						);
-					} else if (dataType === "problem_types") {
-						query = query.or(
-							`type_name.ilike.%${search}%,description.ilike.%${search}%`,
-						);
-					}
-				}
-
-				// Filters logic
-				Object.keys(filters.value).forEach((key) => {
-					const value = filters.value[key];
-					if (value) {
-						if (key === "is_active") {
-							query = query.eq(key, value === "true");
-						} else {
-							query = query.eq(key, value);
+					// Search logic
+					if (searchQuery.value.trim()) {
+						const search = searchQuery.value.trim();
+						if (dataType === "assessments") {
+							query = query.ilike("question_text", `%${search}%`);
+						} else if (dataType === "problems") {
+							query = query.or(
+								`problem_name.ilike.%${search}%,description.ilike.%${search}%`,
+							);
+						} else if (dataType === "suggestions") {
+							query = query.ilike("suggestion_text", `%${search}%`);
+						} else if (dataType === "feedback_prompts") {
+							query = query.ilike("prompt_text", `%${search}%`);
+						} else if (dataType === "next_actions") {
+							query = query.or(
+								`action_id.ilike.%${search}%,action_text.ilike.%${search}%`,
+							);
+						} else if (dataType === "training_examples") {
+							query = query.or(
+								`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`,
+							);
+						} else if (dataType === "problem_types") {
+							query = query.or(
+								`type_name.ilike.%${search}%,description.ilike.%${search}%`,
+							);
 						}
 					}
-				});
 
-				// Sorting
-				// Default sort by created_at desc, but problem_types by type_name asc
-				const finalSortBy =
-					sortBy.value ||
-					(dataType === "problem_types" ? "type_name" : "created_at");
-				const finalAscending = sortBy.value
-					? sortOrder.value === "asc"
-					: dataType === "problem_types";
-				query = query.order(finalSortBy, { ascending: finalAscending });
+					// Filters logic
+					Object.keys(filters.value).forEach((key) => {
+						const value = filters.value[key];
+						if (value) {
+							if (key === "is_active") {
+								query = query.eq(key, value === "true");
+							} else {
+								query = query.eq(key, value);
+							}
+						}
+					});
 
-				const { data: items, count, error: supabaseError } = await query;
+					// Sorting
+					const finalSortBy =
+						sortBy.value ||
+						(dataType === "problem_types" ? "type_name" : "created_at");
+					const finalAscending = sortBy.value
+						? sortOrder.value === "asc"
+						: dataType === "problem_types";
+					query = query.order(finalSortBy, { ascending: finalAscending });
+
+					return query;
+				};
+
+				const from = pagination.value.skip;
+				const to = from + pagination.value.limit - 1;
+				const pageQuery = buildQuery("*").range(from, to);
+				const idsQuery = buildQuery("id");
+
+				const [
+					{ data: items, count, error: supabaseError },
+					{ data: idRows, error: idsError },
+				] = await Promise.all([pageQuery, idsQuery]);
 
 				if (supabaseError) throw supabaseError;
+				if (idsError) throw idsError;
 
-				if (supabaseError) throw supabaseError;
+				allMatchingIds.value = (idRows || [])
+					.map((row: any) => row.id)
+					.filter(Boolean);
 
 				// Transform data if needed
 				if (dataType === "problems") {
@@ -610,6 +569,7 @@ export function useDatasetManagement(
 				};
 			} else {
 				// Use existing API
+				allMatchingIds.value = [];
 				const currentPagination = pagination.value;
 				const params = new URLSearchParams({
 					skip: currentPagination.skip.toString(),
@@ -1070,6 +1030,7 @@ export function useDatasetManagement(
 		loading,
 		error,
 		data,
+		allMatchingIds,
 		actionLoading,
 		showImportModal,
 		showExportModal,
