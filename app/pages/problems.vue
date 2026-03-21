@@ -1,28 +1,39 @@
 <template>
-	<div class="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-			<div class="mt-6 flex items-center justify-between mb-4">
-				<h1 class="text-2xl font-semibold tracking-tight" id="tour-page-title">
-					Subcategories
-				</h1>
-				<Button
-					variant="outline"
-					size="sm"
-					class="gap-2"
-					@click="startTour('problems')"
-				>
-					<HelpCircle class="h-4 w-4" />
-					Help
-				</Button>
-			</div>
+	<div class="min-h-screen w-full max-w-full overflow-x-hidden bg-muted/25">
+		<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+			<DatasetPageHeader
+				eyebrow="Problem taxonomy"
+				title="Subcategories"
+				description="Manage the subcategories underneath each category and keep the assessment tree easy to scan."
+				:total="pagination.total"
+				total-label="subcategories"
+				:page-count="data.length"
+				:search-query="searchQuery"
+				:filters="filters"
+			>
+				<template #actions>
+					<Button class="h-11 gap-2 px-4 text-sm font-medium" @click="openCreateModal">
+						<Plus class="h-4 w-4" />
+						New Subcategory
+					</Button>
+					<Button
+						variant="outline"
+						class="h-11 gap-2 px-4 text-sm font-medium"
+						@click="startTour('problems')"
+					>
+						<HelpCircle class="h-4 w-4" />
+						How this works
+					</Button>
+				</template>
+			</DatasetPageHeader>
 
 			<div>
 				<DatasetTable
 					:title="dataTypeLabel"
-					:hide-toolbar="false"
 					:data-type="dataType"
 					:data="data"
 					:columns="columns"
+					:all-selectable-ids="allMatchingIds"
 					:loading="loading || actionLoading"
 					:error="error"
 					:pagination="pagination"
@@ -30,6 +41,8 @@
 					:total-pages="totalPages"
 					:search-query="searchQuery"
 					:filters="filters"
+					:show-create-button="false"
+					class="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm"
 					@create="openCreateModal"
 					@edit="openEditModal"
 					@view="openDetailView"
@@ -48,8 +61,7 @@
 					@clear-filters="clearFilters"
 					:categories="problemCategories"
 					:sub-categories="subCategories"
-				>
-				</DatasetTable>
+				/>
 			</div>
 		</div>
 
@@ -80,7 +92,7 @@
 			@update:open="(open) => !open && closeDetailSheet()"
 		>
 			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
-				<div class="p-4 pb-0">
+				<div class="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
 					<SheetHeader class="space-y-1">
 						<SheetTitle class="text-lg">Subcategory Details</SheetTitle>
 						<SheetDescription class="text-sm">
@@ -89,112 +101,116 @@
 					</SheetHeader>
 				</div>
 
-				<div class="flex-1 overflow-y-auto px-4">
-					<div v-if="viewingItem" class="mt-4 space-y-4">
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Subcategory Name
-							</h4>
-							<p class="text-base">{{ viewingItem.problem_name }}</p>
-						</div>
-
-						<div class="space-y-1">
-							<h4
-								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-							>
-								Category
-							</h4>
-							<button
-								@click="openCategoryDetail"
-								class="text-sm font-medium text-primary underline decoration-2 underline-offset-2 hover:text-primary/80 transition-colors cursor-pointer text-left"
-							>
-								{{ viewingItem.category }}
-							</button>
-							<p class="text-xs text-muted-foreground">
-								Click to view category details
+				<div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+					<div v-if="viewingItem" class="space-y-4">
+						<div class="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+							<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+								Subcategory name
 							</p>
-						</div>
-
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Category ID
-							</h4>
-							<p
-								class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-							>
-								{{ viewingItem.category_id }}
-							</p>
-						</div>
-
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Subcategory ID
-							</h4>
-							<p
-								class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-							>
-								{{ viewingItem.sub_category_id }}
-							</p>
-						</div>
-
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Description
-							</h4>
-							<p class="text-sm leading-relaxed">
-								{{ viewingItem.description }}
-							</p>
-						</div>
-
-						<div v-if="viewingItem.severity_level" class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Severity Level
-							</h4>
-							<Badge
-								variant="outline"
-								:class="getSeverityClass(viewingItem.severity_level)"
-							>
-								Level {{ viewingItem.severity_level }}
-							</Badge>
-						</div>
-
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">Status</h4>
-							<Badge
-								variant="outline"
-								:class="
-									viewingItem.is_active
-										? 'bg-green-50 text-green-700 border-green-200'
-										: 'bg-red-50 text-red-700 border-red-200'
-								"
-							>
-								{{ viewingItem.is_active ? "Active" : "Inactive" }}
-							</Badge>
-						</div>
-
-						<div class="space-y-1.5 pt-3 border-t">
-							<h4
-								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-							>
-								Metadata
-							</h4>
-							<div class="space-y-0.5 text-xs text-muted-foreground">
-								<p v-if="viewingItem.created_at">
-									Created: {{ formatDate(viewingItem.created_at) }}
-								</p>
-								<p v-if="viewingItem.updated_at">
-									Updated: {{ formatDate(viewingItem.updated_at) }}
-								</p>
-								<p v-if="viewingItem.id" class="font-mono">
-									ID: {{ viewingItem.id }}
+							<h3 class="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+								{{ viewingItem.problem_name }}
+							</h3>
+							<div class="mt-4 flex flex-wrap gap-2">
+								<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
+									{{ viewingItem.category }}
+								</Badge>
+								<Badge
+									v-if="viewingItem.severity_level"
+									variant="outline"
+									:class="getSeverityClass(viewingItem.severity_level)"
+									class="h-6 rounded-full px-2 text-[11px] font-medium"
+								>
+									Level {{ viewingItem.severity_level }}
+								</Badge>
+							</div>
+							<div class="mt-4 space-y-1">
+								<p class="text-sm font-medium text-muted-foreground">Description</p>
+								<p class="text-sm leading-relaxed text-foreground">
+									{{ viewingItem.description }}
 								</p>
 							</div>
+							<button
+								@click="openCategoryDetail"
+								class="mt-4 text-sm font-medium text-primary underline decoration-2 underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							>
+								View category details
+							</button>
 						</div>
+
+						<Collapsible v-model:open="showTechnicalDetails" class="space-y-2">
+							<div class="flex items-center justify-between gap-3">
+								<div class="space-y-1">
+									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+										Advanced details
+									</p>
+									<p class="text-sm text-muted-foreground">
+										Technical metadata for auditing and support.
+									</p>
+								</div>
+
+								<CollapsibleTrigger as-child>
+									<Button variant="ghost" size="sm" class="h-9 gap-2 px-3">
+										{{ showTechnicalDetails ? "Hide" : "Show" }}
+										<ChevronDown
+											class="h-4 w-4 transition-transform duration-200"
+											:class="showTechnicalDetails ? 'rotate-180' : ''"
+										/>
+									</Button>
+								</CollapsibleTrigger>
+							</div>
+
+						<CollapsibleContent class="space-y-2">
+							<div class="rounded-2xl border border-border/70 bg-muted/30 p-4">
+								<dl class="grid gap-4 text-sm sm:grid-cols-2">
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Category ID
+											</dt>
+											<dd class="break-all text-foreground">
+												{{ viewingItem.category_id }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Subcategory ID
+											</dt>
+											<dd class="break-all text-foreground">
+												{{ viewingItem.sub_category_id }}
+											</dd>
+										</div>
+										<div class="space-y-1 sm:col-span-2">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Record ID
+											</dt>
+											<dd class="break-all text-foreground">
+												{{ viewingItem.id || "-" }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Created
+											</dt>
+											<dd class="break-words text-foreground">
+												{{ viewingItem.created_at ? formatDate(viewingItem.created_at) : "-" }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Updated
+											</dt>
+											<dd class="break-words text-foreground">
+												{{ viewingItem.updated_at ? formatDate(viewingItem.updated_at) : "-" }}
+											</dd>
+										</div>
+									</dl>
+								</div>
+							</CollapsibleContent>
+						</Collapsible>
 					</div>
 				</div>
 
-				<div class="p-4 pt-0">
-					<SheetFooter class="mt-4 pt-4 border-t flex-row gap-2">
+				<div class="border-t border-border/70 bg-background px-4 py-4 sm:px-6">
+					<SheetFooter class="flex-row gap-2">
 						<Button
 							variant="outline"
 							size="sm"
@@ -216,7 +232,7 @@
 			@update:open="(open) => !open && closeCategorySheet()"
 		>
 			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
-				<div class="p-4 pb-0">
+				<div class="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
 					<SheetHeader class="space-y-1">
 						<SheetTitle class="text-lg">Category Details</SheetTitle>
 						<SheetDescription class="text-sm">
@@ -225,50 +241,84 @@
 					</SheetHeader>
 				</div>
 
-				<div class="flex-1 overflow-y-auto px-4">
-					<div v-if="viewingCategory" class="mt-4 space-y-4">
-						<div class="space-y-1">
-							<h4
-								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-							>
-								Type Name
-							</h4>
-							<p class="text-sm font-medium">{{ viewingCategory.type_name }}</p>
-						</div>
-
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Category ID
-							</h4>
-							<p
-								class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-							>
-								{{ viewingCategory.category_id }}
+				<div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+					<div v-if="viewingCategory" class="space-y-4">
+						<div class="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+							<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+								Category name
 							</p>
+							<h3 class="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+								{{ viewingCategory.type_name }}
+							</h3>
+							<div class="mt-4 space-y-1">
+								<p class="text-sm font-medium text-muted-foreground">Description</p>
+								<p class="text-sm leading-relaxed text-foreground">
+									{{ viewingCategory.description || "No description provided." }}
+								</p>
+							</div>
 						</div>
 
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">
-								Description
-							</h4>
-							<p class="text-sm leading-relaxed">
-								{{ viewingCategory.description }}
-							</p>
-						</div>
+						<Collapsible v-model:open="showCategoryTechnicalDetails" class="space-y-2">
+							<div class="flex items-center justify-between gap-3">
+								<div class="space-y-1">
+									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+										Advanced details
+									</p>
+									<p class="text-sm text-muted-foreground">
+										Technical metadata for auditing and support.
+									</p>
+								</div>
 
-						<div class="space-y-2">
-							<h4 class="text-sm font-medium text-muted-foreground">Status</h4>
-							<Badge
-								variant="outline"
-								:class="
-									viewingCategory.is_active
-										? 'bg-green-50 text-green-700 border-green-200'
-										: 'bg-red-50 text-red-700 border-red-200'
-								"
-							>
-								{{ viewingCategory.is_active ? "Active" : "Inactive" }}
-							</Badge>
-						</div>
+								<CollapsibleTrigger as-child>
+									<Button variant="ghost" size="sm" class="h-9 gap-2 px-3">
+										{{ showCategoryTechnicalDetails ? "Hide" : "Show" }}
+										<ChevronDown
+											class="h-4 w-4 transition-transform duration-200"
+											:class="showCategoryTechnicalDetails ? 'rotate-180' : ''"
+										/>
+									</Button>
+								</CollapsibleTrigger>
+							</div>
+
+							<CollapsibleContent class="space-y-2">
+								<div class="rounded-2xl border border-border/70 bg-muted/30 p-4">
+									<dl class="grid gap-4 text-sm sm:grid-cols-2">
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Category ID
+											</dt>
+											<dd class="break-all text-foreground">
+												{{ viewingCategory.category_id }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Record ID
+											</dt>
+											<dd class="break-all text-foreground">
+												{{ viewingCategory.id || "-" }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Created
+											</dt>
+											<dd class="break-words text-foreground">
+												{{ viewingCategory.created_at ? formatDate(viewingCategory.created_at) : "-" }}
+											</dd>
+										</div>
+										<div class="space-y-1">
+											<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Updated
+											</dt>
+											<dd class="break-words text-foreground">
+												{{ viewingCategory.updated_at ? formatDate(viewingCategory.updated_at) : "-" }}
+											</dd>
+										</div>
+								</dl>
+							</div>
+						</CollapsibleContent>
+					</Collapsible>
 					</div>
 
 					<div
@@ -282,8 +332,8 @@
 					</div>
 				</div>
 
-				<div class="p-4 pt-0">
-					<SheetFooter class="mt-4 pt-4 border-t">
+				<div class="border-t border-border/70 bg-background px-4 py-4 sm:px-6">
+					<SheetFooter>
 						<Button
 							variant="outline"
 							size="sm"
@@ -303,11 +353,12 @@
 import { onMounted, ref } from "vue";
 
 // Components
-import PageHeader from "@/components/PageHeader.vue";
+import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
 import DatasetTable from "@/components/admin/DatasetTable.vue";
 import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
 import ProblemModal from "@/components/admin/ProblemModal.vue";
+import { formatDate } from "@/utils/formatDate";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";
@@ -321,8 +372,13 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, HelpCircle } from "lucide-vue-next";
+import { ChevronDown, Loader2, HelpCircle, Plus } from "lucide-vue-next";
 import { useOnboarding } from "@/composables/useOnboarding";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 // Composables
 const { supabase } = useSupabase();
@@ -353,6 +409,7 @@ const {
 	handleSave,
 	deleteItem,
 	bulkDeleteItems,
+	allMatchingIds,
 	openImportModal,
 	closeImportModal,
 	openExportModal,
@@ -370,10 +427,12 @@ const {
 // Detail view state
 const showDetailSheet = ref(false);
 const viewingItem = ref(null);
+const showTechnicalDetails = ref(false);
 
 // Category detail view state
 const showCategorySheet = ref(false);
 const viewingCategory = ref(null);
+const showCategoryTechnicalDetails = ref(false);
 const loadingCategory = ref(false);
 const problemCategories = ref([]);
 const subCategories = ref([]);
@@ -426,6 +485,7 @@ const fetchSubCategories = async () => {
 // Detail view handlers
 const openDetailView = (item) => {
 	viewingItem.value = item;
+	showTechnicalDetails.value = false;
 	showDetailSheet.value = true;
 };
 
@@ -433,6 +493,7 @@ const closeDetailSheet = () => {
 	showDetailSheet.value = false;
 	setTimeout(() => {
 		viewingItem.value = null;
+		showTechnicalDetails.value = false;
 	}, 300);
 };
 
@@ -447,6 +508,7 @@ const openEditFromDetail = () => {
 const openCategoryDetail = async () => {
 	if (!viewingItem.value?.category) return;
 
+	showCategoryTechnicalDetails.value = false;
 	loadingCategory.value = true;
 	showCategorySheet.value = true;
 
@@ -472,21 +534,9 @@ const closeCategorySheet = () => {
 	showCategorySheet.value = false;
 	setTimeout(() => {
 		viewingCategory.value = null;
+		showCategoryTechnicalDetails.value = false;
 		loadingCategory.value = false;
 	}, 300);
-};
-
-// Helper functions
-const formatDate = (dateString) => {
-	if (!dateString) return "";
-	const date = new Date(dateString);
-	return date.toLocaleString("en-US", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
 };
 
 const getSeverityClass = (level) => {

@@ -11,8 +11,8 @@ defineProps<{
   <div class="space-y-4 px-4 py-6 md:px-8">
     <div class="flex items-center justify-between space-y-2">
       <div class="space-y-1">
-        <h2 class="text-2xl font-bold tracking-tight">{{ title }}</h2>
-        <p v-if="description" class="text-sm text-muted-foreground">
+        <h1 class="text-2xl font-bold tracking-tight">{{ title }}</h1>
+        <p v-if="description" class="text-base text-muted-foreground">
           {{ description }}
         </p>
       </div>

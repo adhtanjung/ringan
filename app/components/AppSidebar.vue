@@ -138,6 +138,16 @@ const data = {
 			url: "/assessments",
 			icon: IconListDetails,
 		},
+		{
+			name: "Therapeutic Suggestions",
+			url: "/suggestions",
+			icon: IconFileAi,
+		},
+		{
+			name: "Next Actions",
+			url: "/next-actions",
+			icon: IconReport,
+		},
 	],
 };
 </script>

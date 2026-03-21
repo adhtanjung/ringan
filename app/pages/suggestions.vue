@@ -1,12 +1,12 @@
 <template>
-	<div class="min-h-screen w-full max-w-screen overflow-x-hidden bg-muted/25">
+	<div class="min-h-screen w-full overflow-x-hidden bg-muted/25">
 		<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
 			<DatasetPageHeader
-				eyebrow="Problem taxonomy"
-				title="Categories"
-				description="Manage top-level categories that organize subcategories and keep the assessment structure easy to scan."
+				eyebrow="Suggestion library"
+				title="Suggestions"
+				description="Manage the guidance shown to users after assessments and keep the advice consistent across the product."
 				:total="pagination.total"
-				total-label="categories"
+				total-label="suggestions"
 				:page-count="data.length"
 				:search-query="searchQuery"
 				:filters="filters"
@@ -14,12 +14,12 @@
 				<template #actions>
 					<Button class="h-11 gap-2 px-4 text-sm font-medium" @click="openCreateModal">
 						<Plus class="h-4 w-4" />
-						New Category
+						New Suggestion
 					</Button>
 					<Button
 						variant="outline"
 						class="h-11 gap-2 px-4 text-sm font-medium"
-						@click="startTour('problem_types')"
+						@click="startTour('suggestions')"
 					>
 						<HelpCircle class="h-4 w-4" />
 						How this works
@@ -27,7 +27,7 @@
 				</template>
 			</DatasetPageHeader>
 
-			<section>
+			<div>
 				<DatasetTable
 					:title="dataTypeLabel"
 					:data-type="dataType"
@@ -43,14 +43,11 @@
 					:filters="filters"
 					:show-create-button="false"
 					class="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm"
-					@search-change="(q) => (searchQuery = q)"
-					@filter-change="setFilter"
 					@create="openCreateModal"
 					@edit="openEditModal"
 					@view="openDetailView"
 					@delete="deleteItem"
 					@bulk-delete="bulkDeleteItems"
-					@bulk-update="bulkUpdateItems"
 					@refresh="refreshData"
 					@import="openImportModal"
 					@export="openExportModal"
@@ -58,44 +55,49 @@
 					@page-size-change="changePageSize"
 					@next-page="nextPage"
 					@prev-page="prevPage"
+					@search-change="(value) => (searchQuery = value)"
+					@filter-change="setFilter"
 					@clear-filters="clearFilters"
-				>
-				</DatasetTable>
-			</section>
+				/>
+			</div>
 		</div>
 
+		<!-- Import Modal -->
 		<ImportModal
 			:is-open="showImportModal"
-			:data-type="'problem_types'"
+			:data-type="'suggestions'"
 			@close="closeImportModal"
 			@import-success="handleImportSuccess"
 		/>
 
+		<!-- Export Modal -->
 		<ExportModal
 			:is-open="showExportModal"
-			:data-type="'problem_types'"
+			:data-type="'suggestions'"
 			@close="closeExportModal"
 		/>
 
-		<ProblemTypeModal
+		<!-- Edit Modal -->
+		<DatasetEditModalShadcn
 			:is-open="showEditModal"
+			:data-type="'suggestions'"
 			:item="editingItem"
+			:loading="actionLoading"
 			@close="closeEditModal"
 			@save="handleSave"
 		/>
 
-		<Toaster />
-
+		<!-- Detail View Sheet -->
 		<Sheet
 			:open="showDetailSheet"
 			@update:open="(open) => !open && closeDetailSheet()"
 		>
-			<SheetContent class="flex w-full flex-col p-0 sm:max-w-xl">
+			<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
 				<div class="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
 					<SheetHeader class="space-y-1">
-						<SheetTitle class="text-lg">Category details</SheetTitle>
+						<SheetTitle class="text-lg">Suggestion Details</SheetTitle>
 						<SheetDescription class="text-sm">
-							Review the category name, description, and supporting metadata.
+							View detailed information about this suggestion record
 						</SheetDescription>
 					</SheetHeader>
 				</div>
@@ -104,51 +106,18 @@
 					<div v-if="viewingItem" class="space-y-4">
 						<div class="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
 							<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-								Category name
+								Suggestion text
 							</p>
-							<h3 class="mt-2 break-words text-2xl font-semibold tracking-tight text-foreground">
-								{{ viewingItem.type_name }}
-							</h3>
-							<p class="mt-3 text-sm leading-6 text-muted-foreground">
-								{{ viewingItem.description || "No description provided." }}
-							</p>
-							<p class="mt-3 text-xs leading-5 text-muted-foreground">
-								Subcategories tied to this category are managed on the Subcategories
-								page.
+							<p class="mt-2 text-lg font-semibold leading-tight text-foreground">
+								{{ viewingItem.suggestion_text }}
 							</p>
 							<div class="mt-4 flex flex-wrap gap-2">
-								<Badge
-									variant="secondary"
-									class="h-6 rounded-full px-2 text-[11px] font-medium"
-								>
-									{{ viewingItem.category_id }}
+								<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
+									Cluster: {{ viewingItem.cluster || "-" }}
 								</Badge>
-								<Badge
-									v-if="viewingItem.updated_at"
-									variant="outline"
-									class="h-6 rounded-full px-2 text-[11px] font-medium text-muted-foreground"
-								>
-									Updated {{ formatDate(viewingItem.updated_at) }}
+								<Badge variant="outline" class="h-6 rounded-full px-2 text-[11px] font-medium text-muted-foreground">
+									{{ viewingItem.language_code?.toUpperCase() || "UNKNOWN" }}
 								</Badge>
-							</div>
-						</div>
-
-						<div class="grid gap-3 sm:grid-cols-2">
-							<div class="rounded-2xl border border-border/70 bg-background p-4">
-								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-									Category ID
-								</p>
-								<p class="mt-2 break-all text-sm font-medium text-foreground">
-									{{ viewingItem.category_id }}
-								</p>
-							</div>
-							<div class="rounded-2xl border border-border/70 bg-background p-4">
-								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-									Record ID
-								</p>
-								<p class="mt-2 break-all text-sm font-medium text-foreground">
-									{{ viewingItem.id }}
-								</p>
 							</div>
 						</div>
 
@@ -214,25 +183,33 @@
 							Close
 						</Button>
 						<Button @click="openEditFromDetail" class="flex-1">
-							Edit
+							Edit Record
 						</Button>
 					</SheetFooter>
 				</div>
 			</SheetContent>
 		</Sheet>
+
+		<!-- Toast Notifications -->
+		<Toaster />
 	</div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+// Components
+import DatasetTable from "@/components/admin/DatasetTable.vue";
+import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
+import ImportModal from "@/components/admin/ImportModal.vue";
+import ExportModal from "@/components/admin/ExportModal.vue";
+import DatasetEditModalShadcn from "@/components/admin/DatasetEditModalShadcn.vue";
+import { formatDate } from "@/utils/formatDate";
+import { ChevronDown, HelpCircle, Plus } from "lucide-vue-next";
+import { useOnboarding } from "@/composables/useOnboarding";
+
+// shadcn-vue components
+import { Toaster } from "@/components/ui/toast";
 import {
 	Sheet,
 	SheetContent,
@@ -241,18 +218,15 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import { Toaster } from "@/components/ui/toast";
-import { ChevronDown, HelpCircle, Plus } from "lucide-vue-next";
+import { Button } from "@/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
-import DatasetTable from "@/components/admin/DatasetTable.vue";
-import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
-import ExportModal from "@/components/admin/ExportModal.vue";
-import ImportModal from "@/components/admin/ImportModal.vue";
-import ProblemTypeModal from "@/components/admin/ProblemTypeModal.vue";
-import { formatDate } from "@/utils/formatDate";
-import { useDatasetManagement } from "@/composables/useDatasetManagement";
-import { useOnboarding } from "@/composables/useOnboarding";
-
+// Use the shared composables
 const { startTour } = useOnboarding();
 const {
 	loading,
@@ -290,21 +264,14 @@ const {
 	prevPage,
 	setFilter,
 	clearFilters,
-	bulkUpdateItems,
-} = useDatasetManagement("problem_types", { is_active: "true" });
+} = useDatasetManagement("suggestions", { is_active: "true" });
 
+// Detail view state
 const showDetailSheet = ref(false);
 const viewingItem = ref(null);
 const showTechnicalDetails = ref(false);
 
-const activeFilterCount = computed(() => {
-	return Object.entries(filters.value).filter(([key, value]) => {
-		if (value === null || value === "__all__") return false;
-		if (key === "is_active" && value === "true") return false;
-		return String(value).trim() !== "";
-	}).length;
-});
-
+// Detail view handlers
 const openDetailView = (item) => {
 	viewingItem.value = item;
 	showTechnicalDetails.value = false;
@@ -316,16 +283,18 @@ const closeDetailSheet = () => {
 	setTimeout(() => {
 		viewingItem.value = null;
 		showTechnicalDetails.value = false;
-	}, 300);
+	}, 300); // Wait for sheet animation
 };
 
 const openEditFromDetail = () => {
 	if (viewingItem.value) {
+		const itemToEdit = { ...viewingItem.value };
 		closeDetailSheet();
-		openEditModal(viewingItem.value);
+		openEditModal(itemToEdit);
 	}
 };
 
+// Lifecycle
 onMounted(() => {
 	refreshData();
 });

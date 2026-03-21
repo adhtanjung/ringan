@@ -1,168 +1,297 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { computed, onMounted, ref } from "vue";
+import {
+	AlertCircle,
+	ArrowRight,
+	CheckCircle2,
+	Database,
+	FileText,
+	LayoutGrid,
+	Layers,
+	MessageSquare,
+	RefreshCw,
+	Zap,
+} from "lucide-vue-next";
+import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast/use-toast";
 import { datasetLabels } from "@/composables/useDatasetManagement";
 import { useSupabase } from "@/composables/useSupabase";
-import { VisTooltip, VisDonut, VisSingleContainer } from "@unovis/vue";
-import { Donut } from "@unovis/ts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import {
-	RefreshCw,
-	Database,
-	Zap,
-	Clock,
-	AlertCircle,
-	CheckCircle2,
-	FileText,
-	LayoutGrid,
-	TrendingUp,
-	ArrowRight,
-} from "lucide-vue-next";
-import PageHeader from "@/components/PageHeader.vue";
-import { Button } from "@/components/ui/button";
 
-// --- Types ---
+interface DatasetUpdate {
+	id: string;
+	name: string;
+	updated_at: string;
+	type: string;
+}
+
+interface ActiveTypeStats {
+	active: number;
+	recent_updates: DatasetUpdate[];
+}
+
+interface AttentionStats {
+	feedbackPromptsMissingPromptId: number;
+	emptyNextActionText: number;
+	emptySuggestionText: number;
+}
+
 interface DashboardStats {
 	overall: {
-		problems_count: number;
-		assessment_questions_count: number;
-		suggestions_count: number;
-		feedback_prompts_count: number;
-		next_actions_count: number;
-		training_examples_count: number;
+		active_records: number;
 		last_updated: string;
 	};
-	by_type: {
-		[key: string]: {
-			total: number;
-			active: number;
-			inactive: number;
-			domain_breakdown?: { [key: string]: number };
-			recent_updates: Array<{
-				id: string;
-				name: string;
-				updated_at: string;
-				type: string;
-			}>;
-		};
-	};
+	by_type: Record<string, ActiveTypeStats>;
+	recent_activity: DatasetUpdate[];
+	attention: AttentionStats;
 	timestamp: string;
 }
 
-// --- Composables ---
+const DATASET_CONFIG = [
+	{
+		key: "problems",
+		icon: Layers,
+		route: "/problems",
+		colorClass: "text-blue-600 dark:text-blue-400",
+	},
+	{
+		key: "assessments",
+		icon: Zap,
+		route: "/assessments",
+		colorClass: "text-amber-600 dark:text-amber-400",
+	},
+	{
+		key: "problem_types",
+		icon: LayoutGrid,
+		route: "/problem-types",
+		colorClass: "text-indigo-600 dark:text-indigo-400",
+	},
+	{
+		key: "suggestions",
+		icon: MessageSquare,
+		route: "/suggestions",
+		colorClass: "text-emerald-600 dark:text-emerald-400",
+	},
+	{
+		key: "feedback_prompts",
+		icon: FileText,
+		route: "/feedback-prompts",
+		colorClass: "text-cyan-600 dark:text-cyan-400",
+	},
+	{
+		key: "next_actions",
+		icon: ArrowRight,
+		route: "/next-actions",
+		colorClass: "text-violet-600 dark:text-violet-400",
+	},
+	{
+		key: "training_examples",
+		icon: Database,
+		route: "/training-examples",
+		colorClass: "text-rose-600 dark:text-rose-400",
+	},
+] as const;
+
+const NAME_FIELDS: Record<string, string> = {
+	problems: "problem_name",
+	assessments: "question_text",
+	problem_types: "type_name",
+	suggestions: "suggestion_text",
+	feedback_prompts: "prompt_text",
+	next_actions: "action_text",
+	training_examples: "problem",
+};
+
+const QUICK_ACTIONS = [
+	{ label: "Manage Suggestions", route: "/suggestions" },
+	{ label: "Manage Next Actions", route: "/next-actions" },
+	{ label: "Manage Assessments", route: "/assessments" },
+	{ label: "Manage Feedback Prompts", route: "/feedback-prompts" },
+];
+
+const buildEmptyByType = (): Record<string, ActiveTypeStats> => {
+	const result: Record<string, ActiveTypeStats> = {};
+	DATASET_CONFIG.forEach((dataset) => {
+		result[dataset.key] = { active: 0, recent_updates: [] };
+	});
+	return result;
+};
+
+const normalizeRecentUpdates = (value: unknown): DatasetUpdate[] => {
+	if (!Array.isArray(value)) return [];
+	return value.map((row: any) => ({
+		id: String(row?.id ?? ""),
+		name: String(row?.name ?? row?.id ?? "-"),
+		updated_at: String(row?.updated_at ?? ""),
+		type: String(row?.type ?? ""),
+	}));
+};
+
+const normalizeDashboardStats = (value: unknown): DashboardStats | null => {
+	const payload: any = Array.isArray(value) ? value[0] : value;
+	if (!payload || typeof payload !== "object") return null;
+
+	const byType = buildEmptyByType();
+	DATASET_CONFIG.forEach((dataset) => {
+		const rawType = payload?.by_type?.[dataset.key];
+		if (!rawType || typeof rawType !== "object") return;
+		byType[dataset.key] = {
+			active: Number(rawType.active) || 0,
+			recent_updates: normalizeRecentUpdates(rawType.recent_updates),
+		};
+	});
+
+	const attention = payload?.attention || {};
+	const timestamp = new Date().toISOString();
+
+	return {
+		overall: {
+			active_records: Number(payload?.overall?.active_records) || 0,
+			last_updated: String(payload?.overall?.last_updated || timestamp),
+		},
+		by_type: byType,
+		recent_activity: normalizeRecentUpdates(payload?.recent_activity),
+		attention: {
+			feedbackPromptsMissingPromptId:
+				Number(attention.feedbackPromptsMissingPromptId) || 0,
+			emptyNextActionText: Number(attention.emptyNextActionText) || 0,
+			emptySuggestionText: Number(attention.emptySuggestionText) || 0,
+		},
+		timestamp: String(payload?.timestamp || timestamp),
+	};
+};
+
 const { supabase } = useSupabase();
 const { toast } = useToast();
 
-// --- State ---
 const loading = ref(true);
 const error = ref<string | null>(null);
 const dashboardData = ref<DashboardStats | null>(null);
 
-const datasetTypes = ["problems", "assessments", "problem_types"];
-
-// --- Data Fetching ---
 const fetchDashboardData = async () => {
 	loading.value = true;
 	error.value = null;
 
 	try {
+		const { data: rpcData, error: rpcError } = await supabase.rpc(
+			"get_admin_dashboard_active_stats",
+		);
+		if (!rpcError) {
+			const normalized = normalizeDashboardStats(rpcData);
+			if (normalized) {
+				dashboardData.value = normalized;
+				return;
+			}
+		} else {
+			console.warn(
+				"RPC get_admin_dashboard_active_stats unavailable, using fallback dashboard queries:",
+				rpcError.message,
+			);
+		}
+
 		const stats: DashboardStats = {
 			overall: {
-				problems_count: 0,
-				assessment_questions_count: 0,
-				suggestions_count: 0,
-				feedback_prompts_count: 0,
-				next_actions_count: 0,
-				training_examples_count: 0,
+				active_records: 0,
 				last_updated: new Date().toISOString(),
 			},
-			by_type: {},
+			by_type: buildEmptyByType(),
+			recent_activity: [],
+			attention: {
+				feedbackPromptsMissingPromptId: 0,
+				emptyNextActionText: 0,
+				emptySuggestionText: 0,
+			},
 			timestamp: new Date().toISOString(),
 		};
 
-		const tableQueries = datasetTypes.map(async (type) => {
-			const [totalRes, activeRes] = await Promise.all([
-				supabase.from(type).select("*", { count: "exact", head: true }),
+		const tableQueries = DATASET_CONFIG.map(async (dataset) => {
+			const type = dataset.key;
+			const nameField = NAME_FIELDS[type] || "id";
+			const { data: recentData, count, error: datasetError } = await (
 				supabase
 					.from(type)
-					.select("*", { count: "exact", head: true })
-					.eq("is_active", true),
-			]);
-
-			let nameField = "id";
-			if (type === "problems") nameField = "problem_name";
-			else if (type === "assessments") nameField = "question_text";
-			else if (type === "problem_types") nameField = "type_name";
-			else if (type === "suggestions") nameField = "suggestion_text";
-			else if (type === "feedback_prompts") nameField = "prompt_text";
-			else if (type === "next_actions") nameField = "action_text";
-			else if (type === "training_examples") nameField = "problem";
-
-			const { data: recentData } = await (
-				supabase.from(type).select(`id, ${nameField}, updated_at`) as any
+					.select(`id, ${nameField}, updated_at`, { count: "exact" }) as any
 			)
+				.eq("is_active", true)
 				.order("updated_at", { ascending: false })
-				.limit(3);
+				.limit(5);
 
-			let domainBreakdown = {};
-			if (type === "problems") {
-				const { data: categories } = await supabase
-					.from("problems")
-					.select("category");
-				if (categories) {
-					domainBreakdown = categories.reduce((acc: any, curr: any) => {
-						const cat = curr.category || "Uncategorized";
-						acc[cat] = (acc[cat] || 0) + 1;
-						return acc;
-					}, {});
-				}
-			}
+			if (datasetError) throw datasetError;
 
-			const total = totalRes.count || 0;
-			const active = activeRes.count || 0;
+			const active = count || 0;
+			const updates = (recentData || []).map((item: any) => ({
+				id: item.id,
+				name: item[nameField] || item.id,
+				updated_at: item.updated_at,
+				type,
+			}));
 
 			stats.by_type[type] = {
-				total,
 				active,
-				inactive: total - active,
-				domain_breakdown: domainBreakdown,
-				recent_updates: (recentData || []).map((item: any) => ({
-					id: item.id,
-					name: item[nameField] || item.id,
-					updated_at: item.updated_at,
-					type: type,
-				})),
+				recent_updates: updates,
 			};
-
-			if (type === "problems") stats.overall.problems_count = total;
-			if (type === "assessments")
-				stats.overall.assessment_questions_count = total;
-			if (type === "suggestions") stats.overall.suggestions_count = total;
-			if (type === "feedback_prompts")
-				stats.overall.feedback_prompts_count = total;
-			if (type === "next_actions") stats.overall.next_actions_count = total;
-			if (type === "training_examples")
-				stats.overall.training_examples_count = total;
+			stats.overall.active_records += active;
 		});
 
 		await Promise.all(tableQueries);
 
-		let maxDate = new Date(0).toISOString();
+		const [
+			{ count: missingPromptIdCount, error: missingPromptIdError },
+			{ count: emptyActionTextCount, error: actionTextError },
+			{ count: emptySuggestionTextCount, error: suggestionTextError },
+		] = await Promise.all([
+			supabase
+				.from("feedback_prompts")
+				.select("*", { count: "exact", head: true })
+				.eq("is_active", true)
+				.or("prompt_id.is.null,prompt_id.eq."),
+			supabase
+				.from("next_actions")
+				.select("*", { count: "exact", head: true })
+				.eq("is_active", true)
+				.or("action_text.is.null,action_text.eq."),
+			supabase
+				.from("suggestions")
+				.select("*", { count: "exact", head: true })
+				.eq("is_active", true)
+				.or("suggestion_text.is.null,suggestion_text.eq."),
+		]);
+
+		if (missingPromptIdError) throw missingPromptIdError;
+		if (actionTextError) throw actionTextError;
+		if (suggestionTextError) throw suggestionTextError;
+
+		stats.attention = {
+			feedbackPromptsMissingPromptId: missingPromptIdCount || 0,
+			emptyNextActionText: emptyActionTextCount || 0,
+			emptySuggestionText: emptySuggestionTextCount || 0,
+		};
+
+		let maxUpdatedAt = "";
 		Object.values(stats.by_type).forEach((typeStats) => {
-			typeStats.recent_updates.forEach((u) => {
-				if (u.updated_at > maxDate) maxDate = u.updated_at;
+			typeStats.recent_updates.forEach((update) => {
+				if (update.updated_at && update.updated_at > maxUpdatedAt) {
+					maxUpdatedAt = update.updated_at;
+				}
 			});
 		});
-		stats.overall.last_updated = maxDate;
+		stats.overall.last_updated = maxUpdatedAt || stats.timestamp;
+		stats.recent_activity = Object.values(stats.by_type)
+			.flatMap((typeStats) => typeStats.recent_updates)
+			.sort(
+				(a, b) =>
+					new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+			)
+			.slice(0, 10);
 
 		dashboardData.value = stats;
 	} catch (err: any) {
-		console.error("Error fetching dashboard data:", err);
+		console.error("Dashboard Fetch Error:", err);
 		error.value = err?.message || "Failed to load dashboard data";
 		toast({
-			title: "Error",
-			description: error.value || "An unknown error occurred",
+			title: "Could not refresh dashboard",
+			description:
+				"There was a problem loading active records. Please try again.",
 			variant: "destructive",
 		});
 	} finally {
@@ -170,132 +299,77 @@ const fetchDashboardData = async () => {
 	}
 };
 
-// --- Computed & Formatting ---
 const formatNumber = (num: number) =>
-	new Intl.NumberFormat("en-US").format(num);
+	numberFormatter.format(num || 0);
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+	month: "short",
+	day: "numeric",
+	hour: "numeric",
+	minute: "numeric",
+});
 
 const formatDateRelative = (dateString: string) => {
 	if (!dateString) return "N/A";
 	const date = new Date(dateString);
+	if (isNaN(date.getTime())) return "N/A";
 	const now = new Date();
 	const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
 	if (diffInSeconds < 60) return "Just now";
-	if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-	if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-	return new Intl.DateTimeFormat("en-US", {
-		month: "short",
-		day: "numeric",
-	}).format(date);
-};
-
-// Totals Logic
-const totalItems = computed(() => {
-	if (!dashboardData.value?.by_type) return 0;
-	return Object.values(dashboardData.value.by_type).reduce(
-		(acc, curr) => acc + curr.total,
-		0
-	);
-});
-
-const totalActive = computed(() => {
-	if (!dashboardData.value?.by_type) return 0;
-	return Object.values(dashboardData.value.by_type).reduce(
-		(acc, curr) => acc + curr.active,
-		0
-	);
-});
-
-const activeRate = computed(() => {
-	if (totalItems.value === 0) return 0;
-	return Math.round((totalActive.value / totalItems.value) * 100);
-});
-
-// Bar Chart Data - compact for 3 main types
-const barChartData = computed(() => {
-	if (!dashboardData.value) return [];
-	const mainTypes = ["problems", "problem_types", "assessments"];
-	return mainTypes.map((type) => {
-		const data = dashboardData.value?.by_type[type];
-		return {
-			type:
-				type === "problem_types"
-					? "Types"
-					: (datasetLabels as any)[type]?.split(" ")[0] || type,
-			active: data?.active || 0,
-			inactive: data?.inactive || 0,
-		};
-	});
-});
-
-type BarData = (typeof barChartData.value)[number];
-const xAccessor = (d: BarData) => d.type;
-const yAccessors = [(d: BarData) => d.active, (d: BarData) => d.inactive];
-
-// Donut Chart Data
-const donutData = computed(() => {
-	const breakdown =
-		dashboardData.value?.by_type["problems"]?.domain_breakdown || {};
-	return Object.entries(breakdown)
-		.map(([key, value]) => ({ key, value }))
-		.slice(0, 5);
-});
-type DonutData = (typeof donutData.value)[number];
-const donutValue = (d: DonutData) => d.value;
-
-// Helper functions
-const getActiveRate = (
-	typeData: { total: number; active: number } | undefined
-) => {
-	if (!typeData || typeData.total === 0) return 0;
-	return Math.round((typeData.active / typeData.total) * 100);
+	if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
+	if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hr ago`;
+	return dateTimeFormatter.format(date);
 };
 
 const getTypeLabel = (typeKey: string) =>
 	(datasetLabels as any)[typeKey] || typeKey;
 
-// Feature cards config
-const featureCards = computed(() => [
-	{
-		key: "problems",
-		label: "Subcategories",
-		icon: FileText,
-		color: "text-chart-1",
-		bgColor: "bg-chart-1/10",
-		route: "/problems",
-	},
-	{
-		key: "problem_types",
-		label: "Types",
-		icon: LayoutGrid,
-		color: "text-chart-2",
-		bgColor: "bg-chart-2/10",
-		route: "/problem-types",
-	},
-	{
-		key: "assessments",
-		label: "Assessments",
-		icon: Zap,
-		color: "text-chart-3",
-		bgColor: "bg-chart-3/10",
-		route: "/assessments",
-	},
-]);
+const activeCards = computed(() =>
+	DATASET_CONFIG.map((dataset) => ({
+		...dataset,
+		label: getTypeLabel(dataset.key),
+		active: dashboardData.value?.by_type[dataset.key]?.active || 0,
+	})),
+);
 
-// Recent activity - combined feed (top 5)
 const recentActivity = computed(() => {
-	if (!dashboardData.value) return [];
-	const allUpdates: any[] = [];
-	Object.values(dashboardData.value.by_type).forEach((type) => {
-		allUpdates.push(...type.recent_updates);
-	});
-	return allUpdates
-		.sort(
-			(a, b) =>
-				new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-		)
-		.slice(0, 5);
+	return dashboardData.value?.recent_activity || [];
 });
+
+const attentionItems = computed(() => {
+	if (!dashboardData.value) return [];
+	const attention = dashboardData.value.attention;
+	return [
+		{
+			key: "missing-prompt-id",
+			label: "Feedback prompts missing prompt ID",
+			count: attention.feedbackPromptsMissingPromptId,
+			description: "Active feedback prompts have empty prompt_id.",
+			route: "/feedback-prompts",
+		},
+		{
+			key: "empty-next-actions",
+			label: "Next actions missing action text",
+			count: attention.emptyNextActionText,
+			description: "Active next action records have empty action_text.",
+			route: "/next-actions",
+		},
+		{
+			key: "empty-suggestions",
+			label: "Suggestions missing suggestion text",
+			count: attention.emptySuggestionText,
+			description: "Active suggestion records have empty suggestion_text.",
+			route: "/suggestions",
+		},
+	].filter((item) => item.count > 0);
+});
+
+const isEmptyActive = computed(
+	() =>
+		dashboardData.value !== null && dashboardData.value.overall.active_records === 0,
+);
 
 onMounted(() => {
 	fetchDashboardData();
@@ -303,299 +377,228 @@ onMounted(() => {
 </script>
 
 <template>
-	<div class="min-h-screen bg-background text-foreground">
-		<div class="mx-auto max-w-7xl px-4 py-4 space-y-4">
-			<!-- Header Row -->
-			<PageHeader title="Dashboard" description="Dataset overview">
+	<div class="min-h-screen w-full max-w-screen overflow-x-hidden bg-muted/25">
+		<div
+			class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8"
+		>
+			<DatasetPageHeader
+				eyebrow="Overview"
+				title="Dashboard"
+				description="Monitor active records, recent updates, and items that need attention."
+				:total="dashboardData?.overall.active_records ?? null"
+				total-label="active records"
+			>
 				<template #actions>
 					<Button
 						@click="fetchDashboardData"
 						:disabled="loading"
-						size="sm"
-						class="gap-1.5"
+						variant="outline"
+						class="h-11 gap-2 px-4 text-sm font-medium"
 					>
-						<RefreshCw class="h-3 w-3" :class="{ 'animate-spin': loading }" />
-						<span>{{ loading ? "..." : "Refresh" }}</span>
+						<RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
+						Refresh
 					</Button>
 				</template>
-			</PageHeader>
+			</DatasetPageHeader>
 
-			<!-- Error State -->
-			<div
-				v-if="error"
-				class="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-destructive flex items-center gap-2 text-sm"
-			>
-				<AlertCircle class="h-4 w-4" />
-				<p>{{ error }}</p>
-			</div>
-
-			<!-- Main Dashboard -->
-			<div
-				v-if="dashboardData && !loading"
-				class="space-y-4 animate-in fade-in duration-300"
-			>
-				<!-- Stats Row - 3 Feature Cards -->
-				<div class="grid grid-cols-3 gap-3">
-					<Card class="py-3">
-						<CardContent class="p-0 px-4">
-							<div class="flex items-center gap-3">
-								<div
-									class="h-8 w-8 rounded-lg bg-chart-1/10 flex items-center justify-center"
-								>
-									<FileText class="h-4 w-4 text-chart-1" />
-								</div>
-								<div>
-									<p class="text-2xl font-bold leading-none">
-										{{
-											formatNumber(
-												dashboardData?.by_type?.problems?.active || 0
-											)
-										}}
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										Subcategories
-									</p>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card class="py-3">
-						<CardContent class="p-0 px-4">
-							<div class="flex items-center gap-3">
-								<div
-									class="h-8 w-8 rounded-lg bg-chart-2/10 flex items-center justify-center"
-								>
-									<LayoutGrid class="h-4 w-4 text-chart-2" />
-								</div>
-								<div>
-									<p class="text-2xl font-bold leading-none">
-										{{
-											formatNumber(
-												dashboardData?.by_type?.problem_types?.active || 0
-											)
-										}}
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">Types</p>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card class="py-3">
-						<CardContent class="p-0 px-4">
-							<div class="flex items-center gap-3">
-								<div
-									class="h-8 w-8 rounded-lg bg-chart-3/10 flex items-center justify-center"
-								>
-									<Zap class="h-4 w-4 text-chart-3" />
-								</div>
-								<div>
-									<p class="text-2xl font-bold leading-none">
-										{{
-											formatNumber(
-												dashboardData?.by_type?.assessments?.active || 0
-											)
-										}}
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										Assessments
-									</p>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-
-				<!-- Charts Row -->
-				<div class="grid grid-cols-5 gap-4">
-					<!-- Active Counts Distribution -->
-					<Card class="col-span-2">
-						<CardHeader class="pb-2 pt-4 px-4">
-							<CardTitle class="text-sm font-medium">Active Records</CardTitle>
-						</CardHeader>
-						<CardContent class="px-4 pb-4 space-y-3">
-							<!-- Simple Bars for Active Counts -->
-							<div
-								v-for="item in barChartData"
-								:key="item.type"
-								class="space-y-1"
-							>
-								<div class="flex justify-between text-xs">
-									<span class="font-medium">{{ item.type }}</span>
-									<span class="font-semibold text-chart-1">{{
-										item.active
-									}}</span>
-								</div>
-								<div class="h-3 bg-muted rounded-full overflow-hidden">
-									<div
-										class="bg-chart-1 h-full rounded-full transition-all duration-500"
-										:style="{
-											width: `${Math.min((item.active / 500) * 100, 100)}%`,
-										}"
-									></div>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-
-					<!-- Donut Chart -->
-					<Card class="col-span-2">
-						<CardHeader class="pb-2 pt-4 px-4">
-							<CardTitle class="text-sm font-medium"
-								>Problem Categories</CardTitle
-							>
-						</CardHeader>
-						<CardContent class="px-4 pb-4">
-							<div
-								class="h-[160px] w-full flex items-center justify-center relative"
-							>
-								<VisSingleContainer
-									:data="donutData"
-									:height="160"
-									:width="160"
-								>
-									<VisDonut
-										:value="donutValue"
-										:color="(_d: any, i: number) => `var(--chart-${(i % 5) + 1})`"
-										:arc-width="24"
-										:pad-angle="0.02"
-									/>
-									<VisTooltip
-										:triggers="{
-											[Donut.selectors.segment]: (d: { data: DonutData }) =>
-												`${d.data.key}: ${d.data.value}`,
-										}"
-									/>
-								</VisSingleContainer>
-								<div
-									class="absolute inset-0 flex items-center justify-center pointer-events-none"
-								>
-									<div class="text-center">
-										<span class="block text-xl font-bold">{{
-											dashboardData.overall.problems_count
-										}}</span>
-										<span class="text-[10px] text-muted-foreground uppercase"
-											>Subcategories</span
-										>
-									</div>
-								</div>
-							</div>
-							<!-- Category Legend -->
-							<div
-								class="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-2 text-xs text-muted-foreground"
-							>
-								<span
-									v-for="item in donutData.slice(0, 4)"
-									:key="item.key"
-									class="truncate max-w-[80px]"
-								>
-									{{ item.key }}: {{ item.value }}
-								</span>
-							</div>
-						</CardContent>
-					</Card>
-
-					<!-- Recent Activity -->
-					<Card class="col-span-1">
-						<CardHeader class="pb-2 pt-4 px-4">
-							<CardTitle class="text-sm font-medium">Recent</CardTitle>
-						</CardHeader>
-						<CardContent class="px-4 pb-4">
-							<div class="space-y-2">
-								<div
-									v-for="update in recentActivity"
-									:key="update.id"
-									class="text-xs border-l-2 border-primary/20 pl-2 py-0.5"
-								>
-									<p
-										class="font-medium truncate max-w-[120px]"
-										:title="update.name"
-									>
-										{{ update.name?.slice(0, 20)
-										}}{{ update.name?.length > 20 ? "..." : "" }}
-									</p>
-									<p class="text-muted-foreground text-[10px]">
-										{{ getTypeLabel(update.type)?.split(" ")[0] }} ·
-										{{ formatDateRelative(update.updated_at) }}
-									</p>
-								</div>
-								<div
-									v-if="recentActivity.length === 0"
-									class="text-xs text-muted-foreground py-4 text-center"
-								>
-									No recent activity
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-
-				<!-- Feature Cards Row - Compact -->
-				<div class="grid grid-cols-3 gap-3">
-					<NuxtLink
-						v-for="card in featureCards"
-						:key="card.key"
-						:to="card.route"
-						class="block"
+			<div class="space-y-12">
+				<div
+					v-if="error"
+					class="flex items-start justify-between gap-4 rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-destructive min-h-[44px]"
+				>
+					<div class="flex items-start gap-3">
+						<AlertCircle class="w-6 h-6 shrink-0 mt-0.5" />
+						<div>
+							<p class="font-semibold text-lg leading-snug">
+								Unable to load active dashboard data
+							</p>
+							<p class="text-base mt-1 opacity-80">{{ error }}</p>
+						</div>
+					</div>
+					<Button
+						@click="fetchDashboardData"
+						class="h-11 shrink-0 px-4 text-sm font-medium"
 					>
-						<Card
-							class="hover:shadow-md transition-shadow cursor-pointer group"
+						Try again
+					</Button>
+				</div>
+
+				<div
+					v-if="loading"
+					class="animate-pulse space-y-10"
+					aria-busy="true"
+					aria-label="Loading dashboard data"
+				>
+					<div
+						class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+					>
+						<div v-for="i in 8" :key="i" class="h-28 rounded-2xl bg-muted" />
+					</div>
+					<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+						<div class="h-72 rounded-2xl bg-muted" />
+						<div class="h-72 rounded-2xl bg-muted" />
+					</div>
+				</div>
+
+				<div
+					v-else-if="isEmptyActive"
+					class="flex flex-col items-center justify-center gap-6 py-24 text-center"
+				>
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+						<Database class="w-8 h-8 text-muted-foreground" />
+					</div>
+					<div class="space-y-2 max-w-md">
+						<h2 class="text-2xl font-semibold text-foreground">
+							No active data yet
+						</h2>
+						<p class="text-base text-muted-foreground">
+							Start by creating active records in one of your core datasets.
+						</p>
+					</div>
+					<div class="mt-2 flex flex-wrap justify-center gap-3">
+						<NuxtLink
+							v-for="action in QUICK_ACTIONS"
+							:key="action.route"
+							:to="action.route"
+							class="inline-flex h-12 items-center gap-2 rounded-xl border border-border/70 bg-card px-5 text-base font-medium transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
 						>
-							<CardContent class="p-4">
-								<div class="flex items-center justify-between mb-3">
-									<div class="flex items-center gap-2">
-										<div
-											:class="[
-												card.bgColor,
-												'h-7 w-7 rounded-md flex items-center justify-center',
-											]"
-										>
-											<component
-												:is="card.icon"
-												:class="[card.color, 'h-3.5 w-3.5']"
-											/>
-										</div>
-										<span class="font-medium text-sm">{{ card.label }}</span>
+							{{ action.label }}
+						</NuxtLink>
+					</div>
+				</div>
+
+				<div v-else-if="dashboardData" class="space-y-10 animate-in fade-in duration-500">
+					<section aria-labelledby="active-datasets-heading">
+						<h2
+							id="active-datasets-heading"
+							class="mb-6 text-sm font-semibold uppercase tracking-widest text-foreground/80"
+						>
+							Active Datasets
+						</h2>
+						<div
+							class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+						>
+							<NuxtLink
+								v-for="card in activeCards"
+								:key="card.key"
+								:to="card.route"
+								class="group rounded-2xl border border-border/70 bg-card p-5 transition-colors hover:border-primary/50 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
+							>
+								<div class="flex items-center justify-between gap-3">
+									<div class="flex items-center gap-2 min-w-0">
+										<component
+											:is="card.icon"
+											class="h-4 w-4 shrink-0"
+											:class="card.colorClass"
+										/>
+										<span class="truncate text-sm font-medium text-foreground/80">{{
+											card.label
+										}}</span>
 									</div>
 									<ArrowRight
-										class="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+										class="h-4 w-4 shrink-0 text-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary"
 									/>
 								</div>
+								<div class="mt-4 text-3xl font-semibold tabular-nums text-foreground">
+									{{ formatNumber(card.active) }}
+								</div>
+								<p class="mt-1 text-sm text-muted-foreground">active records</p>
+							</NuxtLink>
+						</div>
+					</section>
 
-								<div class="space-y-2">
-									<div class="flex items-baseline justify-between">
-										<span class="text-2xl font-bold">{{
-											formatNumber(
-												dashboardData?.by_type[card.key]?.active || 0
-											)
-										}}</span>
-										<span class="text-xs text-muted-foreground"
-											>active records</span
+					<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+						<section class="rounded-2xl border border-border/70 bg-card p-5">
+							<h2 class="text-lg font-semibold text-foreground">Needs Attention</h2>
+
+							<div v-if="attentionItems.length === 0" class="mt-6 flex items-start gap-3">
+								<CheckCircle2 class="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+								<div>
+									<p class="text-sm font-medium text-foreground">
+										No active data issues detected
+									</p>
+									<p class="text-sm text-muted-foreground mt-1">
+										All monitored active records look healthy.
+									</p>
+								</div>
+							</div>
+
+							<div v-else class="mt-4 space-y-3">
+								<NuxtLink
+									v-for="item in attentionItems"
+									:key="item.key"
+									:to="item.route"
+									class="block rounded-xl border border-border/70 p-4 transition-colors hover:border-primary/50 hover:bg-muted/20"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="text-sm font-medium text-foreground">
+												{{ item.label }}
+											</p>
+											<p class="mt-1 text-sm text-muted-foreground">
+												{{ item.description }}
+											</p>
+										</div>
+										<div class="text-lg font-semibold tabular-nums text-destructive">
+											{{ item.count }}
+										</div>
+									</div>
+								</NuxtLink>
+							</div>
+						</section>
+
+						<section class="rounded-2xl border border-border/70 bg-card p-5">
+							<h2 class="text-lg font-semibold text-foreground">Recent Changes</h2>
+
+							<div v-if="recentActivity.length > 0" class="mt-4 space-y-1">
+								<div
+									v-for="update in recentActivity"
+									:key="update.id + '-' + update.type"
+									class="group flex flex-col justify-between border-b border-border/50 py-3 last:border-0 sm:flex-row sm:items-center"
+								>
+									<div class="mb-1 min-w-0 sm:mb-0">
+										<div
+											class="truncate pr-4 text-sm font-medium text-foreground transition-colors group-hover:text-primary"
 										>
+											{{ update.name }}
+										</div>
+										<div class="mt-0.5 text-xs font-medium text-foreground/60">
+											{{ getTypeLabel(update.type) }}
+										</div>
+									</div>
+									<div class="whitespace-nowrap tabular-nums text-xs text-foreground/60">
+										{{ formatDateRelative(update.updated_at) }}
 									</div>
 								</div>
-							</CardContent>
-						</Card>
-					</NuxtLink>
+							</div>
+
+							<div v-else class="mt-5 text-sm text-muted-foreground">
+								No recent updates in active records yet.
+							</div>
+						</section>
+					</div>
+
+					<section class="rounded-2xl border border-border/70 bg-card p-5">
+						<h2 class="text-lg font-semibold text-foreground">Quick Actions</h2>
+						<div class="mt-4 flex flex-wrap gap-3">
+							<NuxtLink
+								v-for="action in QUICK_ACTIONS"
+								:key="action.route"
+								:to="action.route"
+								class="inline-flex h-11 items-center rounded-xl border border-border/70 px-4 text-sm font-medium transition-colors hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+							>
+								{{ action.label }}
+							</NuxtLink>
+						</div>
+					</section>
+
+					<div class="text-sm text-muted-foreground">
+						Showing active records only. Last updated
+						<span class="font-medium text-foreground">
+							{{ formatDateRelative(dashboardData.overall.last_updated) }}
+						</span>
+					</div>
 				</div>
-
-				<!-- Other Datasets Row - Mini Cards -->
-				<div class="grid grid-cols-4 gap-2"></div>
-
-				<!-- Last Updated Footer -->
-				<div class="text-center text-xs text-muted-foreground pt-2">
-					Last synced
-					{{ formatDateRelative(dashboardData.overall.last_updated) }}
-				</div>
-			</div>
-
-			<!-- Loading State -->
-			<div v-else class="grid grid-cols-4 gap-3 animate-pulse">
-				<div v-for="i in 4" :key="i" class="h-20 rounded-xl bg-muted/50"></div>
-				<div class="col-span-2 h-48 rounded-xl bg-muted/50"></div>
-				<div class="col-span-2 h-48 rounded-xl bg-muted/50"></div>
-				<div class="col-span-3 h-32 rounded-xl bg-muted/50"></div>
 			</div>
 		</div>
 	</div>
@@ -604,15 +607,27 @@ onMounted(() => {
 <style scoped>
 @reference "../assets/css/tailwind.css";
 
-/* Unovis Customizations */
-:deep(.unovis-tooltip) {
-	@apply bg-popover text-popover-foreground border shadow-md rounded-md px-2 py-1 text-xs font-medium;
-	--vis-tooltip-background-color: transparent;
-	--vis-tooltip-text-color: inherit;
-	--vis-tooltip-border-color: transparent;
+@media (prefers-reduced-motion: reduce) {
+	.animate-pulse {
+		animation: none;
+		opacity: 0.7;
+	}
+	.animate-in {
+		animation: none !important;
+	}
 }
 
-:deep(.vis-axis-tick-label) {
-	@apply fill-muted-foreground text-[10px] font-sans;
+.animate-pulse {
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
 }
 </style>

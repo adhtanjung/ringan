@@ -1,5 +1,5 @@
 <template>
-	<div class="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-screen">
+	<div class="min-h-screen w-full max-w-screen overflow-x-hidden bg-muted/25">
 		<!-- Spreadsheet Mode -->
 		<SpreadsheetEditor
 			v-if="isSpreadsheetMode"
@@ -13,46 +13,50 @@
 		<!-- Normal Mode -->
 		<template v-else>
 			<!-- Main Container -->
-			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 sm:py-3 w-full">
-				<!-- Bulk Edit Toggle Header -->
-				<div class="flex items-center justify-between mb-4">
-					<div class="flex items-center gap-2">
-						<h1
-							class="text-2xl font-semibold tracking-tight"
-							id="tour-page-title"
-						>
-							Assessments
-						</h1>
+			<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+				<DatasetPageHeader
+					eyebrow="Assessment engine"
+					title="Assessments"
+					description="Create and manage assessment questions, or switch to spreadsheet mode when you need to edit many rows at once."
+					:total="pagination.total"
+					total-label="assessment questions"
+					:page-count="data.length"
+					:search-query="searchQuery"
+					:filters="filters"
+				>
+					<template #actions>
+						<Button class="h-11 gap-2 px-4 text-sm font-medium" @click="openCreateModal">
+							<Plus class="h-4 w-4" />
+							New Question
+						</Button>
 						<Button
 							variant="outline"
-							size="sm"
-							class="gap-2"
+							class="h-11 gap-2 px-4 text-sm font-medium"
+							@click="enterSpreadsheetMode"
+							id="tour-bulk-edit"
+						>
+							<TableIcon class="h-4 w-4" />
+							Bulk Edit Mode
+						</Button>
+						<Button
+							variant="outline"
+							class="h-11 gap-2 px-4 text-sm font-medium"
 							@click="startTour('assessments')"
 						>
 							<HelpCircle class="h-4 w-4" />
-							Help
+							How this works
 						</Button>
-					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						class="gap-2"
-						@click="enterSpreadsheetMode"
-						id="tour-bulk-edit"
-					>
-						<TableIcon class="h-4 w-4" />
-						Bulk Edit Mode
-					</Button>
-				</div>
+					</template>
+				</DatasetPageHeader>
 
-				<!-- Dataset Table Container -->
 				<div>
 					<DatasetTable
 						:title="dataTypeLabel"
 						:data-type="dataType"
 						:data="data"
 						:columns="columns"
-						:loading="loading"
+						:all-selectable-ids="allMatchingIds"
+						:loading="loading || actionLoading"
 						:error="error"
 						:pagination="pagination"
 						:current-page="currentPage"
@@ -61,6 +65,8 @@
 						:filters="filters"
 						:order-by="sortBy"
 						:order-direction="sortOrder"
+						:show-create-button="false"
+						class="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm"
 						@create="openCreateModal"
 						@edit="openEditModal"
 						@delete="deleteItem"
@@ -112,8 +118,8 @@
 				:open="showDetailSheet"
 				@update:open="(open) => !open && closeDetailSheet()"
 			>
-				<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
-					<div class="p-4 pb-0">
+				<SheetContent class="flex h-full w-full flex-col p-0 sm:max-w-lg">
+					<div class="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
 						<SheetHeader class="space-y-1">
 							<SheetTitle class="text-lg">Assessment Question</SheetTitle>
 							<SheetDescription class="text-sm">
@@ -122,119 +128,134 @@
 						</SheetHeader>
 					</div>
 
-					<div class="flex-1 overflow-y-auto px-4">
-						<div v-if="viewingItem" class="mt-4 space-y-4">
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Question Text
-								</h4>
-								<p class="text-base">{{ viewingItem.question_text }}</p>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Question ID
-								</h4>
-								<p
-									class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-								>
-									{{ viewingItem.question_id }}
+					<div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+						<div v-if="viewingItem" class="space-y-4">
+							<div class="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+									Question text
 								</p>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Subcategory
-								</h4>
-								<button
-									@click="openSubCategoryDetail"
-									class="text-sm font-medium text-primary underline decoration-2 underline-offset-2 hover:text-primary/80 transition-colors cursor-pointer text-left"
-								>
-									{{ viewingItem.sub_category_id }}
-								</button>
-								<p class="text-xs text-muted-foreground mt-0.5">
-									Click to view problem details
+								<p class="mt-2 text-lg font-semibold leading-tight text-foreground">
+									{{ viewingItem.question_text }}
 								</p>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Response Type
-								</h4>
-								<div class="flex flex-col gap-2">
-									<Badge variant="outline" class="w-fit">
-										{{
-											viewingItem.response_type === "scale"
-												? "Scale (1-4)"
-												: "Free Text"
-										}}
+								<div class="mt-4 flex flex-wrap gap-2">
+									<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
+										{{ viewingItem.response_type === "scale" ? "Scale (1-4)" : "Free Text" }}
 									</Badge>
-
-									<!-- Scale Details -->
-									<div
-										v-if="viewingItem.response_type === 'scale'"
-										class="bg-muted/30 rounded-lg p-3 space-y-2 mt-1 border"
+									<Badge variant="outline" class="h-6 rounded-full px-2 text-[11px] font-medium text-muted-foreground">
+										{{ viewingItem.sub_category_id || "Unassigned subcategory" }}
+									</Badge>
+								</div>
+								<div class="mt-4 space-y-1">
+									<p class="text-sm font-medium text-muted-foreground">Subcategory</p>
+									<button
+										@click="openSubCategoryDetail"
+										class="text-sm font-medium text-primary underline decoration-2 underline-offset-2 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 									>
-										<h5
-											class="text-xs font-semibold uppercase text-muted-foreground"
-										>
-											Scale Configuration
-										</h5>
-										<div class="grid grid-cols-1 gap-2 text-sm">
-											<div
-												class="flex justify-between items-center bg-background p-2 rounded border"
-												v-for="i in 4"
-												:key="i"
-											>
-												<span
-													class="font-mono text-xs font-bold bg-primary/10 text-primary h-5 w-5 flex items-center justify-center rounded-full"
-													>{{ i }}</span
+										View linked problem details
+									</button>
+								</div>
+							</div>
+
+							<Collapsible v-model:open="showTechnicalDetails" class="space-y-2">
+								<div class="flex items-center justify-between gap-3">
+									<div class="space-y-1">
+										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+											Advanced details
+										</p>
+										<p class="text-sm text-muted-foreground">
+											Technical metadata for auditing and support.
+										</p>
+									</div>
+
+									<CollapsibleTrigger as-child>
+										<Button variant="ghost" size="sm" class="h-9 gap-2 px-3">
+											{{ showTechnicalDetails ? "Hide" : "Show" }}
+											<ChevronDown
+												class="h-4 w-4 transition-transform duration-200"
+												:class="showTechnicalDetails ? 'rotate-180' : ''"
+											/>
+										</Button>
+									</CollapsibleTrigger>
+								</div>
+
+								<CollapsibleContent class="space-y-2">
+									<div class="rounded-2xl border border-border/70 bg-muted/30 p-4">
+										<dl class="grid gap-4 text-sm sm:grid-cols-2">
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Question ID
+												</dt>
+												<dd class="break-all text-foreground">
+													{{ viewingItem.question_id || "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Batch Group
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingItem.batch_id || "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Cluster
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingItem.clusters || "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Order
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingItem.order_number ?? "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1 sm:col-span-2">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Metadata
+												</dt>
+												<dd class="space-y-0.5 break-words text-foreground">
+													<p v-if="viewingItem.created_at">
+														Created: {{ formatDate(viewingItem.created_at) }}
+													</p>
+													<p v-if="viewingItem.updated_at">
+														Updated: {{ formatDate(viewingItem.updated_at) }}
+													</p>
+												</dd>
+											</div>
+										</dl>
+
+										<div v-if="viewingItem.response_type === 'scale'" class="mt-4 space-y-3">
+											<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+												Scale labels
+											</p>
+											<div class="space-y-2">
+												<div
+													v-for="i in 4"
+													:key="i"
+													class="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-3 py-2 text-sm"
 												>
-												<span class="text-muted-foreground">{{
-													viewingItem[`scale_label_${i}`] || "Not configured"
-												}}</span>
+													<span class="font-mono text-xs font-semibold text-primary">
+														{{ i }}
+													</span>
+													<span class="text-right text-muted-foreground">
+														{{ viewingItem[`scale_label_${i}`] || "Not configured" }}
+													</span>
+												</div>
 											</div>
 										</div>
 									</div>
-								</div>
-							</div>
-
-							<div v-if="viewingItem.batch_id" class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Batch Group
-								</h4>
-								<p class="text-sm">{{ viewingItem.batch_id }}</p>
-							</div>
-
-							<div class="space-y-1.5 pt-3 border-t">
-								<h4
-									class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-								>
-									Metadata
-								</h4>
-								<div class="space-y-0.5 text-xs text-muted-foreground">
-									<p v-if="viewingItem.created_at">
-										Created: {{ formatDate(viewingItem.created_at) }}
-									</p>
-									<p v-if="viewingItem.updated_at">
-										Updated: {{ formatDate(viewingItem.updated_at) }}
-									</p>
-									<p v-if="viewingItem.id" class="font-mono">
-										ID: {{ viewingItem.id }}
-									</p>
-								</div>
-							</div>
+								</CollapsibleContent>
+							</Collapsible>
 						</div>
 					</div>
 
-					<div class="p-4 pt-0">
-						<SheetFooter class="mt-4 pt-4 border-t flex-row gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								@click="closeDetailSheet"
-								class="flex-1"
-							>
+					<div class="border-t border-border/70 bg-background px-4 py-4 sm:px-6">
+						<SheetFooter class="flex-row gap-2">
+							<Button variant="outline" size="sm" @click="closeDetailSheet" class="flex-1">
 								Close
 							</Button>
 							<Button size="sm" @click="openEditFromDetail" class="flex-1">
@@ -250,8 +271,8 @@
 				:open="showSubCategorySheet"
 				@update:open="(open) => !open && closeSubCategorySheet()"
 			>
-				<SheetContent class="w-full sm:max-w-lg p-0 flex flex-col">
-					<div class="p-4 pb-0">
+				<SheetContent class="flex h-full w-full flex-col p-0 sm:max-w-lg">
+					<div class="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6">
 						<SheetHeader class="space-y-1">
 							<SheetTitle class="text-lg">Problem Details</SheetTitle>
 							<SheetDescription class="text-sm">
@@ -260,74 +281,99 @@
 						</SheetHeader>
 					</div>
 
-					<div class="flex-1 overflow-y-auto px-4">
-						<div v-if="viewingSubCategory" class="mt-4 space-y-4">
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Problem Name
-								</h4>
-								<p class="text-base">{{ viewingSubCategory.problem_name }}</p>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Category
-								</h4>
-								<Badge variant="secondary" class="font-normal">
-									{{ viewingSubCategory.category }}
-								</Badge>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Subcategory ID
-								</h4>
-								<p
-									class="text-base font-mono text-sm bg-muted px-3 py-2 rounded-md"
-								>
-									{{ viewingSubCategory.sub_category_id }}
+					<div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+						<div v-if="viewingSubCategory" class="space-y-4">
+							<div class="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
+								<p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+									Problem name
 								</p>
-							</div>
-
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Description
-								</h4>
-								<p class="text-sm leading-relaxed">
-									{{ viewingSubCategory.description }}
+								<p class="mt-2 text-lg font-semibold leading-tight text-foreground">
+									{{ viewingSubCategory.problem_name }}
 								</p>
+								<div class="mt-4 flex flex-wrap gap-2">
+									<Badge variant="secondary" class="h-6 rounded-full px-2 text-[11px] font-medium">
+										{{ viewingSubCategory.category }}
+									</Badge>
+									<Badge
+										v-if="viewingSubCategory.severity_level"
+										variant="outline"
+										class="h-6 rounded-full px-2 text-[11px] font-medium"
+									>
+										Level {{ viewingSubCategory.severity_level }}
+									</Badge>
+								</div>
+								<div class="mt-4 space-y-1">
+									<p class="text-sm font-medium text-muted-foreground">Description</p>
+									<p class="text-sm leading-relaxed text-foreground">
+										{{ viewingSubCategory.description || "No description provided." }}
+									</p>
+								</div>
 							</div>
 
-							<div v-if="viewingSubCategory.severity_level" class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Severity Level
-								</h4>
-								<Badge variant="outline">
-									Level {{ viewingSubCategory.severity_level }}
-								</Badge>
-							</div>
+							<Collapsible v-model:open="showSubCategoryTechnicalDetails" class="space-y-2">
+								<div class="flex items-center justify-between gap-3">
+									<div class="space-y-1">
+										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+											Advanced details
+										</p>
+										<p class="text-sm text-muted-foreground">
+											Technical metadata for auditing and support.
+										</p>
+									</div>
 
-							<div class="space-y-2">
-								<h4 class="text-sm font-medium text-muted-foreground">
-									Status
-								</h4>
-								<Badge
-									variant="outline"
-									:class="
-										viewingSubCategory.is_active
-											? 'bg-green-50 text-green-700 border-green-200'
-											: 'bg-red-50 text-red-700 border-red-200'
-									"
-								>
-									{{ viewingSubCategory.is_active ? "Active" : "Inactive" }}
-								</Badge>
-							</div>
+									<CollapsibleTrigger as-child>
+										<Button variant="ghost" size="sm" class="h-9 gap-2 px-3">
+											{{ showSubCategoryTechnicalDetails ? "Hide" : "Show" }}
+											<ChevronDown
+												class="h-4 w-4 transition-transform duration-200"
+												:class="showSubCategoryTechnicalDetails ? 'rotate-180' : ''"
+											/>
+										</Button>
+									</CollapsibleTrigger>
+								</div>
+
+								<CollapsibleContent class="space-y-2">
+									<div class="rounded-2xl border border-border/70 bg-muted/30 p-4">
+										<dl class="grid gap-4 text-sm sm:grid-cols-2">
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Subcategory ID
+												</dt>
+												<dd class="break-all text-foreground">
+													{{ viewingSubCategory.sub_category_id || "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Category
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingSubCategory.category || "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Created
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingSubCategory.created_at ? formatDate(viewingSubCategory.created_at) : "-" }}
+												</dd>
+											</div>
+											<div class="space-y-1">
+												<dt class="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+													Updated
+												</dt>
+												<dd class="break-words text-foreground">
+													{{ viewingSubCategory.updated_at ? formatDate(viewingSubCategory.updated_at) : "-" }}
+												</dd>
+											</div>
+										</dl>
+									</div>
+								</CollapsibleContent>
+							</Collapsible>
 						</div>
 
-						<div
-							v-else-if="loadingSubCategory"
-							class="mt-6 flex items-center justify-center py-8"
-						>
+						<div v-else-if="loadingSubCategory" class="mt-6 flex items-center justify-center py-8">
 							<div class="flex items-center gap-2 text-muted-foreground">
 								<Loader2 class="h-4 w-4 animate-spin" />
 								<span class="text-sm">Loading problem details...</span>
@@ -335,14 +381,9 @@
 						</div>
 					</div>
 
-					<div class="p-4 pt-0">
-						<SheetFooter class="mt-4 pt-4 border-t">
-							<Button
-								variant="outline"
-								size="sm"
-								@click="closeSubCategorySheet"
-								class="w-full"
-							>
+					<div class="border-t border-border/70 bg-background px-4 py-4 sm:px-6">
+						<SheetFooter>
+							<Button variant="outline" size="sm" @click="closeSubCategorySheet" class="w-full">
 								Close
 							</Button>
 						</SheetFooter>
@@ -363,6 +404,7 @@ import ImportModal from "@/components/admin/ImportModal.vue";
 import ExportModal from "@/components/admin/ExportModal.vue";
 import AssessmentModal from "@/components/admin/AssessmentModal.vue";
 import SpreadsheetEditor from "@/components/admin/SpreadsheetEditor.vue";
+import { formatDate } from "@/utils/formatDate";
 
 // shadcn-vue components
 import { Toaster } from "@/components/ui/toast";
@@ -376,12 +418,23 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Table as TableIcon, HelpCircle } from "lucide-vue-next";
+import {
+	ChevronDown,
+	Loader2,
+	Table as TableIcon,
+	HelpCircle,
+	Plus,
+} from "lucide-vue-next";
 import { useOnboarding } from "@/composables/useOnboarding";
+import DatasetPageHeader from "@/components/admin/DatasetPageHeader.vue";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 // Use the shared composable
 const {
-	supabase, // Make sure supabase is returned from useSupabase or composable, otherwise import it
 	loading,
 	dataType,
 	error,
@@ -405,6 +458,7 @@ const {
 	handleSave,
 	deleteItem,
 	bulkDeleteItems,
+	allMatchingIds,
 	openImportModal,
 	closeImportModal,
 	openExportModal,
@@ -427,10 +481,12 @@ const { supabase: supabaseClient } = useSupabase(); // Explicitly get supabase c
 // Detail view state
 const showDetailSheet = ref(false);
 const viewingItem = ref(null);
+const showTechnicalDetails = ref(false);
 
 // Detail view handlers
 const openDetailView = (item) => {
 	viewingItem.value = item;
+	showTechnicalDetails.value = false;
 	showDetailSheet.value = true;
 };
 
@@ -438,6 +494,7 @@ const closeDetailSheet = () => {
 	showDetailSheet.value = false;
 	setTimeout(() => {
 		viewingItem.value = null;
+		showTechnicalDetails.value = false;
 	}, 300);
 };
 
@@ -452,11 +509,13 @@ const openEditFromDetail = () => {
 const showSubCategorySheet = ref(false);
 const viewingSubCategory = ref(null);
 const loadingSubCategory = ref(false);
+const showSubCategoryTechnicalDetails = ref(false);
 
 const openSubCategoryDetail = async () => {
 	if (!viewingItem.value?.sub_category_id) return;
 
 	loadingSubCategory.value = true;
+	showSubCategoryTechnicalDetails.value = false;
 	showSubCategorySheet.value = true;
 
 	try {
@@ -482,20 +541,8 @@ const closeSubCategorySheet = () => {
 	setTimeout(() => {
 		viewingSubCategory.value = null;
 		loadingSubCategory.value = false;
+		showSubCategoryTechnicalDetails.value = false;
 	}, 300);
-};
-
-// Helper functions (mirrored from problems.vue for consistency)
-const formatDate = (dateString) => {
-	if (!dateString) return "";
-	const date = new Date(dateString);
-	return date.toLocaleString("en-US", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
 };
 
 // Lifecycle
