@@ -74,18 +74,6 @@ export const columnConfigs = {
 			description: "Type of response expected (scale, text, etc.)",
 		},
 		{
-			key: "scale_min",
-			label: "Scale Min",
-			type: "number",
-			description: "Minimum value for scale-based questions (fixed at 1)",
-		},
-		{
-			key: "scale_max",
-			label: "Scale Max",
-			type: "number",
-			description: "Maximum value for scale-based questions (fixed at 4)",
-		},
-		{
 			key: "scale_label_1",
 			label: "Scale Label 1",
 			type: "text",
