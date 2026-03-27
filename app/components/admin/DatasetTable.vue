@@ -123,7 +123,7 @@
 				class="animate-in fade-in slide-in-from-top-2 flex flex-wrap items-center gap-6 border-b border-border bg-muted/20 px-4 py-3 duration-200"
 			>
 				<div class="flex items-center gap-4 flex-wrap flex-1">
-					<template
+				<template
 					v-if="dataType === 'problem_types' || title === 'Problem Categories'"
 				>
 						<div class="flex min-w-[180px] flex-col gap-1.5">
@@ -131,21 +131,25 @@
 								class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
 								:class="
 								cn(
-									props.filters.domain
+									props.filters.category_id
 										? 'text-primary'
 										: 'text-muted-foreground',
 								)
 							"
-							>Domain
+							>Category ID
 							<span
-								v-if="props.filters.domain"
+								v-if="props.filters.category_id"
 								class="h-1 w-1 rounded-full bg-primary"
 							/>
 						</Label>
 							<Select
-								:model-value="props.filters.domain || '__all__'"
+								:model-value="props.filters.category_id || '__all__'"
 								@update:model-value="
-									(v) => handleFilterChange('domain', v === '__all__' ? null : v)
+									(v) =>
+										handleFilterChange(
+											'category_id',
+											v === '__all__' ? null : v,
+										)
 								"
 							>
 							<SelectTrigger
@@ -153,19 +157,19 @@
 							>
 								<div class="flex items-center gap-2 overflow-hidden">
 									<Globe class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All domains" class="truncate" />
+									<SelectValue placeholder="All category IDs" class="truncate" />
 								</div>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="__all__" class="text-sm"
-									>All domains</SelectItem
+									>All category IDs</SelectItem
 								>
 								<SelectItem
-									v-for="d in uniqueDomains"
-									:key="d"
-									:value="d"
+									v-for="categoryId in uniqueCategoryIds"
+									:key="categoryId"
+									:value="categoryId"
 									class="text-sm"
-									>{{ d }}</SelectItem
+									>{{ categoryId }}</SelectItem
 								>
 							</SelectContent>
 						</Select>
@@ -980,6 +984,7 @@ const props = withDefaults(defineProps<{
 	categories?: any[];
 	subCategories?: SubCategory[];
 	allSelectableIds?: Array<string | number>;
+	filterOptions?: Record<string, any[]>;
 }>(), {
 	loading: false,
 	pageSize: 20,
@@ -1002,6 +1007,7 @@ const props = withDefaults(defineProps<{
 	categories: () => [],
 	subCategories: () => [],
 	allSelectableIds: () => [],
+	filterOptions: () => ({}),
 });
 
 const emit = defineEmits([
@@ -1111,23 +1117,81 @@ const extractUnique = (key: string): any[] =>
 	[
 		...new Set(props.data.map((i) => getNestedValue(i, key)).filter(Boolean)),
 	].sort();
-const uniqueDomains = computed(() => extractUnique("domain"));
+const getProvidedFilterOptions = (key: string) => {
+	const values = props.filterOptions?.[key];
+	return Array.isArray(values) ? values : [];
+};
+const hasProvidedFilterOptions = (key: string) =>
+	Object.prototype.hasOwnProperty.call(props.filterOptions || {}, key);
+
+const uniqueCategoryIds = computed(() => {
+	const provided = getProvidedFilterOptions("category_id")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("category_id")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("category_id");
+});
 const uniqueCategories = computed(() => {
+	const provided = getProvidedFilterOptions("category")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("category")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
 	if (props.categories && props.categories.length > 0) {
 		return props.categories;
 	}
 	return extractUnique("category");
 });
 const uniqueSubCategories = computed(() => {
+	const provided = getProvidedFilterOptions("sub_category_id");
+	if (hasProvidedFilterOptions("sub_category_id")) {
+		return provided
+			.map((entry: any) => {
+				if (typeof entry === "string") {
+					return { id: entry, name: entry };
+				}
+				const id = String(entry?.id ?? entry?.value ?? "").trim();
+				const name = String(entry?.name ?? entry?.label ?? id).trim();
+				return { id, name: name || id };
+			})
+			.filter((entry) => Boolean(entry.id));
+	}
 	if (props.subCategories && props.subCategories.length > 0) {
 		return props.subCategories;
 	}
 	// Fallback to extraction from data, but format as objects for consistency
 	return extractUnique("sub_category_id").map((id) => ({ id, name: id }));
 });
-const uniqueClusters = computed(() => extractUnique("cluster"));
-const uniqueStages = computed(() => extractUnique("stage"));
-const uniqueUserIntents = computed(() => extractUnique("user_intent"));
+const uniqueClusters = computed(() => {
+	const provided = getProvidedFilterOptions("cluster")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("cluster")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("cluster");
+});
+const uniqueStages = computed(() => {
+	const provided = getProvidedFilterOptions("stage")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("stage")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("stage");
+});
+const uniqueUserIntents = computed(() => {
+	const provided = getProvidedFilterOptions("user_intent")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("user_intent")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("user_intent");
+});
 
 // --- Actions ---
 const getNestedValue = (obj: any, path: string): any =>

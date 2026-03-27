@@ -370,7 +370,7 @@ export const columnConfigs = {
 export const datasetLabels = {
 	problems: "Subcategories",
 	assessments: "Assessment Questions",
-	suggestions: "Therapeutic Suggestions",
+	suggestions: "Suggestions",
 	feedback_prompts: "Feedback Prompts",
 	next_actions: "Next Actions",
 	training_examples: "Fine-tuning Examples",
@@ -408,6 +408,7 @@ export function useDatasetManagement(
 	const error = ref<string | null>(null);
 	const data = ref<any[]>([]);
 	const allMatchingIds = ref<any[]>([]);
+	const filterOptions = ref<Record<string, any[]>>({});
 	const actionLoading = ref(false);
 	const showImportModal = ref(false);
 	const showExportModal = ref(false);
@@ -444,6 +445,186 @@ export function useDatasetManagement(
 		() => (datasetLabels as any)[dataType] || "Dataset",
 	);
 
+	const applySearchToQuery = (query: any) => {
+		if (!searchQuery.value.trim()) return query;
+
+		const search = searchQuery.value.trim();
+		if (dataType === "assessments") {
+			return query.ilike("question_text", `%${search}%`);
+		}
+		if (dataType === "problems") {
+			return query.or(
+				`problem_name.ilike.%${search}%,description.ilike.%${search}%`,
+			);
+		}
+		if (dataType === "suggestions") {
+			return query.ilike("suggestion_text", `%${search}%`);
+		}
+		if (dataType === "feedback_prompts") {
+			return query.ilike("prompt_text", `%${search}%`);
+		}
+		if (dataType === "next_actions") {
+			return query.or(
+				`action_id.ilike.%${search}%,action_text.ilike.%${search}%`,
+			);
+		}
+		if (dataType === "training_examples") {
+			return query.or(
+				`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`,
+			);
+		}
+		if (dataType === "problem_types") {
+			return query.or(`type_name.ilike.%${search}%,description.ilike.%${search}%`);
+		}
+
+		return query;
+	};
+
+	const applyFiltersToQuery = (query: any, omitFilterKey = "") => {
+		Object.keys(filters.value).forEach((key) => {
+			if (omitFilterKey && key === omitFilterKey) return;
+			const value = filters.value[key];
+			if (!value) return;
+
+			if (key === "is_active") {
+				query = query.eq(key, value === "true");
+			} else {
+				query = query.eq(key, value);
+			}
+		});
+		return query;
+	};
+
+	const buildSupabaseQuery = (
+		selectClause: string,
+		options: { countExact?: boolean; omitFilterKey?: string } = {},
+	) => {
+		let query: any;
+		if (options.countExact) {
+			query = supabase.from(dataType).select(selectClause, {
+				count: "exact",
+			});
+		} else {
+			query = supabase.from(dataType).select(selectClause);
+		}
+
+		query = applySearchToQuery(query);
+		query = applyFiltersToQuery(query, options.omitFilterKey || "");
+		return query;
+	};
+
+	const fetchFilterOptions = async () => {
+		if (!USE_SUPABASE_FOR.includes(dataType)) {
+			filterOptions.value = {};
+			return;
+		}
+
+		const nextOptions: Record<string, any[]> = {};
+		const uniqStrings = (values: Array<string | null | undefined>) =>
+			[...new Set(values.filter((v): v is string => Boolean(v && String(v).trim())).map((v) => String(v).trim()))].sort(
+				(a, b) => a.localeCompare(b),
+			);
+
+		try {
+			if (dataType === "problems") {
+				const [{ data: categoryRows, error: categoryError }, { data: subRows, error: subError }] =
+					await Promise.all([
+						buildSupabaseQuery("category", { omitFilterKey: "category" }).order(
+							"category",
+							{ ascending: true },
+						),
+						buildSupabaseQuery("sub_category_id, problem_name", {
+							omitFilterKey: "sub_category_id",
+						}).order("sub_category_id", { ascending: true }),
+					]);
+
+				if (categoryError) throw categoryError;
+				if (subError) throw subError;
+
+				nextOptions.category = uniqStrings(
+					(categoryRows || []).map((row: any) => row.category),
+				);
+
+				const subMap = new Map<string, { id: string; name: string }>();
+				for (const row of subRows || []) {
+					const id = row?.sub_category_id ? String(row.sub_category_id).trim() : "";
+					if (!id || subMap.has(id)) continue;
+					subMap.set(id, {
+						id,
+						name:
+							row?.problem_name && String(row.problem_name).trim()
+								? String(row.problem_name).trim()
+								: id,
+					});
+				}
+				nextOptions.sub_category_id = [...subMap.values()];
+			} else if (dataType === "assessments") {
+				const { data: subRows, error: subError } = await buildSupabaseQuery(
+					"sub_category_id",
+					{ omitFilterKey: "sub_category_id" },
+				).order("sub_category_id", { ascending: true });
+
+				if (subError) throw subError;
+
+				const ids = uniqStrings(
+					(subRows || []).map((row: any) => row.sub_category_id),
+				);
+				if (ids.length === 0) {
+					nextOptions.sub_category_id = [];
+				} else {
+					const { data: problemRows, error: problemError } = await supabase
+						.from("problems")
+						.select("sub_category_id, problem_name")
+						.in("sub_category_id", ids)
+						.eq("is_active", true);
+
+					if (problemError) throw problemError;
+
+					const problemNameMap = new Map<string, string>();
+					for (const row of problemRows || []) {
+						const id = row?.sub_category_id ? String(row.sub_category_id).trim() : "";
+						if (!id || problemNameMap.has(id)) continue;
+						const name =
+							row?.problem_name && String(row.problem_name).trim()
+								? String(row.problem_name).trim()
+								: id;
+						problemNameMap.set(id, name);
+					}
+
+					nextOptions.sub_category_id = ids.map((id) => ({
+						id,
+						name: problemNameMap.get(id) || id,
+					}));
+				}
+			} else if (dataType === "suggestions") {
+				const { data: clusterRows, error: clusterError } = await buildSupabaseQuery(
+					"cluster",
+					{ omitFilterKey: "cluster" },
+				).order("cluster", { ascending: true });
+
+				if (clusterError) throw clusterError;
+				nextOptions.cluster = uniqStrings(
+					(clusterRows || []).map((row: any) => row.cluster),
+				);
+			} else if (dataType === "problem_types") {
+				const { data: categoryRows, error: categoryError } = await buildSupabaseQuery(
+					"category_id",
+					{ omitFilterKey: "category_id" },
+				).order("category_id", { ascending: true });
+
+				if (categoryError) throw categoryError;
+				nextOptions.category_id = uniqStrings(
+					(categoryRows || []).map((row: any) => row.category_id),
+				);
+			}
+
+			filterOptions.value = nextOptions;
+		} catch (err) {
+			console.error(`Error fetching filter options for ${dataType}:`, err);
+			filterOptions.value = {};
+		}
+	};
+
 	// Methods
 	const refreshData = async () => {
 		loading.value = true;
@@ -451,68 +632,19 @@ export function useDatasetManagement(
 
 		try {
 			if (USE_SUPABASE_FOR.includes(dataType)) {
-				// Use Supabase
-				const buildQuery = (selectClause: string) => {
-					let query = supabase.from(dataType).select(selectClause, {
-						count: "exact",
-					});
-
-					// Search logic
-					if (searchQuery.value.trim()) {
-						const search = searchQuery.value.trim();
-						if (dataType === "assessments") {
-							query = query.ilike("question_text", `%${search}%`);
-						} else if (dataType === "problems") {
-							query = query.or(
-								`problem_name.ilike.%${search}%,description.ilike.%${search}%`,
-							);
-						} else if (dataType === "suggestions") {
-							query = query.ilike("suggestion_text", `%${search}%`);
-						} else if (dataType === "feedback_prompts") {
-							query = query.ilike("prompt_text", `%${search}%`);
-						} else if (dataType === "next_actions") {
-							query = query.or(
-								`action_id.ilike.%${search}%,action_text.ilike.%${search}%`,
-							);
-						} else if (dataType === "training_examples") {
-							query = query.or(
-								`problem.ilike.%${search}%,prompt.ilike.%${search}%,completion.ilike.%${search}%`,
-							);
-						} else if (dataType === "problem_types") {
-							query = query.or(
-								`type_name.ilike.%${search}%,description.ilike.%${search}%`,
-							);
-						}
-					}
-
-					// Filters logic
-					Object.keys(filters.value).forEach((key) => {
-						const value = filters.value[key];
-						if (value) {
-							if (key === "is_active") {
-								query = query.eq(key, value === "true");
-							} else {
-								query = query.eq(key, value);
-							}
-						}
-					});
-
-					// Sorting
-					const finalSortBy =
-						sortBy.value ||
-						(dataType === "problem_types" ? "type_name" : "created_at");
-					const finalAscending = sortBy.value
-						? sortOrder.value === "asc"
-						: dataType === "problem_types";
-					query = query.order(finalSortBy, { ascending: finalAscending });
-
-					return query;
-				};
-
 				const from = pagination.value.skip;
 				const to = from + pagination.value.limit - 1;
-				const pageQuery = buildQuery("*").range(from, to);
-				const idsQuery = buildQuery("id");
+				const finalSortBy =
+					sortBy.value ||
+					(dataType === "problem_types" ? "type_name" : "created_at");
+				const finalAscending = sortBy.value
+					? sortOrder.value === "asc"
+					: dataType === "problem_types";
+
+				const pageQuery = buildSupabaseQuery("*", { countExact: true })
+					.order(finalSortBy, { ascending: finalAscending })
+					.range(from, to);
+				const idsQuery = buildSupabaseQuery("id");
 
 				const [
 					{ data: items, count, error: supabaseError },
@@ -555,9 +687,12 @@ export function useDatasetManagement(
 					total: count || 0,
 					has_more: from + (items?.length || 0) < (count || 0),
 				};
+
+				await fetchFilterOptions();
 			} else {
 				// Use existing API
 				allMatchingIds.value = [];
+				filterOptions.value = {};
 				const currentPagination = pagination.value;
 				const params = new URLSearchParams({
 					skip: currentPagination.skip.toString(),
@@ -613,6 +748,7 @@ export function useDatasetManagement(
 			console.error(`Error fetching ${dataType}:`, err);
 			error.value = "Failed to load data. Please try again.";
 			data.value = [];
+			filterOptions.value = {};
 		} finally {
 			loading.value = false;
 		}
@@ -1047,6 +1183,7 @@ export function useDatasetManagement(
 		error,
 		data,
 		allMatchingIds,
+		filterOptions,
 		actionLoading,
 		showImportModal,
 		showExportModal,
