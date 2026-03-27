@@ -5,7 +5,6 @@ import {
 	ArrowRight,
 	CheckCircle2,
 	Database,
-	FileText,
 	LayoutGrid,
 	Layers,
 	MessageSquare,
@@ -72,24 +71,6 @@ const DATASET_CONFIG = [
 		route: "/suggestions",
 		colorClass: "text-emerald-600 dark:text-emerald-400",
 	},
-	{
-		key: "feedback_prompts",
-		icon: FileText,
-		route: "/feedback-prompts",
-		colorClass: "text-cyan-600 dark:text-cyan-400",
-	},
-	{
-		key: "next_actions",
-		icon: ArrowRight,
-		route: "/next-actions",
-		colorClass: "text-violet-600 dark:text-violet-400",
-	},
-	{
-		key: "training_examples",
-		icon: Database,
-		route: "/training-examples",
-		colorClass: "text-rose-600 dark:text-rose-400",
-	},
 ] as const;
 
 const NAME_FIELDS: Record<string, string> = {
@@ -104,9 +85,7 @@ const NAME_FIELDS: Record<string, string> = {
 
 const QUICK_ACTIONS = [
 	{ label: "Manage Suggestions", route: "/suggestions" },
-	{ label: "Manage Next Actions", route: "/next-actions" },
 	{ label: "Manage Assessments", route: "/assessments" },
-	{ label: "Manage Feedback Prompts", route: "/feedback-prompts" },
 ];
 
 const buildEmptyByType = (): Record<string, ActiveTypeStats> => {
@@ -342,20 +321,6 @@ const attentionItems = computed(() => {
 	if (!dashboardData.value) return [];
 	const attention = dashboardData.value.attention;
 	return [
-		{
-			key: "missing-prompt-id",
-			label: "Feedback prompts missing prompt ID",
-			count: attention.feedbackPromptsMissingPromptId,
-			description: "Active feedback prompts have empty prompt_id.",
-			route: "/feedback-prompts",
-		},
-		{
-			key: "empty-next-actions",
-			label: "Next actions missing action text",
-			count: attention.emptyNextActionText,
-			description: "Active next action records have empty action_text.",
-			route: "/next-actions",
-		},
 		{
 			key: "empty-suggestions",
 			label: "Suggestions missing suggestion text",

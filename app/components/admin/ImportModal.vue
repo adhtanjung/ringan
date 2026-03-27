@@ -574,7 +574,7 @@ const { supabase } = useSupabase();
 const allDataTypes = [
 	{ value: "problems", label: "Subcategories" },
 	{ value: "assessments", label: "Assessment Questions" },
-	{ value: "suggestions", label: "Therapeutic Suggestions" },
+	{ value: "suggestions", label: "Suggestions" },
 	{ value: "feedback_prompts", label: "Feedback Prompts" },
 	{ value: "next_actions", label: "Next Actions" },
 	{ value: "training_examples", label: "Fine-tuning Examples" },

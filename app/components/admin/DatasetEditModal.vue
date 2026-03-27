@@ -333,7 +333,7 @@ const dataTypeLabel = computed(() => {
 	const labels: Record<string, string> = {
 		problems: "Categories",
 		assessments: "Assessment Question",
-		suggestions: "Therapeutic Suggestion",
+		suggestions: "Suggestion",
 		feedback: "Feedback Prompt",
 		next_actions: "Next Action",
 		training: "Fine-tuning Example",

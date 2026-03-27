@@ -11,7 +11,6 @@ import {
 	IconHelp,
 	IconInnerShadowTop,
 	IconListDetails,
-	IconReport,
 	IconSearch,
 	IconSettings,
 	IconUsers,
@@ -145,14 +144,9 @@ const data = {
 			icon: IconListDetails,
 		},
 		{
-			name: "Therapeutic Suggestions",
+			name: "Suggestions",
 			url: "/suggestions",
 			icon: IconFileAi,
-		},
-		{
-			name: "Next Actions",
-			url: "/next-actions",
-			icon: IconReport,
 		},
 	],
 };

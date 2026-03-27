@@ -143,7 +143,7 @@ const activeOnly = ref(true);
 const allDataTypes = [
 	{ key: "problems", label: "Subcategories" },
 	{ key: "assessments", label: "Assessment Questions" },
-	{ key: "suggestions", label: "Therapeutic Suggestions" },
+	{ key: "suggestions", label: "Suggestions" },
 	{ key: "feedback_prompts", label: "Feedback Prompts" },
 	{ key: "next_actions", label: "Next Actions" },
 	{ key: "training_examples", label: "Fine-tuning Examples" },
