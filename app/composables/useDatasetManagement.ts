@@ -54,11 +54,29 @@ export const columnConfigs = {
 				"Business identifier used to reference this question in the system",
 		},
 		{
+			key: "category_id",
+			label: "Category ID",
+			type: "text",
+			description: "Top-level category this question belongs to",
+		},
+		{
+			key: "category_name",
+			label: "Category Name",
+			type: "text",
+			description: "Name of the top-level category",
+		},
+		{
 			key: "sub_category_id",
 			label: "Subcategory ID",
 			type: "text",
 			description:
 				"Links this question to a specific mental health subcategory",
+		},
+		{
+			key: "sub_category_name",
+			label: "Subcategory Name",
+			type: "text",
+			description: "Name of the subcategory this question belongs to",
 		},
 		{
 			key: "question_text",
@@ -144,11 +162,29 @@ export const columnConfigs = {
 				"Business identifier used to reference this suggestion in the system",
 		},
 		{
+			key: "category_id",
+			label: "Category ID",
+			type: "text",
+			description: "Top-level category this suggestion belongs to",
+		},
+		{
+			key: "category_name",
+			label: "Category Name",
+			type: "text",
+			description: "Name of the top-level category",
+		},
+		{
 			key: "sub_category_id",
 			label: "Subcategory ID",
 			type: "text",
 			description:
 				"Links this suggestion to a specific mental health subcategory",
+		},
+		{
+			key: "sub_category_name",
+			label: "Subcategory Name",
+			type: "text",
+			description: "Name of the subcategory this suggestion belongs to",
 		},
 		{
 			key: "cluster",
@@ -488,6 +524,20 @@ export function useDatasetManagement(
 
 			if (key === "is_active") {
 				query = query.eq(key, value === "true");
+			} else if (key === "created_from") {
+				query = query.gte("created_at", value);
+			} else if (key === "created_to") {
+				query = query.lte("created_at", value + "T23:59:59.999Z");
+			} else if (key === "updated_from") {
+				query = query.gte("updated_at", value);
+			} else if (key === "updated_to") {
+				query = query.lte("updated_at", value + "T23:59:59.999Z");
+			} else if (key === "clusters") {
+				// clusters is an array column — use contains
+				query = query.cs(key, [value]);
+			} else if (key === "category_id" && (dataType === "assessments" || dataType === "suggestions")) {
+				// filter by category_id via sub_category_id join — handled client-side via data transform
+				// skip pushing to supabase query; filtering done post-fetch
 			} else {
 				query = query.eq(key, value);
 			}
@@ -529,8 +579,8 @@ export function useDatasetManagement(
 			if (dataType === "problems") {
 				const [{ data: categoryRows, error: categoryError }, { data: subRows, error: subError }] =
 					await Promise.all([
-						buildSupabaseQuery("category", { omitFilterKey: "category" }).order(
-							"category",
+						buildSupabaseQuery("category_id", { omitFilterKey: "category_id" }).order(
+							"category_id",
 							{ ascending: true },
 						),
 						buildSupabaseQuery("sub_category_id, problem_name", {
@@ -541,9 +591,27 @@ export function useDatasetManagement(
 				if (categoryError) throw categoryError;
 				if (subError) throw subError;
 
-				nextOptions.category = uniqStrings(
-					(categoryRows || []).map((row: any) => row.category),
-				);
+				const uniqueCatIds = [...new Set<string>(
+					(categoryRows || [])
+						.map((row: any) => row.category_id ? String(row.category_id).trim() : "")
+						.filter((v: string) => v.length > 0)
+				)].sort((a, b) => a.localeCompare(b));
+
+				if (uniqueCatIds.length > 0) {
+					const { data: typeRows } = await supabase
+						.from("problem_types")
+						.select("category_id, type_name")
+						.in("category_id", uniqueCatIds);
+					const typeMap = new Map(
+						(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+					);
+					nextOptions.category_id = uniqueCatIds.map((id) => ({
+						id,
+						name: typeMap.get(id) || id,
+					}));
+				} else {
+					nextOptions.category_id = [];
+				}
 
 				const subMap = new Map<string, { id: string; name: string }>();
 				for (const row of subRows || []) {
@@ -559,63 +627,168 @@ export function useDatasetManagement(
 				}
 				nextOptions.sub_category_id = [...subMap.values()];
 			} else if (dataType === "assessments") {
-				const { data: subRows, error: subError } = await buildSupabaseQuery(
-					"sub_category_id",
-					{ omitFilterKey: "sub_category_id" },
-				).order("sub_category_id", { ascending: true });
+				const [
+					{ data: subRows, error: subError },
+					{ data: responseTypeRows, error: rtError },
+					{ data: clustersRows, error: clustersError },
+					{ data: batchRows, error: batchError },
+				] = await Promise.all([
+					buildSupabaseQuery("sub_category_id", { omitFilterKey: "sub_category_id" }).order("sub_category_id", { ascending: true }),
+					buildSupabaseQuery("response_type", { omitFilterKey: "response_type" }).order("response_type", { ascending: true }),
+					buildSupabaseQuery("clusters", { omitFilterKey: "clusters" }),
+					buildSupabaseQuery("batch_id", { omitFilterKey: "batch_id" }).order("batch_id", { ascending: true }),
+				]);
 
 				if (subError) throw subError;
+				if (rtError) throw rtError;
+				if (clustersError) throw clustersError;
+				if (batchError) throw batchError;
 
-				const ids = uniqStrings(
-					(subRows || []).map((row: any) => row.sub_category_id),
-				);
-				if (ids.length === 0) {
+				const subIds = uniqStrings((subRows || []).map((row: any) => row.sub_category_id));
+				if (subIds.length === 0) {
 					nextOptions.sub_category_id = [];
+					nextOptions.category_id = [];
 				} else {
-					const { data: problemRows, error: problemError } = await supabase
+					const { data: problemRows } = await supabase
 						.from("problems")
-						.select("sub_category_id, problem_name")
-						.in("sub_category_id", ids)
+						.select("sub_category_id, problem_name, category_id")
+						.in("sub_category_id", subIds)
 						.eq("is_active", true);
 
-					if (problemError) throw problemError;
-
-					const problemNameMap = new Map<string, string>();
+					const problemMap = new Map<string, { name: string; category_id: string }>();
 					for (const row of problemRows || []) {
 						const id = row?.sub_category_id ? String(row.sub_category_id).trim() : "";
-						if (!id || problemNameMap.has(id)) continue;
-						const name =
-							row?.problem_name && String(row.problem_name).trim()
-								? String(row.problem_name).trim()
-								: id;
-						problemNameMap.set(id, name);
+						if (!id || problemMap.has(id)) continue;
+						problemMap.set(id, {
+							name: row?.problem_name ? String(row.problem_name).trim() : id,
+							category_id: row?.category_id ? String(row.category_id).trim() : "",
+						});
 					}
 
-					nextOptions.sub_category_id = ids.map((id) => ({
+					nextOptions.sub_category_id = subIds.map((id) => ({
 						id,
-						name: problemNameMap.get(id) || id,
+						name: problemMap.get(id)?.name || id,
 					}));
-				}
-			} else if (dataType === "suggestions") {
-				const { data: clusterRows, error: clusterError } = await buildSupabaseQuery(
-					"cluster",
-					{ omitFilterKey: "cluster" },
-				).order("cluster", { ascending: true });
 
+					const catIds = [...new Set(
+						[...problemMap.values()].map((v) => v.category_id).filter(Boolean)
+					)].sort((a, b) => a.localeCompare(b));
+
+					if (catIds.length > 0) {
+						const { data: typeRows } = await supabase
+							.from("problem_types")
+							.select("category_id, type_name")
+							.in("category_id", catIds);
+						const typeMap = new Map(
+							(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+						);
+						nextOptions.category_id = catIds.map((id) => ({
+							id,
+							name: typeMap.get(id) || id,
+						}));
+					} else {
+						nextOptions.category_id = [];
+					}
+				}
+
+				nextOptions.response_type = uniqStrings(
+					(responseTypeRows || []).map((row: any) => row.response_type),
+				);
+
+				const clusterSet = new Set<string>();
+				for (const row of clustersRows || []) {
+					const val = row?.clusters;
+					if (Array.isArray(val)) {
+						val.forEach((c: any) => { if (c) clusterSet.add(String(c).trim()); });
+					} else if (val) {
+						clusterSet.add(String(val).trim());
+					}
+				}
+				nextOptions.clusters = [...clusterSet].sort((a, b) => a.localeCompare(b));
+
+				nextOptions.batch_id = uniqStrings(
+					(batchRows || []).map((row: any) => row.batch_id),
+				);
+			} else if (dataType === "suggestions") {
+				const [
+					{ data: subRows, error: subError },
+					{ data: clusterRows, error: clusterError },
+				] = await Promise.all([
+					buildSupabaseQuery("sub_category_id", { omitFilterKey: "sub_category_id" }).order("sub_category_id", { ascending: true }),
+					buildSupabaseQuery("cluster", { omitFilterKey: "cluster" }).order("cluster", { ascending: true }),
+				]);
+
+				if (subError) throw subError;
 				if (clusterError) throw clusterError;
+
+				const subIds = uniqStrings((subRows || []).map((row: any) => row.sub_category_id));
+				if (subIds.length === 0) {
+					nextOptions.sub_category_id = [];
+					nextOptions.category_id = [];
+				} else {
+					const { data: problemRows } = await supabase
+						.from("problems")
+						.select("sub_category_id, problem_name, category_id")
+						.in("sub_category_id", subIds)
+						.eq("is_active", true);
+
+					const problemMap = new Map<string, { name: string; category_id: string }>();
+					for (const row of problemRows || []) {
+						const id = row?.sub_category_id ? String(row.sub_category_id).trim() : "";
+						if (!id || problemMap.has(id)) continue;
+						problemMap.set(id, {
+							name: row?.problem_name ? String(row.problem_name).trim() : id,
+							category_id: row?.category_id ? String(row.category_id).trim() : "",
+						});
+					}
+
+					nextOptions.sub_category_id = subIds.map((id) => ({
+						id,
+						name: problemMap.get(id)?.name || id,
+					}));
+
+					const catIds = [...new Set(
+						[...problemMap.values()].map((v) => v.category_id).filter(Boolean)
+					)].sort((a, b) => a.localeCompare(b));
+
+					if (catIds.length > 0) {
+						const { data: typeRows } = await supabase
+							.from("problem_types")
+							.select("category_id, type_name")
+							.in("category_id", catIds);
+						const typeMap = new Map(
+							(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+						);
+						nextOptions.category_id = catIds.map((id) => ({
+							id,
+							name: typeMap.get(id) || id,
+						}));
+					} else {
+						nextOptions.category_id = [];
+					}
+				}
+
 				nextOptions.cluster = uniqStrings(
 					(clusterRows || []).map((row: any) => row.cluster),
 				);
 			} else if (dataType === "problem_types") {
 				const { data: categoryRows, error: categoryError } = await buildSupabaseQuery(
-					"category_id",
+					"category_id, type_name",
 					{ omitFilterKey: "category_id" },
 				).order("category_id", { ascending: true });
 
 				if (categoryError) throw categoryError;
-				nextOptions.category_id = uniqStrings(
-					(categoryRows || []).map((row: any) => row.category_id),
-				);
+
+				const catMap = new Map<string, string>();
+				for (const row of categoryRows || []) {
+					const id = row?.category_id ? String(row.category_id).trim() : "";
+					if (!id || catMap.has(id)) continue;
+					const name = row?.type_name && String(row.type_name).trim()
+						? String(row.type_name).trim()
+						: id;
+					catMap.set(id, name);
+				}
+				nextOptions.category_id = [...catMap.entries()].map(([id, name]) => ({ id, name }));
 			}
 
 			filterOptions.value = nextOptions;
@@ -668,7 +841,7 @@ export function useDatasetManagement(
 						types?.map((t) => [t.category_id, t.type_name]) || [],
 					);
 
-					data.value = (items || []).map((item) => {
+					data.value = (items || []).map((item: any) => {
 						const catName =
 							typeMap.get(item.category_id) || item.category || "";
 						return {
@@ -678,6 +851,62 @@ export function useDatasetManagement(
 								: catName,
 						};
 					});
+				} else if (dataType === "assessments" || dataType === "suggestions") {
+					// Enrich with category_id, category_name, sub_category_name via problems + problem_types
+					const subIds = [...new Set(
+						(items || []).map((item: any) => item.sub_category_id).filter(Boolean)
+					)] as string[];
+
+					let problemMap = new Map<string, { name: string; category_id: string }>();
+					let typeMap = new Map<string, string>();
+
+					if (subIds.length > 0) {
+						const { data: problemRows } = await supabase
+							.from("problems")
+							.select("sub_category_id, problem_name, category_id")
+							.in("sub_category_id", subIds)
+							.eq("is_active", true);
+
+						for (const row of problemRows || []) {
+							const id = row?.sub_category_id ? String(row.sub_category_id).trim() : "";
+							if (!id || problemMap.has(id)) continue;
+							problemMap.set(id, {
+								name: row?.problem_name ? String(row.problem_name).trim() : id,
+								category_id: row?.category_id ? String(row.category_id).trim() : "",
+							});
+						}
+
+						const catIds = [...new Set([...problemMap.values()].map((v) => v.category_id).filter(Boolean))];
+						if (catIds.length > 0) {
+							const { data: typeRows } = await supabase
+								.from("problem_types")
+								.select("category_id, type_name")
+								.in("category_id", catIds);
+							typeMap = new Map(
+								(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+							);
+						}
+					}
+
+					const categoryIdFilter = filters.value["category_id"];
+					let enriched = (items || []).map((item: any) => {
+						const prob = problemMap.get(String(item.sub_category_id || "").trim());
+						const catId = prob?.category_id || "";
+						const catName = catId ? (typeMap.get(catId) || catId) : "";
+						return {
+							...item,
+							category_id: catId,
+							category_name: catName,
+							sub_category_name: prob?.name || "",
+						};
+					});
+
+					// Client-side filter by category_id if set
+					if (categoryIdFilter) {
+						enriched = enriched.filter((item: any) => item.category_id === categoryIdFilter);
+					}
+
+					data.value = enriched;
 				} else {
 					data.value = items || [];
 				}
