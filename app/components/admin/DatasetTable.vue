@@ -123,361 +123,161 @@
 				class="animate-in fade-in slide-in-from-top-2 flex flex-wrap items-center gap-6 border-b border-border bg-muted/20 px-4 py-3 duration-200"
 			>
 				<div class="flex items-center gap-4 flex-wrap flex-1">
-				<template
-					v-if="dataType === 'problem_types' || title === 'Problem Categories'"
-				>
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-							<Label
-								class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-								:class="
-								cn(
-									props.filters.category_id
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Category ID
-							<span
-								v-if="props.filters.category_id"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+				<template v-if="dataType === 'problem_types' || title === 'Problem Categories'">
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.category_id ? 'text-primary' : 'text-muted-foreground')">
+							Category ID <span v-if="props.filters.category_id" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.category_id || '__all__'"
-								@update:model-value="
-									(v) =>
-										handleFilterChange(
-											'category_id',
-											v === '__all__' ? null : v,
-										)
-								"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Globe class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All category IDs" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All category IDs</SelectItem
-								>
-								<SelectItem
-									v-for="categoryId in uniqueCategoryIds"
-									:key="categoryId"
-									:value="categoryId"
-									class="text-sm"
-									>{{ categoryId }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.category_id || null" :options="uniqueCategoryIds" placeholder="All category IDs" all-label="All category IDs" :icon="Globe" @update:model-value="(v) => handleFilterChange('category_id', v)" />
 					</div>
 				</template>
 
 				<template v-if="dataType === 'problems' || title === 'Subcategories'">
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.category
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Category
-							<span
-								v-if="props.filters.category"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.category_id ? 'text-primary' : 'text-muted-foreground')">
+							Category <span v-if="props.filters.category_id" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.category || '__all__'"
-								@update:model-value="
-									(v) =>
-										handleFilterChange('category', v === '__all__' ? null : v)
-								"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Tag class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All categories" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All categories</SelectItem
-								>
-								<SelectItem
-									v-for="c in uniqueCategories"
-									:key="c"
-									:value="c"
-									class="text-sm"
-									>{{ c }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.category_id || null" :options="uniqueCategoryIds" placeholder="All categories" all-label="All categories" :icon="Tag" @update:model-value="(v) => handleFilterChange('category_id', v)" />
 					</div>
-
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.sub_category_id
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Subcategory
-							<span
-								v-if="props.filters.sub_category_id"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.sub_category_id ? 'text-primary' : 'text-muted-foreground')">
+							Subcategory <span v-if="props.filters.sub_category_id" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.sub_category_id || '__all__'"
-								@update:model-value="
-								(v) =>
-									handleFilterChange(
-										'sub_category_id',
-										v === '__all__' ? null : v,
-									)
-							"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue
-										placeholder="All subcategories"
-										class="truncate"
-									/>
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All subcategories</SelectItem
-								>
-								<SelectItem
-									v-for="sc in uniqueSubCategories"
-									:key="sc.id"
-									:value="sc.id"
-									class="text-sm"
-									>{{
-										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
-									}}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.sub_category_id || null" :options="uniqueSubCategories" placeholder="All subcategories" all-label="All subcategories" :icon="Layers" @update:model-value="(v) => handleFilterChange('sub_category_id', v)" />
 					</div>
 				</template>
 
 				<template v-if="dataType === 'assessments'">
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.sub_category_id
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Subcategory
-							<span
-								v-if="props.filters.sub_category_id"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.category_id ? 'text-primary' : 'text-muted-foreground')">
+							Category <span v-if="props.filters.category_id" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.sub_category_id || '__all__'"
-								@update:model-value="
-								(v) =>
-									handleFilterChange(
-										'sub_category_id',
-										v === '__all__' ? null : v,
-									)
-							"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue
-										placeholder="All subcategories"
-										class="truncate"
-									/>
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All subcategories</SelectItem
-								>
-								<SelectItem
-									v-for="sc in uniqueSubCategories"
-									:key="sc.id"
-									:value="sc.id"
-									class="text-sm"
-									>{{
-										sc.id === sc.name ? sc.id : sc.id + " - " + sc.name
-									}}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.category_id || null" :options="uniqueCategoryIds" placeholder="All categories" all-label="All categories" :icon="Globe" @update:model-value="(v) => handleFilterChange('category_id', v)" />
+					</div>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.sub_category_id ? 'text-primary' : 'text-muted-foreground')">
+							Subcategory <span v-if="props.filters.sub_category_id" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.sub_category_id || null" :options="uniqueSubCategories" placeholder="All subcategories" all-label="All subcategories" :icon="Layers" @update:model-value="(v) => handleFilterChange('sub_category_id', v)" />
+					</div>
+					<div class="flex min-w-[160px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.response_type ? 'text-primary' : 'text-muted-foreground')">
+							Response Type <span v-if="props.filters.response_type" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.response_type || null" :options="uniqueResponseTypes" placeholder="All types" all-label="All types" :icon="Activity" @update:model-value="(v) => handleFilterChange('response_type', v)" />
+					</div>
+					<div class="flex min-w-[160px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.clusters ? 'text-primary' : 'text-muted-foreground')">
+							Clusters <span v-if="props.filters.clusters" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.clusters || null" :options="uniqueAssessmentClusters" placeholder="All clusters" all-label="All clusters" :icon="Layers" @update:model-value="(v) => handleFilterChange('clusters', v)" />
+					</div>
+					<div class="flex min-w-[160px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.batch_id ? 'text-primary' : 'text-muted-foreground')">
+							Batch ID <span v-if="props.filters.batch_id" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.batch_id || null" :options="uniqueBatchIds" placeholder="All batches" all-label="All batches" :icon="Tag" @update:model-value="(v) => handleFilterChange('batch_id', v)" />
 					</div>
 				</template>
 
 				<template v-if="dataType === 'suggestions'">
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.cluster
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Cluster
-							<span
-								v-if="props.filters.cluster"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.category_id ? 'text-primary' : 'text-muted-foreground')">
+							Category <span v-if="props.filters.category_id" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.cluster || '__all__'"
-								@update:model-value="
-								(v) => handleFilterChange('cluster', v === '__all__' ? null : v)
-							"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Layers class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All clusters" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All clusters</SelectItem
-								>
-								<SelectItem
-									v-for="c in uniqueClusters"
-									:key="c"
-									:value="c"
-									class="text-sm"
-									>{{ c }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.category_id || null" :options="uniqueCategoryIds" placeholder="All categories" all-label="All categories" :icon="Globe" @update:model-value="(v) => handleFilterChange('category_id', v)" />
+					</div>
+					<div class="flex min-w-[200px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.sub_category_id ? 'text-primary' : 'text-muted-foreground')">
+							Subcategory <span v-if="props.filters.sub_category_id" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.sub_category_id || null" :options="uniqueSubCategories" placeholder="All subcategories" all-label="All subcategories" :icon="Layers" @update:model-value="(v) => handleFilterChange('sub_category_id', v)" />
+					</div>
+					<div class="flex min-w-[180px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.cluster ? 'text-primary' : 'text-muted-foreground')">
+							Cluster <span v-if="props.filters.cluster" class="h-1 w-1 rounded-full bg-primary" />
+						</Label>
+						<FilterSelect :model-value="props.filters.cluster || null" :options="uniqueClusters" placeholder="All clusters" all-label="All clusters" :icon="Layers" @update:model-value="(v) => handleFilterChange('cluster', v)" />
 					</div>
 				</template>
 
 				<template v-if="dataType === 'feedback_prompts'">
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.stage
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Stage
-							<span
-								v-if="props.filters.stage"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[180px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.stage ? 'text-primary' : 'text-muted-foreground')">
+							Stage <span v-if="props.filters.stage" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.stage || '__all__'"
-								@update:model-value="
-								(v) => handleFilterChange('stage', v === '__all__' ? null : v)
-							"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Activity class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All stages" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All stages</SelectItem
-								>
-								<SelectItem
-									v-for="s in uniqueStages"
-									:key="s"
-									:value="s"
-									class="text-sm"
-									>{{ s }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.stage || null" :options="uniqueStages" placeholder="All stages" all-label="All stages" :icon="Activity" @update:model-value="(v) => handleFilterChange('stage', v)" />
 					</div>
 				</template>
 
 				<template v-if="dataType === 'training_examples'">
-						<div class="flex min-w-[180px] flex-col gap-1.5">
-						<Label
-							class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
-							:class="
-								cn(
-									props.filters.user_intent
-										? 'text-primary'
-										: 'text-muted-foreground',
-								)
-							"
-							>Intent
-							<span
-								v-if="props.filters.user_intent"
-								class="h-1 w-1 rounded-full bg-primary"
-							/>
+					<div class="flex min-w-[180px] flex-col gap-1.5">
+						<Label class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5" :class="cn(props.filters.user_intent ? 'text-primary' : 'text-muted-foreground')">
+							Intent <span v-if="props.filters.user_intent" class="h-1 w-1 rounded-full bg-primary" />
 						</Label>
-							<Select
-								:model-value="props.filters.user_intent || '__all__'"
-								@update:model-value="
-								(v) =>
-									handleFilterChange('user_intent', v === '__all__' ? null : v)
-							"
-							>
-							<SelectTrigger
-								class="h-10 border-input bg-background text-sm shadow-none"
-							>
-								<div class="flex items-center gap-2 overflow-hidden">
-									<Activity class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<SelectValue placeholder="All intents" class="truncate" />
-								</div>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="__all__" class="text-sm"
-									>All intents</SelectItem
-								>
-								<SelectItem
-									v-for="i in uniqueUserIntents"
-									:key="i"
-									:value="i"
-									class="text-sm"
-									>{{ i }}</SelectItem
-								>
-							</SelectContent>
-						</Select>
+						<FilterSelect :model-value="props.filters.user_intent || null" :options="uniqueUserIntents" placeholder="All intents" all-label="All intents" :icon="Activity" @update:model-value="(v) => handleFilterChange('user_intent', v)" />
 					</div>
 				</template>
 				</div>
 
-			<div class="flex flex-wrap items-center gap-2 self-end pb-0.5">
+			<!-- Date Range Filters (shared across all data types) -->
+			<div class="flex flex-wrap items-end gap-4 border-t border-border/50 pt-3 mt-1 w-full">
+				<!-- Created Date Range -->
+				<div class="flex flex-col gap-1.5">
+					<Label
+						class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
+						:class="cn(props.filters.created_from || props.filters.created_to ? 'text-primary' : 'text-muted-foreground')"
+					>
+						<Calendar class="h-3 w-3" />
+						Created
+						<span v-if="props.filters.created_from || props.filters.created_to" class="h-1 w-1 rounded-full bg-primary" />
+					</Label>
+					<div class="flex items-center gap-2">
+						<Input
+							type="date"
+							:model-value="props.filters.created_from || ''"
+							class="h-10 w-[150px] border-input bg-background text-sm shadow-none"
+							@update:model-value="(v: string) => handleFilterChange('created_from', v || null)"
+						/>
+						<span class="text-xs text-muted-foreground">–</span>
+						<Input
+							type="date"
+							:model-value="props.filters.created_to || ''"
+							class="h-10 w-[150px] border-input bg-background text-sm shadow-none"
+							@update:model-value="(v: string) => handleFilterChange('created_to', v || null)"
+						/>
+					</div>
+				</div>
+
+				<!-- Updated Date Range -->
+				<div class="flex flex-col gap-1.5">
+					<Label
+						class="text-xs font-medium uppercase tracking-wider flex items-center gap-1.5"
+						:class="cn(props.filters.updated_from || props.filters.updated_to ? 'text-primary' : 'text-muted-foreground')"
+					>
+						<Calendar class="h-3 w-3" />
+						Updated
+						<span v-if="props.filters.updated_from || props.filters.updated_to" class="h-1 w-1 rounded-full bg-primary" />
+					</Label>
+					<div class="flex items-center gap-2">
+						<Input
+							type="date"
+							:model-value="props.filters.updated_from || ''"
+							class="h-10 w-[150px] border-input bg-background text-sm shadow-none"
+							@update:model-value="(v: string) => handleFilterChange('updated_from', v || null)"
+						/>
+						<span class="text-xs text-muted-foreground">–</span>
+						<Input
+							type="date"
+							:model-value="props.filters.updated_to || ''"
+							class="h-10 w-[150px] border-input bg-background text-sm shadow-none"
+							@update:model-value="(v: string) => handleFilterChange('updated_to', v || null)"
+						/>
+					</div>
+				</div>
+			</div>
+
+			<div class="flex flex-wrap items-center gap-2 justify-end pt-1">
 				<Button
 					v-if="hasActiveFilters"
 					variant="ghost"
@@ -886,10 +686,12 @@ import {
 	Trash2,
 	Layers,
 	Activity,
+	Calendar,
 } from "lucide-vue-next";
 
 // Admin Components
 import EmptyState from "@/components/admin/EmptyState.vue";
+import FilterSelect from "@/components/admin/FilterSelect.vue";
 import BulkActionsBar from "@/components/admin/BulkActionsBar.vue";
 import BulkDeleteDialog from "@/components/admin/BulkDeleteDialog.vue";
 import BulkEditDialog from "@/components/admin/BulkEditDialog.vue";
@@ -1125,13 +927,21 @@ const hasProvidedFilterOptions = (key: string) =>
 	Object.prototype.hasOwnProperty.call(props.filterOptions || {}, key);
 
 const uniqueCategoryIds = computed(() => {
-	const provided = getProvidedFilterOptions("category_id")
-		.map((value) => String(value || "").trim())
-		.filter(Boolean);
+	const provided = getProvidedFilterOptions("category_id");
 	if (hasProvidedFilterOptions("category_id")) {
-		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+		return provided
+			.map((entry: any) => {
+				if (typeof entry === "string") {
+					return { id: entry.trim(), name: entry.trim() };
+				}
+				const id = String(entry?.id ?? entry?.value ?? "").trim();
+				const name = String(entry?.name ?? entry?.label ?? id).trim();
+				return { id, name: name || id };
+			})
+			.filter((entry) => Boolean(entry.id))
+			.sort((a, b) => a.id.localeCompare(b.id));
 	}
-	return extractUnique("category_id");
+	return extractUnique("category_id").map((id: string) => ({ id, name: id }));
 });
 const uniqueCategories = computed(() => {
 	const provided = getProvidedFilterOptions("category")
@@ -1173,6 +983,33 @@ const uniqueClusters = computed(() => {
 		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
 	}
 	return extractUnique("cluster");
+});
+const uniqueAssessmentClusters = computed(() => {
+	const provided = getProvidedFilterOptions("clusters")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("clusters")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("clusters");
+});
+const uniqueResponseTypes = computed(() => {
+	const provided = getProvidedFilterOptions("response_type")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("response_type")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("response_type");
+});
+const uniqueBatchIds = computed(() => {
+	const provided = getProvidedFilterOptions("batch_id")
+		.map((value) => String(value || "").trim())
+		.filter(Boolean);
+	if (hasProvidedFilterOptions("batch_id")) {
+		return [...new Set(provided)].sort((a, b) => a.localeCompare(b));
+	}
+	return extractUnique("batch_id");
 });
 const uniqueStages = computed(() => {
 	const provided = getProvidedFilterOptions("stage")
