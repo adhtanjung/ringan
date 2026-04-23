@@ -10,7 +10,7 @@ export default defineNuxtConfig({
 			enabled: true,
 		},
 	},
-	modules: ["shadcn-nuxt"],
+	modules: ["shadcn-nuxt", "@nuxt/ui"],
 	css: ["~/assets/css/tailwind.css", "~/assets/css/driver-theme.css"],
 	runtimeConfig: {
 		public: {

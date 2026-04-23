@@ -1,7 +1,10 @@
 <script setup lang="ts">
-await navigateTo("/dashboard");
+// await navigateTo("/dashboard");
+const items = ref(['System', 'Light', 'Dark'])
+const value = ref(['System'])
 </script>
 
 <template>
-	<div />
+	<!-- <div /> -->
+	 <UCheckboxGroup v-model="value" :items="items" />
 </template>
