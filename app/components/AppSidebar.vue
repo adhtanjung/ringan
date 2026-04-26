@@ -128,6 +128,11 @@ const data = {
 	// ],
 	dataset: [
 		{
+			name: "Overview",
+			url: "/overview",
+			icon: IconChartBar,
+		},
+		{
 			name: "Categories",
 			url: "/problem-types",
 			icon: IconFileDescription,
@@ -137,7 +142,16 @@ const data = {
 			url: "/problems",
 			icon: IconFileDescription,
 		},
-
+		{
+			name: "Opening Questions",
+			url: "/opening-questions",
+			icon: IconListDetails,
+		},
+		{
+			name: "General Questions",
+			url: "/general-questions",
+			icon: IconListDetails,
+		},
 		{
 			name: "Assessment Questions",
 			url: "/assessments",

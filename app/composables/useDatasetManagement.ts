@@ -400,6 +400,100 @@ export const columnConfigs = {
 			description: "Last modification timestamp",
 		},
 	],
+	general_questions: [
+		{
+			key: "question_id",
+			label: "Question ID",
+			type: "text",
+			description: "Business identifier for this general question (e.g. Q001)",
+		},
+		{
+			key: "question_text",
+			label: "Question Text",
+			type: "text",
+			description: "The question text shown to the user during the conversation",
+		},
+		{
+			key: "response_type",
+			label: "Response Type",
+			type: "badge",
+			description: "How the user answers: yes/no, multiple choice, or auto-route",
+		},
+		{
+			key: "category",
+			label: "Category",
+			type: "badge",
+			description: "Top-level mental health category this question belongs to",
+		},
+		{
+			key: "routing_display",
+			label: "Routing",
+			type: "text",
+			description: "Summary of where this question routes to",
+		},
+		{
+			key: "order_number",
+			label: "Order",
+			type: "number",
+			description: "Display order within the decision tree",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this question was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
+	opening_questions: [
+		{
+			key: "question_id",
+			label: "Question ID",
+			type: "text",
+			description: "Business identifier for this opening question (e.g. OQ001)",
+		},
+		{
+			key: "question_text",
+			label: "Question Text",
+			type: "text",
+			description: "The question text shown to the user at the start of the conversation",
+		},
+		{
+			key: "response_type",
+			label: "Response Type",
+			type: "badge",
+			description: "How the user answers: yes/no or multiple choice",
+		},
+		{
+			key: "routing_display",
+			label: "Routing",
+			type: "text",
+			description: "Summary of where this question routes to",
+		},
+		{
+			key: "order_number",
+			label: "Order",
+			type: "number",
+			description: "Display order within the opening flow",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this question was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
 };
 
 // Dataset type labels
@@ -411,6 +505,8 @@ export const datasetLabels = {
 	next_actions: "Next Actions",
 	training_examples: "Fine-tuning Examples",
 	problem_types: "Categories",
+	general_questions: "General Questions",
+	opening_questions: "Opening Questions",
 };
 
 // List of data types to use Supabase instead of the backend API
@@ -422,6 +518,8 @@ const USE_SUPABASE_FOR = [
 	"feedback_prompts",
 	"next_actions",
 	"training_examples",
+	"general_questions",
+	"opening_questions",
 ];
 
 export function useDatasetManagement(
@@ -511,6 +609,18 @@ export function useDatasetManagement(
 		}
 		if (dataType === "problem_types") {
 			return query.or(`type_name.ilike.%${search}%,description.ilike.%${search}%`);
+		}
+
+		if (dataType === "general_questions") {
+			return query.or(
+				`question_id.ilike.%${search}%,question_text.ilike.%${search}%`,
+			);
+		}
+
+		if (dataType === "opening_questions") {
+			return query.or(
+				`question_id.ilike.%${search}%,question_text.ilike.%${search}%`,
+			);
 		}
 
 		return query;
@@ -789,6 +899,35 @@ export function useDatasetManagement(
 					catMap.set(id, name);
 				}
 				nextOptions.category_id = [...catMap.entries()].map(([id, name]) => ({ id, name }));
+			} else if (dataType === "general_questions") {
+				const [
+					{ data: categoryRows, error: categoryError },
+					{ data: responseTypeRows, error: rtError },
+				] = await Promise.all([
+					buildSupabaseQuery("category", { omitFilterKey: "category" }).order("category", { ascending: true }),
+					buildSupabaseQuery("response_type", { omitFilterKey: "response_type" }).order("response_type", { ascending: true }),
+				]);
+
+				if (categoryError) throw categoryError;
+				if (rtError) throw rtError;
+
+				const uniqStrings = (values: Array<string | null | undefined>) =>
+					[...new Set(values.filter((v): v is string => Boolean(v && String(v).trim())).map((v) => String(v).trim()))].sort((a, b) => a.localeCompare(b));
+
+				nextOptions.category = uniqStrings((categoryRows || []).map((row: any) => row.category));
+				nextOptions.response_type = uniqStrings((responseTypeRows || []).map((row: any) => row.response_type));
+			} else if (dataType === "opening_questions") {
+				const { data: responseTypeRows, error: rtError } = await buildSupabaseQuery(
+					"response_type",
+					{ omitFilterKey: "response_type" },
+				).order("response_type", { ascending: true });
+
+				if (rtError) throw rtError;
+
+				const uniqStr = (values: Array<string | null | undefined>) =>
+					[...new Set(values.filter((v): v is string => Boolean(v && String(v).trim())).map((v) => String(v).trim()))].sort((a, b) => a.localeCompare(b));
+
+				nextOptions.response_type = uniqStr((responseTypeRows || []).map((row: any) => row.response_type));
 			}
 
 			filterOptions.value = nextOptions;
@@ -907,6 +1046,50 @@ export function useDatasetManagement(
 					}
 
 					data.value = enriched;
+				} else if (dataType === "general_questions") {
+					data.value = (items || []).map((item: any) => {
+						let routing_display = "";
+						const rt = item.response_type;
+						if (rt === "auto-route") {
+							routing_display = item.leads_to_subcategory
+								? `→ ${item.leads_to_subcategory}`
+								: "—";
+						} else if (rt === "yes/no") {
+							const yesVal = item.yes_destination_value || item.next_question_if_yes || "";
+							const noVal  = item.no_destination_value  || item.next_question_if_no  || "";
+							const yType  = item.yes_destination_type  || "";
+							const nType  = item.no_destination_type   || "";
+							const yesPart = yesVal ? `Yes → ${yType ? yType + ": " : ""}${yesVal}` : "";
+							const noPart  = noVal  ? `No → ${nType  ? nType  + ": " : ""}${noVal}`  : "";
+							routing_display = [yesPart, noPart].filter(Boolean).join("  |  ") || "—";
+						} else if (rt === "multiple choice") {
+							const ch = Array.isArray(item.choices) ? item.choices : [];
+							routing_display = ch.length ? `${ch.length} choice${ch.length !== 1 ? "s" : ""}` : "—";
+						} else {
+							routing_display = "—";
+						}
+						return { ...item, routing_display };
+					});
+				} else if (dataType === "opening_questions") {
+					data.value = (items || []).map((item: any) => {
+						let routing_display = "";
+						const rt = item.response_type;
+						if (rt === "yes/no") {
+							const yesVal = item.yes_destination_value || "";
+							const noVal  = item.no_destination_value  || "";
+							const yType  = item.yes_destination_type  || "";
+							const nType  = item.no_destination_type   || "";
+							const yesPart = yesVal ? `Yes → ${yType === "category" ? "Category: " : ""}${yesVal}` : "";
+							const noPart  = noVal  ? `No → ${nType  === "category" ? "Category: " : ""}${noVal}`  : "";
+							routing_display = [yesPart, noPart].filter(Boolean).join("  |  ") || "—";
+						} else if (rt === "multiple choice") {
+							const ch = Array.isArray(item.choices) ? item.choices : [];
+							routing_display = ch.length ? `${ch.length} choice${ch.length !== 1 ? "s" : ""}` : "—";
+						} else {
+							routing_display = "—";
+						}
+						return { ...item, routing_display };
+					});
 				} else {
 					data.value = items || [];
 				}
