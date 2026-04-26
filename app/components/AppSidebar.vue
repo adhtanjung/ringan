@@ -143,13 +143,13 @@ const data = {
 			icon: IconFileDescription,
 		},
 		{
-			name: "General Questions",
-			url: "/general-questions",
+			name: "Opening Questions",
+			url: "/opening-questions",
 			icon: IconListDetails,
 		},
 		{
-			name: "Opening Questions",
-			url: "/opening-questions",
+			name: "General Questions",
+			url: "/general-questions",
 			icon: IconListDetails,
 		},
 		{
