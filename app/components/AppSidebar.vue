@@ -13,6 +13,7 @@ import {
 	IconListDetails,
 	IconSearch,
 	IconSettings,
+	IconShieldCheck,
 	IconUsers,
 } from "@tabler/icons-vue";
 
@@ -24,6 +25,8 @@ import {
 	SidebarContent,
 	SidebarHeader,
 	SidebarFooter,
+	SidebarGroup,
+	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -163,6 +166,23 @@ const data = {
 			icon: IconFileAi,
 		},
 	],
+	safety: [
+		{
+			name: "Risk Classification",
+			url: "/safety-framework",
+			icon: IconShieldCheck,
+		},
+		{
+			name: "Detection Categories",
+			url: "/detection-categories",
+			icon: IconListDetails,
+		},
+		{
+			name: "Response Types",
+			url: "/response-types",
+			icon: IconFileAi,
+		},
+	],
 };
 </script>
 
@@ -188,6 +208,20 @@ const data = {
 		<SidebarContent>
 			<NavMain :items="data.navMain" />
 			<NavDocuments :items="data.dataset" />
+			<!-- Safety Framework section -->
+			<SidebarGroup class="group-data-[collapsible=icon]:hidden">
+				<SidebarGroupLabel>Safety Framework</SidebarGroupLabel>
+				<SidebarMenu>
+					<SidebarMenuItem v-for="item in data.safety" :key="item.name">
+						<SidebarMenuButton as-child>
+							<NuxtLink :to="item.url">
+								<component :is="item.icon" />
+								<span>{{ item.name }}</span>
+							</NuxtLink>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarGroup>
 			<!-- <NavSecondary :items="data.navSecondary" class="mt-auto" /> -->
 		</SidebarContent>
 		<SidebarFooter class="mt-auto border-t border-sidebar-border/70 px-2 pb-3 pt-3">
