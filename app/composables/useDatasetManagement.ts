@@ -494,6 +494,192 @@ export const columnConfigs = {
 			description: "Last modification timestamp",
 		},
 	],
+	detection_categories: [
+		{
+			key: "code",
+			label: "Code",
+			type: "text",
+			description: "Business identifier for this detection category (e.g. D001)",
+		},
+		{
+			key: "status",
+			label: "Status",
+			type: "badge",
+			description: "Whether this is an Existing or Added detection category",
+		},
+		{
+			key: "detection_type",
+			label: "Detection Type",
+			type: "text",
+			description: "Short label for the type of signal being detected",
+		},
+		{
+			key: "definition",
+			label: "Definition",
+			type: "text",
+			description: "Full description of what this detection category covers",
+		},
+		{
+			key: "typical_trigger_examples",
+			label: "Typical Trigger Examples",
+			type: "text",
+			description: "Example phrases or behaviours that trigger this category",
+		},
+		{
+			key: "default_tier",
+			label: "Default Tier",
+			type: "badge",
+			description: "Default risk tier assigned when this category is detected",
+		},
+		{
+			key: "linked_response",
+			label: "Linked Response",
+			type: "text",
+			description: "Response code(s) linked to this detection category",
+		},
+		{
+			key: "linked_workflow",
+			label: "Linked Workflow",
+			type: "text",
+			description: "Workflow code(s) triggered by this detection category",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this detection category was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
+	response_types: [
+		{
+			key: "response_id",
+			label: "Response ID",
+			type: "text",
+			description: "Business identifier for this response type (e.g. R001)",
+		},
+		{
+			key: "response_type",
+			label: "Response Type",
+			type: "text",
+			description: "Short label for this response type",
+		},
+		{
+			key: "when_used",
+			label: "When Used",
+			type: "text",
+			description: "The condition or tier that triggers this response",
+		},
+		{
+			key: "required_elements",
+			label: "Required Elements",
+			type: "text",
+			description: "Actions and elements that must be included in this response",
+		},
+		{
+			key: "tone",
+			label: "Tone",
+			type: "text",
+			description: "Tone guidance for delivering this response",
+		},
+		{
+			key: "example_opener",
+			label: "Example Opener",
+			type: "text",
+			description: "An example opening phrase for this response type",
+		},
+		{
+			key: "avoid",
+			label: "Avoid",
+			type: "text",
+			description: "Things to avoid when using this response type",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this response type was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
+	risk_classifications: [
+		{
+			key: "classification_id",
+			label: "ID",
+			type: "text",
+			description: "Business identifier for this risk classification (e.g. RC001)",
+		},
+		{
+			key: "tier",
+			label: "Tier",
+			type: "number",
+			description: "Numeric tier level (1 = lowest risk, higher = more urgent)",
+		},
+		{
+			key: "framework_label",
+			label: "Framework Label",
+			type: "text",
+			description: "Short label for this tier (e.g. Emotional distress)",
+		},
+		{
+			key: "expanded_definition",
+			label: "Expanded Definition",
+			type: "text",
+			description: "Full description of what this tier covers and excludes",
+		},
+		{
+			key: "typical_indicators",
+			label: "Typical Indicators",
+			type: "text",
+			description: "Example phrases or behaviours that signal this tier",
+		},
+		{
+			key: "decision_boundary",
+			label: "Decision Boundary",
+			type: "text",
+			description: "When to use this tier vs adjacent tiers",
+		},
+		{
+			key: "primary_response_goal",
+			label: "Response Goal",
+			type: "text",
+			description: "What the system should aim to achieve for users at this tier",
+		},
+		{
+			key: "referral_guidance",
+			label: "Referral Guidance",
+			type: "text",
+			description: "Who to refer to and under what conditions",
+		},
+		{
+			key: "linked_response",
+			label: "Linked Response",
+			type: "text",
+			description: "Response code linked to this tier (e.g. R001 Emotional Support)",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this classification was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
 };
 
 // Dataset type labels
@@ -507,6 +693,9 @@ export const datasetLabels = {
 	problem_types: "Categories",
 	general_questions: "General Questions",
 	opening_questions: "Opening Questions",
+	risk_classifications: "Risk Classifications",
+	detection_categories: "Detection Categories",
+	response_types: "Response Types",
 };
 
 // List of data types to use Supabase instead of the backend API
@@ -520,6 +709,9 @@ const USE_SUPABASE_FOR = [
 	"training_examples",
 	"general_questions",
 	"opening_questions",
+	"risk_classifications",
+	"detection_categories",
+	"response_types",
 ];
 
 export function useDatasetManagement(
@@ -620,6 +812,24 @@ export function useDatasetManagement(
 		if (dataType === "opening_questions") {
 			return query.or(
 				`question_id.ilike.%${search}%,question_text.ilike.%${search}%`,
+			);
+		}
+
+		if (dataType === "risk_classifications") {
+			return query.or(
+				`classification_id.ilike.%${search}%,framework_label.ilike.%${search}%,expanded_definition.ilike.%${search}%`,
+			);
+		}
+
+		if (dataType === "detection_categories") {
+			return query.or(
+				`code.ilike.%${search}%,detection_type.ilike.%${search}%,definition.ilike.%${search}%`,
+			);
+		}
+
+		if (dataType === "response_types") {
+			return query.or(
+				`response_id.ilike.%${search}%,response_type.ilike.%${search}%,when_used.ilike.%${search}%`,
 			);
 		}
 
@@ -948,10 +1158,13 @@ export function useDatasetManagement(
 				const to = from + pagination.value.limit - 1;
 				const finalSortBy =
 					sortBy.value ||
-					(dataType === "problem_types" ? "type_name" : "created_at");
+					(dataType === "problem_types" ? "type_name" :
+					dataType === "risk_classifications" ? "tier" :
+					dataType === "detection_categories" ? "code" :
+					dataType === "response_types" ? "response_id" : "created_at");
 				const finalAscending = sortBy.value
 					? sortOrder.value === "asc"
-					: dataType === "problem_types";
+					: (dataType === "problem_types" || dataType === "risk_classifications" || dataType === "detection_categories" || dataType === "response_types");
 
 				const pageQuery = buildSupabaseQuery("*", { countExact: true })
 					.order(finalSortBy, { ascending: finalAscending })
