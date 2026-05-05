@@ -165,6 +165,11 @@ const data = {
 			url: "/suggestions",
 			icon: IconFileAi,
 		},
+		{
+			name: "Keywords",
+			url: "/keywords",
+			icon: IconSearch,
+		},
 	],
 	safety: [
 		{
