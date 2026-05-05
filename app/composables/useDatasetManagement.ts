@@ -612,6 +612,56 @@ export const columnConfigs = {
 			description: "Last modification timestamp",
 		},
 	],
+	category_keywords: [
+		{
+			key: "keyword_id",
+			label: "Keyword ID",
+			type: "text",
+			description: "Business identifier for this keyword (e.g. KW001)",
+		},
+		{
+			key: "keyword",
+			label: "Keyword",
+			type: "text",
+			description: "The keyword or phrase the AI should detect",
+		},
+		{
+			key: "category_id",
+			label: "Category ID",
+			type: "text",
+			description: "Top-level category this keyword is linked to",
+		},
+		{
+			key: "category_name",
+			label: "Category",
+			type: "text",
+			description: "Name of the top-level category",
+		},
+		{
+			key: "sub_category_id",
+			label: "Subcategory ID",
+			type: "text",
+			description: "Subcategory this keyword is linked to",
+		},
+		{
+			key: "sub_category_name",
+			label: "Subcategory",
+			type: "text",
+			description: "Name of the subcategory",
+		},
+		{
+			key: "created_at",
+			label: "Created",
+			type: "date",
+			description: "When this keyword was first created",
+		},
+		{
+			key: "updated_at",
+			label: "Updated",
+			type: "date",
+			description: "Last modification timestamp",
+		},
+	],
 	risk_classifications: [
 		{
 			key: "classification_id",
@@ -696,6 +746,7 @@ export const datasetLabels = {
 	risk_classifications: "Risk Classifications",
 	detection_categories: "Detection Categories",
 	response_types: "Response Types",
+	category_keywords: "Keywords",
 };
 
 // List of data types to use Supabase instead of the backend API
@@ -712,6 +763,7 @@ const USE_SUPABASE_FOR = [
 	"risk_classifications",
 	"detection_categories",
 	"response_types",
+	"category_keywords",
 ];
 
 export function useDatasetManagement(
@@ -830,6 +882,12 @@ export function useDatasetManagement(
 		if (dataType === "response_types") {
 			return query.or(
 				`response_id.ilike.%${search}%,response_type.ilike.%${search}%,when_used.ilike.%${search}%`,
+			);
+		}
+
+		if (dataType === "category_keywords") {
+			return query.or(
+				`keyword_id.ilike.%${search}%,keyword.ilike.%${search}%`,
 			);
 		}
 
@@ -1138,6 +1196,57 @@ export function useDatasetManagement(
 					[...new Set(values.filter((v): v is string => Boolean(v && String(v).trim())).map((v) => String(v).trim()))].sort((a, b) => a.localeCompare(b));
 
 				nextOptions.response_type = uniqStr((responseTypeRows || []).map((row: any) => row.response_type));
+			} else if (dataType === "category_keywords") {
+				// Fetch distinct category_ids and sub_category_ids used by keywords
+				const [
+					{ data: catRows, error: catError },
+					{ data: subRows, error: subError },
+				] = await Promise.all([
+					buildSupabaseQuery("category_id", { omitFilterKey: "category_id" }).not("category_id", "is", null),
+					buildSupabaseQuery("sub_category_id", { omitFilterKey: "sub_category_id" }).not("sub_category_id", "is", null),
+				]);
+
+				if (catError) throw catError;
+				if (subError) throw subError;
+
+				const uniqStr = (values: Array<string | null | undefined>) =>
+					[...new Set(values.filter((v): v is string => Boolean(v && String(v).trim())).map((v) => String(v).trim()))].sort((a, b) => a.localeCompare(b));
+
+				const catIds = uniqStr((catRows || []).map((row: any) => row.category_id));
+				const subIds = uniqStr((subRows || []).map((row: any) => row.sub_category_id));
+
+				if (catIds.length > 0) {
+					const { data: typeRows } = await supabase
+						.from("problem_types")
+						.select("category_id, type_name")
+						.in("category_id", catIds);
+					const typeMap = new Map(
+						(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+					);
+					nextOptions.category_id = catIds.map((id) => ({
+						id,
+						name: typeMap.get(id) || id,
+					}));
+				} else {
+					nextOptions.category_id = [];
+				}
+
+				if (subIds.length > 0) {
+					const { data: problemRows } = await supabase
+						.from("problems")
+						.select("sub_category_id, problem_name")
+						.in("sub_category_id", subIds)
+						.eq("is_active", true);
+					const probMap = new Map(
+						(problemRows || []).map((p: any) => [String(p.sub_category_id), String(p.problem_name || "").trim()])
+					);
+					nextOptions.sub_category_id = subIds.map((id) => ({
+						id,
+						name: probMap.get(id) || id,
+					}));
+				} else {
+					nextOptions.sub_category_id = [];
+				}
 			}
 
 			filterOptions.value = nextOptions;
@@ -1303,6 +1412,44 @@ export function useDatasetManagement(
 						}
 						return { ...item, routing_display };
 					});
+				} else if (dataType === "category_keywords") {
+					// Enrich with category_name and sub_category_name
+					const catIds = [...new Set(
+						(items || []).map((item: any) => item.category_id).filter(Boolean)
+					)] as string[];
+					const subIds = [...new Set(
+						(items || []).map((item: any) => item.sub_category_id).filter(Boolean)
+					)] as string[];
+
+					let typeMap = new Map<string, string>();
+					let probMap = new Map<string, string>();
+
+					if (catIds.length > 0) {
+						const { data: typeRows } = await supabase
+							.from("problem_types")
+							.select("category_id, type_name")
+							.in("category_id", catIds);
+						typeMap = new Map(
+							(typeRows || []).map((t: any) => [String(t.category_id), String(t.type_name || "").trim()])
+						);
+					}
+
+					if (subIds.length > 0) {
+						const { data: problemRows } = await supabase
+							.from("problems")
+							.select("sub_category_id, problem_name")
+							.in("sub_category_id", subIds)
+							.eq("is_active", true);
+						probMap = new Map(
+							(problemRows || []).map((p: any) => [String(p.sub_category_id), String(p.problem_name || "").trim()])
+						);
+					}
+
+					data.value = (items || []).map((item: any) => ({
+						...item,
+						category_name: item.category_id ? (typeMap.get(String(item.category_id)) || item.category_id) : "",
+						sub_category_name: item.sub_category_id ? (probMap.get(String(item.sub_category_id)) || item.sub_category_id) : "",
+					}));
 				} else {
 					data.value = items || [];
 				}
